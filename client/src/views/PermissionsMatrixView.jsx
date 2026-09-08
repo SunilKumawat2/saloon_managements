@@ -1,299 +1,364 @@
-import React, { useState, useCallback } from 'react';
-import { Check, X, ShieldCheck, Save, RotateCcw, Info, Loader2 } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Check, X, ShieldCheck, Save, RotateCcw, Loader2, Lightbulb, MousePointerClick } from 'lucide-react';
 import { Admin_Update_Role_Permissions } from '../services/apiService';
 
-// All permission definitions with descriptions
+// ─── Permission Definitions ───
 const ALL_PERMISSIONS = [
-  { key: 'all',                        label: 'Full Admin System Control',          desc: 'Complete unrestricted access to the entire system', category: 'System' },
-  { key: 'manage_users',               label: 'Create & Manage System Users',        desc: 'Add, edit, delete users and assign roles', category: 'System' },
-  { key: 'manage_branches',            label: 'Create & Manage Branches',            desc: 'Add and configure salon branches', category: 'System' },
-  { key: 'manage_finances',            label: 'View Financial & Revenue Reports',    desc: 'Access income statements and revenue dashboards', category: 'Finance' },
-  { key: 'manage_services',            label: 'Manage Services & Pricing Catalog',   desc: 'Add, edit, delete salon services and prices', category: 'Operations' },
-  { key: 'manage_appointments',        label: 'Create & Manage Bookings',            desc: 'Book, reschedule, and cancel appointments', category: 'Operations' },
-  { key: 'manage_billing',             label: 'Generate Bills & Process Checkout',   desc: 'Create invoices and accept payments', category: 'Finance' },
-  { key: 'manage_inventory',           label: 'Stock & Inventory Management',        desc: 'Track and manage salon product inventory', category: 'Operations' },
-  { key: 'view_assigned_appointments', label: 'View Own Assigned Schedule',          desc: 'View only personally assigned appointments', category: 'Restricted' },
-  { key: 'view_customers',             label: 'View Customer Profiles (CRM)',        desc: 'Access customer database and contact details', category: 'CRM' },
-  { key: 'manage_branch_users',        label: 'Manage Branch-Level Staff',           desc: 'Add and manage staff within own branch', category: 'System' },
-  { key: 'view_reports',               label: 'View Branch Reports',                 desc: 'Access branch-level operational reports', category: 'Finance' },
-  { key: 'book_appointments',          label: 'Self Book Appointments (Customer)',   desc: 'Customers can book their own appointments', category: 'Customer' },
-  { key: 'view_history',               label: 'View Own Visit History',              desc: 'Customers can view their own service history', category: 'Customer' },
+  // System
+  { key: 'all',                        label: 'Full System Control',       emoji: '🔐', desc: 'Poora system control — kuch bhi kar sakta hai', category: 'System' },
+  { key: 'manage_users',               label: 'Staff & User Management',   emoji: '👥', desc: 'Nayi staff add, edit aur delete kar sakta hai', category: 'System' },
+  { key: 'manage_branches',            label: 'Branch Management',         emoji: '🏢', desc: 'Nayi branches add aur manage kar sakta hai', category: 'System' },
+  { key: 'manage_branch_users',        label: 'Branch Staff Control',      emoji: '👤', desc: 'Sirf apni branch ki staff manage kar sakta hai', category: 'System' },
+  // Finance
+  { key: 'manage_finances',            label: 'Revenue & Reports',         emoji: '💰', desc: 'Income reports aur financial data dekh sakta hai', category: 'Finance' },
+  { key: 'manage_billing',             label: 'Billing & Checkout',        emoji: '🧾', desc: 'Bill generate aur payment accept kar sakta hai', category: 'Finance' },
+  { key: 'view_reports',               label: 'Branch Reports',            emoji: '📊', desc: 'Branch ki performance report dekh sakta hai', category: 'Finance' },
+  // Operations
+  { key: 'manage_services',            label: 'Services & Pricing',        emoji: '✂️', desc: 'Services ka naam aur price set kar sakta hai', category: 'Operations' },
+  { key: 'manage_appointments',        label: 'Booking & Calendar',        emoji: '📅', desc: 'Appointments book, reschedule ya cancel kar sakta hai', category: 'Operations' },
+  { key: 'manage_inventory',           label: 'Stock & Inventory',         emoji: '📦', desc: 'Salon ka product stock track kar sakta hai', category: 'Operations' },
+  // CRM
+  { key: 'view_customers',             label: 'Customer Directory (CRM)',  emoji: '📋', desc: 'Sabhi customers ki profile aur contact dekh sakta hai', category: 'CRM' },
+  // Restricted
+  { key: 'view_assigned_appointments', label: 'Own Schedule Only',         emoji: '🗓️', desc: 'Sirf apne assigned appointments dekh sakta hai', category: 'Restricted' },
+  // Customer
+  { key: 'book_appointments',          label: 'Book Appointment',          emoji: '📱', desc: 'Customer khud appointment book kar sakta hai', category: 'Customer' },
+  { key: 'view_history',               label: 'View Visit History',        emoji: '🕐', desc: 'Customer apni purani visits dekh sakta hai', category: 'Customer' },
 ];
 
+const CATEGORIES = ['System', 'Finance', 'Operations', 'CRM', 'Restricted', 'Customer'];
+
 const CATEGORY_COLORS = {
-  System:     { bg: 'rgba(99,102,241,0.12)',  text: '#818cf8' },
-  Finance:    { bg: 'rgba(0,230,118,0.12)',   text: '#00e676' },
-  Operations: { bg: 'rgba(251,191,36,0.12)',  text: '#fbbf24' },
-  Restricted: { bg: 'rgba(239,68,68,0.12)',   text: '#ef4444' },
-  CRM:        { bg: 'rgba(236,72,153,0.12)',  text: '#ec4899' },
-  Customer:   { bg: 'rgba(14,165,233,0.12)',  text: '#38bdf8' },
+  System:     { bg: 'rgba(99,102,241,0.14)',  text: '#818cf8', border: 'rgba(99,102,241,0.3)' },
+  Finance:    { bg: 'rgba(0,230,118,0.12)',   text: '#00e676', border: 'rgba(0,230,118,0.3)' },
+  Operations: { bg: 'rgba(251,191,36,0.12)',  text: '#fbbf24', border: 'rgba(251,191,36,0.3)' },
+  Restricted: { bg: 'rgba(239,68,68,0.12)',   text: '#ef4444', border: 'rgba(239,68,68,0.3)' },
+  CRM:        { bg: 'rgba(236,72,153,0.12)',  text: '#ec4899', border: 'rgba(236,72,153,0.3)' },
+  Customer:   { bg: 'rgba(14,165,233,0.12)',  text: '#38bdf8', border: 'rgba(14,165,233,0.3)' },
+};
+
+const ROLE_TAG_LABELS = {
+  Admin: 'admin',
+  Manager: 'manager',
+  Receptionist: 'receptionist',
+  Staff: 'staff',
+  Customer: 'customer',
 };
 
 function PermissionsMatrixView({ roles, onUpdateRoles }) {
-  // localRoles is the editable in-memory state; initially mirrors props
-  const [localRoles, setLocalRoles] = useState(() =>
-    roles.map(r => ({
-      ...r,
-      permissions: Array.isArray(r.permissions) ? [...r.permissions] : []
-    }))
-  );
-  const [saving, setSaving] = useState({}); // { roleId: bool }
-  const [saved, setSaved]   = useState({}); // { roleId: bool } — green flash
-  const [tooltip, setTooltip] = useState(null); // { permKey, roleId }
+  // ── CRITICAL: Use a ref to hold permissions map to avoid stale closure ──
+  // permMap: { [roleId]: string[] }
+  const [permMap, setPermMap] = useState(() => {
+    const map = {};
+    roles.forEach(r => {
+      map[r.id] = Array.isArray(r.permissions) ? [...r.permissions] : [];
+    });
+    return map;
+  });
 
-  // Sync local state when parent refreshes roles (e.g. after full re-fetch)
-  const rolesKey = roles.map(r => r.id + r.permissions?.join('')).join('|');
+  // Track which roles have unsaved changes
+  const [dirtyMap, setDirtyMap] = useState({}); // { roleId: true/false }
+  const [saving, setSaving]     = useState({}); // { roleId: true/false }
+  const [savedFlash, setSavedFlash] = useState({}); // { roleId: true/false }
+
+  const originalPermsRef = useRef({});
   React.useEffect(() => {
-    setLocalRoles(roles.map(r => ({
-      ...r,
-      permissions: Array.isArray(r.permissions) ? [...r.permissions] : []
-    })));
+    const map = {};
+    roles.forEach(r => {
+      map[r.id] = Array.isArray(r.permissions) ? [...r.permissions] : [];
+    });
+    originalPermsRef.current = map;
+    // Only initialize if not already set (avoid overwriting user changes)
+    setPermMap(prev => {
+      const hasAny = Object.keys(prev).length > 0;
+      if (hasAny) return prev; // Don't overwrite user's in-progress edits
+      return map;
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rolesKey]);
-
-  const hasPerm = (perms, key) => {
-    if (!Array.isArray(perms)) return false;
-    return perms.includes('all') || perms.includes(key);
-  };
-
-  const togglePerm = useCallback((roleId, permKey) => {
-    setLocalRoles(prev => prev.map(r => {
-      if (r.id !== roleId) return r;
-      let perms = [...r.permissions];
-      // Can't remove 'all' from Admin directly — must be explicit
-      if (perms.includes(permKey)) {
-        perms = perms.filter(p => p !== permKey);
-      } else {
-        perms = [...perms, permKey];
-      }
-      return { ...r, permissions: perms };
-    }));
   }, []);
 
-  const saveRole = async (role) => {
-    setSaving(prev => ({ ...prev, [role.id]: true }));
-    try {
-      const res = await Admin_Update_Role_Permissions(role.id, role.permissions).catch(() => null);
-      if (res?.data?.data) {
-        // Update parent state
-        if (onUpdateRoles) onUpdateRoles(res.data.data);
+  const hasPerm = (roleId, permKey) => {
+    const perms = permMap[roleId] || [];
+    return perms.includes('all') || perms.includes(permKey);
+  };
+
+  const togglePerm = (e, roleId, permKey) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    // Admin's "all" permission is locked — cannot be removed
+    const role = roles.find(r => r.id === roleId);
+    if (role?.name === 'Admin' && permKey === 'all') return;
+
+    setPermMap(prev => {
+      const currentPerms = [...(prev[roleId] || [])];
+      let newPerms;
+      if (currentPerms.includes(permKey)) {
+        newPerms = currentPerms.filter(p => p !== permKey);
+      } else {
+        newPerms = [...currentPerms, permKey];
       }
-      setSaved(prev => ({ ...prev, [role.id]: true }));
-      setTimeout(() => setSaved(prev => ({ ...prev, [role.id]: false })), 2500);
-    } catch (e) {
-      console.error(e);
+      return { ...prev, [roleId]: newPerms };
+    });
+
+    // Mark as dirty
+    setDirtyMap(prev => ({ ...prev, [roleId]: true }));
+  };
+
+  const resetRole = (e, roleId) => {
+    e.stopPropagation();
+    const original = originalPermsRef.current[roleId] || [];
+    setPermMap(prev => ({ ...prev, [roleId]: [...original] }));
+    setDirtyMap(prev => ({ ...prev, [roleId]: false }));
+  };
+
+  const saveRole = async (e, role) => {
+    e.stopPropagation();
+    const newPerms = permMap[role.id] || [];
+    setSaving(prev => ({ ...prev, [role.id]: true }));
+
+    try {
+      const res = await Admin_Update_Role_Permissions(role.id, newPerms).catch(() => null);
+      if (res?.data?.data && onUpdateRoles) {
+        onUpdateRoles(res.data.data);
+      }
+      // Update original ref so future resets go to new saved state
+      originalPermsRef.current[role.id] = [...newPerms];
+      setDirtyMap(prev => ({ ...prev, [role.id]: false }));
+      setSavedFlash(prev => ({ ...prev, [role.id]: true }));
+      setTimeout(() => setSavedFlash(prev => ({ ...prev, [role.id]: false })), 2500);
+    } catch (err) {
+      console.error(err);
     } finally {
       setSaving(prev => ({ ...prev, [role.id]: false }));
     }
   };
 
-  const resetRole = (roleId) => {
-    const original = roles.find(r => r.id === roleId);
-    if (original) {
-      setLocalRoles(prev => prev.map(r =>
-        r.id === roleId
-          ? { ...r, permissions: Array.isArray(original.permissions) ? [...original.permissions] : [] }
-          : r
-      ));
-    }
-  };
-
-  const isDirty = (roleId) => {
-    const original = roles.find(r => r.id === roleId);
-    const local = localRoles.find(r => r.id === roleId);
-    if (!original || !local) return false;
-    const origPerms = (Array.isArray(original.permissions) ? original.permissions : []).slice().sort().join(',');
-    const localPerms = (Array.isArray(local.permissions) ? local.permissions : []).slice().sort().join(',');
-    return origPerms !== localPerms;
-  };
-
-  // Group permissions by category
-  const permsByCategory = ALL_PERMISSIONS.reduce((acc, p) => {
-    if (!acc[p.category]) acc[p.category] = [];
-    acc[p.category].push(p);
-    return acc;
-  }, {});
-
   return (
     <div>
-      {/* ─── Header ─── */}
-      <div className="glass-panel" style={{ padding: '20px 24px', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <ShieldCheck size={20} style={{ color: 'var(--success)' }} />
-              Role-Based Access Control (RBAC) Matrix
-            </h3>
-            <p style={{ color: 'var(--text-sub)', fontSize: '0.82rem', marginTop: '4px' }}>
-              Click any cell to grant or revoke a permission. Changes are highlighted — press <strong>Save</strong> per role to apply.
-            </p>
+      {/* ─── User-Friendly How-To Banner ─── */}
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(0,230,118,0.1) 0%, rgba(99,102,241,0.08) 100%)',
+        border: '1.5px solid rgba(0,230,118,0.25)',
+        borderRadius: '14px',
+        padding: '16px 20px',
+        marginBottom: '20px',
+        display: 'flex',
+        gap: '16px',
+        alignItems: 'flex-start',
+      }}>
+        <div style={{ fontSize: '1.6rem', flexShrink: 0 }}>💡</div>
+        <div>
+          <div style={{ fontWeight: '800', fontSize: '0.95rem', color: 'var(--text-main)', marginBottom: '6px' }}>
+            Permissions kaise set karein?
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            {Object.entries(CATEGORY_COLORS).map(([cat, clr]) => (
-              <span key={cat} style={{ fontSize: '0.7rem', fontWeight: '700', padding: '2px 8px', borderRadius: '9px', background: clr.bg, color: clr.text }}>{cat}</span>
-            ))}
+          <div style={{ fontSize: '0.83rem', color: 'var(--text-sub)', lineHeight: '1.7' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(0,230,118,0.15)', padding: '1px 8px', borderRadius: '6px', color: 'var(--success)', fontWeight: '700', marginRight: '6px' }}>
+              ✓ Green
+            </span>
+            matlab <strong>Permission Hai</strong> &nbsp;•&nbsp;
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(239,68,68,0.12)', padding: '1px 8px', borderRadius: '6px', color: '#ef4444', fontWeight: '700', marginRight: '6px', marginLeft: '6px' }}>
+              ✗ Red
+            </span>
+            matlab <strong>Permission Nahi Hai</strong>
+            <br />
+            👆 <strong>Kisi bhi cell par click karo</strong> — permission on ya off ho jayegi.
+            Phir upar us role ke <strong style={{ color: 'var(--success)' }}>💾 Save</strong> button dabao — database mein save ho jayega.
           </div>
         </div>
       </div>
 
-      {/* ─── Permission Matrix Table ─── */}
-      <div className="glass-panel" style={{ padding: '0', overflowX: 'auto' }}>
-        <table className="data-table" style={{ minWidth: '780px' }}>
+      {/* ─── Main Matrix Table ─── */}
+      <div className="glass-panel" style={{ padding: 0, overflowX: 'auto' }}>
+        <table className="data-table" style={{ minWidth: '800px', borderCollapse: 'separate', borderSpacing: 0 }}>
           <thead>
             <tr>
-              <th style={{ minWidth: '260px' }}>Permission Scope</th>
-              {localRoles.map(role => (
-                <th key={role.id} style={{ textAlign: 'center', minWidth: '130px', verticalAlign: 'bottom', paddingBottom: '14px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                    <span className={`role-tag ${role.name.toLowerCase()}`}>{role.name}</span>
+              <th style={{ minWidth: '260px', paddingLeft: '20px', textAlign: 'left' }}>
+                🔑 Permission / Adhikar
+              </th>
+              {roles.map(role => {
+                const isDirty = !!dirtyMap[role.id];
+                const isSaving = !!saving[role.id];
+                const isSavedFlash = !!savedFlash[role.id];
 
-                    {/* Save & Reset per-role actions */}
-                    <div style={{ display: 'flex', gap: '5px' }}>
-                      <button
-                        onClick={() => saveRole(role)}
-                        disabled={!isDirty(role.id) || saving[role.id]}
-                        title="Save changes for this role"
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '4px',
-                          padding: '4px 10px', borderRadius: '7px', fontSize: '0.7rem',
-                          fontWeight: '700', cursor: isDirty(role.id) ? 'pointer' : 'not-allowed',
-                          border: 'none',
-                          background: saved[role.id]
-                            ? 'rgba(0,230,118,0.25)'
-                            : isDirty(role.id)
-                              ? 'var(--success)'
-                              : 'rgba(255,255,255,0.06)',
-                          color: saved[role.id]
-                            ? '#00e676'
-                            : isDirty(role.id) ? '#000' : 'var(--text-muted)',
-                          transition: 'all 0.2s',
-                          opacity: saving[role.id] ? 0.6 : 1,
-                        }}
-                      >
-                        {saving[role.id]
-                          ? <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} />
-                          : saved[role.id] ? <Check size={11} /> : <Save size={11} />}
-                        {saved[role.id] ? 'Saved!' : 'Save'}
-                      </button>
+                return (
+                  <th key={role.id} style={{ textAlign: 'center', minWidth: '140px', verticalAlign: 'bottom', paddingBottom: '16px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                      <span className={`role-tag ${ROLE_TAG_LABELS[role.name] || 'staff'}`}>
+                        {role.name}
+                      </span>
 
-                      <button
-                        onClick={() => resetRole(role.id)}
-                        disabled={!isDirty(role.id)}
-                        title="Reset to last saved state"
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '4px',
-                          padding: '4px 8px', borderRadius: '7px', fontSize: '0.7rem',
-                          fontWeight: '700', cursor: isDirty(role.id) ? 'pointer' : 'not-allowed',
-                          border: '1px solid var(--border)',
-                          background: 'transparent',
-                          color: isDirty(role.id) ? '#ef4444' : 'var(--text-muted)',
-                          transition: 'all 0.2s',
-                        }}
-                      >
-                        <RotateCcw size={11} />
-                      </button>
+                      <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                        {/* Save Button */}
+                        <button
+                          onClick={(e) => saveRole(e, { ...role, permissions: permMap[role.id] || [] })}
+                          disabled={!isDirty || isSaving}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '4px',
+                            padding: '5px 12px', borderRadius: '8px',
+                            fontSize: '0.72rem', fontWeight: '800',
+                            border: 'none', cursor: isDirty ? 'pointer' : 'default',
+                            transition: 'all 0.22s',
+                            background: isSavedFlash
+                              ? 'rgba(0,230,118,0.2)'
+                              : isDirty
+                                ? 'var(--success)'
+                                : 'rgba(255,255,255,0.06)',
+                            color: isSavedFlash
+                              ? '#00e676'
+                              : isDirty ? '#000' : 'var(--text-muted)',
+                            boxShadow: isDirty ? '0 2px 12px rgba(0,230,118,0.35)' : 'none',
+                          }}
+                        >
+                          {isSaving ? (
+                            <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />
+                          ) : isSavedFlash ? (
+                            <Check size={12} />
+                          ) : (
+                            <Save size={12} />
+                          )}
+                          {isSavedFlash ? 'Saved!' : isSaving ? '...' : '💾 Save'}
+                        </button>
+
+                        {/* Reset Button */}
+                        <button
+                          onClick={(e) => resetRole(e, role.id)}
+                          disabled={!isDirty}
+                          title="Reset — undo changes"
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: '28px', height: '28px', borderRadius: '7px',
+                            border: '1.5px solid var(--border)',
+                            background: 'transparent', cursor: isDirty ? 'pointer' : 'default',
+                            color: isDirty ? '#ef4444' : 'var(--text-muted)',
+                            transition: 'all 0.18s',
+                          }}
+                        >
+                          <RotateCcw size={12} />
+                        </button>
+                      </div>
+
+                      {/* Unsaved changes indicator */}
+                      {isDirty && (
+                        <span style={{ fontSize: '0.65rem', color: '#fbbf24', fontWeight: '700', background: 'rgba(251,191,36,0.12)', padding: '2px 8px', borderRadius: '6px' }}>
+                          ⚠ Unsaved
+                        </span>
+                      )}
                     </div>
-                  </div>
-                </th>
-              ))}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
 
           <tbody>
-            {Object.entries(permsByCategory).map(([category, perms]) => (
-              <React.Fragment key={category}>
-                {/* Category Header Row */}
-                <tr>
-                  <td
-                    colSpan={localRoles.length + 1}
-                    style={{
-                      padding: '6px 16px',
-                      fontSize: '0.7rem',
-                      fontWeight: '800',
-                      letterSpacing: '0.08em',
-                      textTransform: 'uppercase',
-                      background: CATEGORY_COLORS[category]?.bg || 'rgba(255,255,255,0.03)',
-                      color: CATEGORY_COLORS[category]?.text || 'var(--text-muted)',
-                    }}
-                  >
-                    {category}
-                  </td>
-                </tr>
+            {CATEGORIES.map(category => {
+              const permsInCat = ALL_PERMISSIONS.filter(p => p.category === category);
+              if (permsInCat.length === 0) return null;
+              const catColor = CATEGORY_COLORS[category];
 
-                {perms.map(perm => (
-                  <tr key={perm.key} style={{ transition: 'background 0.15s' }}>
-                    {/* Permission label + info tooltip */}
-                    <td style={{ fontWeight: '600', color: 'var(--text-main)', paddingLeft: '20px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>{perm.label}</span>
-                        <span
-                          style={{ cursor: 'help', color: 'var(--text-muted)', flexShrink: 0 }}
-                          title={perm.desc}
-                        >
-                          <Info size={12} />
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px', fontWeight: '400' }}>
-                        {perm.desc}
-                      </div>
+              return (
+                <React.Fragment key={category}>
+                  {/* Category Divider Row */}
+                  <tr key={`cat-${category}`}>
+                    <td
+                      colSpan={roles.length + 1}
+                      style={{
+                        padding: '6px 20px',
+                        fontSize: '0.68rem',
+                        fontWeight: '900',
+                        letterSpacing: '0.1em',
+                        textTransform: 'uppercase',
+                        background: catColor.bg,
+                        color: catColor.text,
+                        borderTop: `1px solid ${catColor.border}`,
+                        borderBottom: `1px solid ${catColor.border}`,
+                        userSelect: 'none',
+                      }}
+                    >
+                      {category === 'System' && '⚙️ System'}
+                      {category === 'Finance' && '💰 Finance'}
+                      {category === 'Operations' && '🔧 Operations'}
+                      {category === 'CRM' && '👤 CRM'}
+                      {category === 'Restricted' && '🔒 Restricted'}
+                      {category === 'Customer' && '🛍️ Customer'}
                     </td>
-
-                    {/* Toggle cells for each role */}
-                    {localRoles.map(role => {
-                      const granted = hasPerm(role.permissions, perm.key);
-                      const isProtected = role.name === 'Admin' && perm.key === 'all'; // protect admin "all"
-
-                      return (
-                        <td key={role.id} style={{ textAlign: 'center', padding: '10px 8px' }}>
-                          <button
-                            onClick={() => !isProtected && togglePerm(role.id, perm.key)}
-                            disabled={isProtected}
-                            title={isProtected ? 'Admin always has full access' : (granted ? 'Click to revoke this permission' : 'Click to grant this permission')}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              width: '32px',
-                              height: '32px',
-                              borderRadius: '8px',
-                              border: 'none',
-                              cursor: isProtected ? 'not-allowed' : 'pointer',
-                              transition: 'all 0.18s cubic-bezier(.4,0,.2,1)',
-                              transform: 'scale(1)',
-                              background: granted
-                                ? 'rgba(0, 230, 118, 0.18)'
-                                : 'rgba(239, 68, 68, 0.08)',
-                              color: granted ? 'var(--success)' : '#ef4444',
-                              boxShadow: granted ? '0 0 0 1.5px rgba(0,230,118,0.3)' : '0 0 0 1px rgba(239,68,68,0.2)',
-                            }}
-                            onMouseEnter={e => {
-                              if (!isProtected) e.currentTarget.style.transform = 'scale(1.18)';
-                            }}
-                            onMouseLeave={e => {
-                              e.currentTarget.style.transform = 'scale(1)';
-                            }}
-                          >
-                            {granted
-                              ? <Check size={15} strokeWidth={2.5} />
-                              : <X size={15} strokeWidth={2.5} />}
-                          </button>
-                        </td>
-                      );
-                    })}
                   </tr>
-                ))}
-              </React.Fragment>
-            ))}
+
+                  {/* Permission Rows */}
+                  {permsInCat.map(perm => (
+                    <tr key={`perm-${perm.key}`}>
+                      {/* Permission Label */}
+                      <td style={{ paddingLeft: '20px', paddingTop: '10px', paddingBottom: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '700', color: 'var(--text-main)', fontSize: '0.88rem' }}>
+                          <span style={{ fontSize: '1rem' }}>{perm.emoji}</span>
+                          {perm.label}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px', marginLeft: '28px' }}>
+                          {perm.desc}
+                        </div>
+                      </td>
+
+                      {/* Toggle Cells per Role */}
+                      {roles.map(role => {
+                        const granted = hasPerm(role.id, perm.key);
+                        const isLocked = role.name === 'Admin' && perm.key === 'all';
+
+                        return (
+                          <td key={`cell-${perm.key}-${role.id}`} style={{ textAlign: 'center', padding: '8px' }}>
+                            <button
+                              type="button"
+                              onClick={(e) => togglePerm(e, role.id, perm.key)}
+                              disabled={isLocked}
+                              title={
+                                isLocked
+                                  ? 'Admin ka Full Control lock hai — hata nahi sakte'
+                                  : granted
+                                    ? 'Click karein — permission hatao'
+                                    : 'Click karein — permission do'
+                              }
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '36px',
+                                height: '36px',
+                                borderRadius: '10px',
+                                border: 'none',
+                                outline: 'none',
+                                cursor: isLocked ? 'not-allowed' : 'pointer',
+                                background: granted
+                                  ? 'rgba(0, 230, 118, 0.18)'
+                                  : 'rgba(239, 68, 68, 0.1)',
+                                color: granted ? '#00e676' : '#ef4444',
+                                boxShadow: granted
+                                  ? '0 0 0 1.5px rgba(0,230,118,0.4)'
+                                  : '0 0 0 1px rgba(239,68,68,0.25)',
+                                transition: 'transform 0.12s ease, background 0.18s ease',
+                                fontSize: '1rem',
+                                opacity: isLocked ? 0.7 : 1,
+                              }}
+                              onMouseEnter={e => {
+                                if (!isLocked) e.currentTarget.style.transform = 'scale(1.2)';
+                              }}
+                              onMouseLeave={e => {
+                                e.currentTarget.style.transform = 'scale(1)';
+                              }}
+                            >
+                              {granted
+                                ? <Check size={16} strokeWidth={3} />
+                                : <X size={16} strokeWidth={3} />}
+                            </button>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </React.Fragment>
+              );
+            })}
           </tbody>
         </table>
-      </div>
-
-      {/* ─── Help footer ─── */}
-      <div style={{ marginTop: '16px', padding: '12px 16px', borderRadius: '10px', background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.15)', fontSize: '0.78rem', color: 'var(--text-sub)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <Info size={14} style={{ color: 'var(--success)', flexShrink: 0 }} />
-        <span>
-          <strong>How to use:</strong> Click any green ✓ or red ✗ cell to toggle a permission. Changes are highlighted. Click <strong>Save</strong> button on each role column header to persist changes to the database.
-        </span>
       </div>
     </div>
   );
