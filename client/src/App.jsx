@@ -31,6 +31,7 @@ import LeadsManagementView from './views/LeadsManagementView';
 import AppointmentsCalendarView from './views/AppointmentsCalendarView';
 import ReceptionistView from './views/ReceptionistView';
 import POSBillingView from './views/POSBillingView';
+import BillingHistoryView from './views/BillingHistoryView';
 
 import { 
   Admin_Get_Users, 
@@ -773,38 +774,11 @@ function App() {
           />
         )}
         {activeTab === 'billing_history' && (
-          <div className="glass-panel" style={{ overflow: 'hidden' }}>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Invoice #</th>
-                  <th>Customer</th>
-                  <th>Stylist</th>
-                  <th>Subtotal</th>
-                  <th>GST</th>
-                  <th>Total</th>
-                  <th>Payment</th>
-                  <th>Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bills.length === 0 ? (
-                  <tr><td colSpan="8" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>No bills generated yet.</td></tr>
-                ) : bills.map(b => (
-                  <tr key={b.id}>
-                    <td><span style={{ fontWeight: '800', color: 'var(--accent-gold)' }}>#{b.id}</span></td>
-                    <td>{b.customer_name || 'Walk-in Guest'}</td>
-                    <td>{b.stylist_name || '—'}</td>
-                    <td>₹{parseFloat(b.subtotal).toFixed(2)}</td>
-                    <td>₹{parseFloat(b.tax_amount).toFixed(2)}</td>
-                    <td style={{ fontWeight: '800', color: 'var(--accent-gold)' }}>₹{parseFloat(b.total).toFixed(2)}</td>
-                    <td><span style={{ background: b.payment_mode === 'Cash' ? 'rgba(52,211,153,0.15)' : b.payment_mode === 'UPI' ? 'rgba(245,158,11,0.15)' : 'rgba(129,140,248,0.15)', color: b.payment_mode === 'Cash' ? '#34d399' : b.payment_mode === 'UPI' ? 'var(--accent-gold)' : '#818cf8', padding: '3px 10px', borderRadius: '10px', fontSize: '0.78rem', fontWeight: '800' }}>{b.payment_mode}</span></td>
-                    <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{new Date(b.created_at).toLocaleDateString('en-IN')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <BillingHistoryView
+            bills={bills}
+            customers={customers}
+            stylists={stylists}
+          />
         )}
       </main>
     </div>
