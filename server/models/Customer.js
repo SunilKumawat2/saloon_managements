@@ -38,12 +38,9 @@ export const CustomerModel = {
       const newCustomer = {
         id: DEMO_CUSTOMERS.length + 1,
         branch_id: parseInt(branch_id || 1),
-        name,
-        phone,
-        email,
+        name, phone, email,
         gender: gender || 'Unspecified',
-        dob,
-        anniversary,
+        dob, anniversary,
         loyalty_points: 50,
         notes,
         created_at: new Date().toISOString()
@@ -51,5 +48,48 @@ export const CustomerModel = {
       DEMO_CUSTOMERS.unshift(newCustomer);
       return newCustomer;
     }
+  },
+
+  async update(id, { name, phone, email, gender, dob, anniversary, notes, loyalty_points }) {
+    try {
+      const query = `
+        UPDATE customers
+        SET name        = COALESCE($1, name),
+            phone       = COALESCE($2, phone),
+            email       = COALESCE($3, email),
+            gender      = COALESCE($4, gender),
+            dob         = COALESCE($5::date, dob),
+            anniversary = COALESCE($6::date, anniversary),
+            notes       = COALESCE($7, notes),
+            loyalty_points = COALESCE($8, loyalty_points)
+        WHERE id = $9
+        RETURNING *
+      `;
+      const { rows } = await pool.query(query, [
+        name, phone, email, gender,
+        dob || null,
+        anniversary || null,
+        notes,
+        loyalty_points !== undefined ? parseInt(loyalty_points) : null,
+        id
+      ]);
+      return rows[0];
+    } catch (err) {
+      DEMO_CUSTOMERS = DEMO_CUSTOMERS.map(c =>
+        c.id === id ? { ...c, name, phone, email, gender, dob, anniversary, notes, loyalty_points } : c
+      );
+      return DEMO_CUSTOMERS.find(c => c.id === id);
+    }
+  },
+
+  async delete(id) {
+    try {
+      await pool.query('DELETE FROM customers WHERE id = $1', [id]);
+      return { deleted: true };
+    } catch (err) {
+      DEMO_CUSTOMERS = DEMO_CUSTOMERS.filter(c => c.id !== id);
+      return { deleted: true };
+    }
   }
 };
+

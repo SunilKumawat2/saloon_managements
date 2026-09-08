@@ -44,6 +44,8 @@ import {
   Admin_Get_Health,
   Admin_Get_Customers,
   Admin_Create_Customer,
+  Admin_Update_Customer,
+  Admin_Delete_Customer,
   Admin_Get_Leads,
   Admin_Create_Lead,
   Admin_Update_Lead_Status,
@@ -238,6 +240,22 @@ function App() {
       if (res?.data?.data) {
         setCustomers(prev => [res.data.data, ...prev]);
       }
+    } catch (e) { console.error(e); }
+  };
+
+  const handleUpdateCustomer = async (id, custData) => {
+    try {
+      const res = await Admin_Update_Customer(id, custData).catch(() => null);
+      if (res?.data?.data) {
+        setCustomers(prev => prev.map(c => c.id === id ? res.data.data : c));
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const handleDeleteCustomer = async (id) => {
+    try {
+      await Admin_Delete_Customer(id).catch(() => null);
+      setCustomers(prev => prev.filter(c => c.id !== id));
     } catch (e) { console.error(e); }
   };
 
@@ -637,7 +655,14 @@ function App() {
         )}
 
         {/* Module 2 Views */}
-        {activeTab === 'customers' && <CustomersCRMView customers={customers} onAddCustomer={handleAddCustomer} />}
+        {activeTab === 'customers' && (
+          <CustomersCRMView
+            customers={customers}
+            onAddCustomer={handleAddCustomer}
+            onUpdateCustomer={handleUpdateCustomer}
+            onDeleteCustomer={handleDeleteCustomer}
+          />
+        )}
         {activeTab === 'leads' && <LeadsManagementView leads={leads} onAddLead={handleAddLead} onUpdateLeadStatus={handleUpdateLeadStatus} />}
 
         {/* Module 3 Views */}

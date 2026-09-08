@@ -10,7 +10,7 @@ import { updateRolePermissions } from '../controllers/roleController.js';
 import { getBranches, createBranch, updateBranch, toggleBranchStatus, deleteBranch } from '../controllers/branchController.js';
 import { getServices, createService } from '../controllers/serviceController.js';
 import { getStylists, createStylist } from '../controllers/stylistController.js';
-import { getCustomers, createCustomer } from '../controllers/customerController.js';
+import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '../controllers/customerController.js';
 import { getLeads, createLead, updateLeadStatus } from '../controllers/leadController.js';
 import { getAppointments, createAppointment, updateAppointmentStatus } from '../controllers/appointmentController.js';
 import { getBills, getBillById, createBill } from '../controllers/billingController.js';
@@ -58,6 +58,8 @@ router.post('/stylists/create', authenticateToken, createStylist);
 // -------------------- Customer CRM Routes (Module 2) --------------------
 router.get('/customers', authenticateToken, getCustomers);
 router.post('/customers/create', authenticateToken, createCustomer);
+router.put('/customers/:id', authenticateToken, updateCustomer);
+router.delete('/customers/:id', authenticateToken, deleteCustomer);
 
 // -------------------- Lead Management Routes (Module 2) --------------------
 router.get('/leads', authenticateToken, getLeads);

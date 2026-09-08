@@ -209,6 +209,32 @@ export const Admin_Create_Customer = async (customerData) => {
   }
 };
 
+// <----------------  Admin Update Customer (Module 2 CRM) ----------------->
+export const Admin_Update_Customer = async (customerId, customerData) => {
+  try {
+    const token = getToken();
+    const response = await axios.put(`${API_BASE_URL}/customers/${customerId}`, customerData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Admin Delete Customer (Module 2 CRM) ----------------->
+export const Admin_Delete_Customer = async (customerId) => {
+  try {
+    const token = getToken();
+    const response = await axios.delete(`${API_BASE_URL}/customers/${customerId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
 // <----------------  Admin Get Leads (Module 2 CRM) ----------------->
 export const Admin_Get_Leads = async () => {
   try {
