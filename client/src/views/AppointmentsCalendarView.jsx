@@ -14,10 +14,26 @@ const TIME_SLOTS = [
   '17:00', '18:00', '19:00', '20:00'
 ];
 
+// Helper: Format Date robustly to YYYY-MM-DD (handling local timezone offsets)
+const formatDateKey = (dateStr) => {
+  if (!dateStr) return '';
+  const str = String(dateStr);
+  if (str.includes('T')) {
+    const d = new Date(str);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  return str.split(' ')[0].split('T')[0];
+};
+
 // Helper: Calculate end time + 15m buffer
 const getServiceEndTimeWithBuffer = (startTimeStr, durationMinutes = 45, bufferMinutes = 15) => {
   if (!startTimeStr) return '';
-  const [h, m] = startTimeStr.split(':').map(Number);
+  const parts = String(startTimeStr).split(':');
+  const h = parseInt(parts[0]) || 10;
+  const m = parseInt(parts[1]) || 0;
   const totalMinutes = h * 60 + m + (durationMinutes || 45) + (bufferMinutes || 15);
   const endH = Math.floor(totalMinutes / 60) % 24;
   const endM = totalMinutes % 60;
@@ -75,6 +91,20 @@ function AppointmentsCalendarView({
   const [rescheduleTime, setRescheduleTime] = useState('');
   const [rescheduleStylist, setRescheduleStylist] = useState('');
 
+  // Open Add Modal & Sync Selected Date
+  const handleOpenAddModal = () => {
+    setNewApp({
+      customer_id: customers[0]?.id || 1,
+      stylist_id: stylists[0]?.id || 1,
+      service_id: services[0]?.id || 1,
+      appointment_date: selectedDate,
+      appointment_time: '11:00',
+      source: 'Online Self-Booking',
+      notes: ''
+    });
+    setShowAddModal(true);
+  };
+
   // Date Nav Handlers
   const handleShiftDate = (days) => {
     const d = new Date(selectedDate);
@@ -92,6 +122,9 @@ function AppointmentsCalendarView({
     if (onAddAppointment) {
       onAddAppointment({
         ...newApp,
+        customer_id: parseInt(newApp.customer_id),
+        stylist_id: parseInt(newApp.stylist_id),
+        service_id: parseInt(newApp.service_id),
         customer_name: selectedCust?.name || 'Walk-in Client',
         service_name: selectedService?.name || 'Salon Service',
         stylist_name: selectedStylist?.name || 'Staff',
@@ -106,8 +139,14 @@ function AppointmentsCalendarView({
     e.preventDefault();
     if (onUpdateAppointment && editingApp) {
       const selectedService = services.find(s => String(s.id) === String(editData.service_id));
+      const selectedCust = customers.find(c => String(c.id) === String(editData.customer_id));
+      const selectedStylist = stylists.find(s => String(s.id) === String(editData.stylist_id));
+
       onUpdateAppointment(editingApp.id, {
         ...editData,
+        customer_name: selectedCust?.name || editingApp.customer_name,
+        service_name: selectedService?.name || editingApp.service_name,
+        stylist_name: selectedStylist?.name || editingApp.stylist_name,
         total_amount: selectedService ? selectedService.price : editingApp.total_amount
       });
     }
@@ -118,11 +157,13 @@ function AppointmentsCalendarView({
   const handleRescheduleSubmit = (e) => {
     e.preventDefault();
     if (onUpdateAppointment && reschedulingApp) {
+      const selectedStylist = stylists.find(s => String(s.id) === String(rescheduleStylist));
       onUpdateAppointment(reschedulingApp.id, {
         ...reschedulingApp,
         appointment_date: rescheduleDate,
         appointment_time: rescheduleTime,
-        stylist_id: rescheduleStylist || reschedulingApp.stylist_id
+        stylist_id: parseInt(rescheduleStylist || reschedulingApp.stylist_id),
+        stylist_name: selectedStylist?.name || reschedulingApp.stylist_name
       });
     }
     setReschedulingApp(null);
@@ -146,14 +187,21 @@ function AppointmentsCalendarView({
     }, 2800);
   };
 
-  // Filtered Appointments
+  // Filtered Appointments with Robust Formatting
   const filteredAppointments = appointments.filter(app => {
-    const matchesDate = viewMode === 'tableList' || String(app.appointment_date).split('T')[0] === selectedDate;
+    const appDateKey = formatDateKey(app.appointment_date);
+    const selDateKey = formatDateKey(selectedDate);
+    const matchesDate = viewMode === 'tableList' || appDateKey === selDateKey;
     const matchesStatus = statusFilter === 'All' || app.status === statusFilter;
+    
+    const custName = app.customer_name || customers.find(c => String(c.id) === String(app.customer_id))?.name || '';
+    const servName = app.service_name || services.find(s => String(s.id) === String(app.service_id))?.name || '';
+    const stylName = app.stylist_name || stylists.find(st => String(st.id) === String(app.stylist_id))?.name || '';
+
     const matchesSearch = !searchQuery.trim() ||
-      app.customer_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.service_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.stylist_name?.toLowerCase().includes(searchQuery.toLowerCase());
+      custName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      servName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      stylName.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesDate && matchesStatus && matchesSearch;
   });
 
@@ -246,7 +294,7 @@ function AppointmentsCalendarView({
         </div>
 
         {/* Right: Book Appointment Button */}
-        <button className="btn-primary" onClick={() => setShowAddModal(true)}>
+        <button className="btn-primary" onClick={handleOpenAddModal}>
           <Plus size={16} /> Book New Appointment
         </button>
       </div>
@@ -307,20 +355,24 @@ function AppointmentsCalendarView({
                 </div>
 
                 {/* Stylist Columns for this Time Slot */}
-                {stylists.map(st => {
-                  const matched = filteredAppointments.filter(a =>
-                    String(a.stylist_id) === String(st.id) &&
-                    (a.appointment_time?.startsWith(time) || a.appointment_time === time)
-                  );
+                {stylists.map((st, idx) => {
+                  const matched = filteredAppointments.filter(a => {
+                    const isStylistMatch = String(a.stylist_id) === String(st.id) || (!a.stylist_id && idx === 0);
+                    const appHour = a.appointment_time ? String(a.appointment_time).split(':')[0] : '';
+                    const targetHour = time.split(':')[0];
+                    return isStylistMatch && appHour === targetHour;
+                  });
 
                   return (
-                    <div key={st.id} style={{ background: 'rgba(0,0,0,0.2)', padding: '8px', minHeight: '84px', position: 'relative' }}>
+                    <div key={st.id} style={{ background: 'rgba(0,0,0,0.2)', padding: '8px', minHeight: '88px', position: 'relative' }}>
                       {matched.length === 0 ? (
                         <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed rgba(255,255,255,0.05)', borderRadius: '8px' }}>
                           <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.15)' }}>Open Slot</span>
                         </div>
                       ) : (
                         matched.map(app => {
+                          const custName = app.customer_name || customers.find(c => String(c.id) === String(app.customer_id))?.name || 'Walk-in Client';
+                          const servName = app.service_name || services.find(s => String(s.id) === String(app.service_id))?.name || 'Salon Service';
                           const serv = services.find(s => String(s.id) === String(app.service_id));
                           const duration = serv?.duration_minutes || 45;
                           const bufferEnd = getServiceEndTimeWithBuffer(app.appointment_time, duration, 15);
@@ -341,14 +393,14 @@ function AppointmentsCalendarView({
                             >
                               <div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                  <span style={{ fontWeight: '800', fontSize: '0.88rem', color: '#fff' }}>{app.customer_name}</span>
+                                  <span style={{ fontWeight: '800', fontSize: '0.88rem', color: '#fff' }}>{custName}</span>
                                   <span style={{ fontSize: '0.68rem', background: 'rgba(255,255,255,0.1)', padding: '1px 6px', borderRadius: '4px', color: 'var(--text-sub)' }}>
                                     {app.source || 'Walk-in'}
                                   </span>
                                 </div>
 
                                 <div style={{ fontSize: '0.78rem', color: 'var(--accent-gold)', fontWeight: '700' }}>
-                                  ✂️ {app.service_name}
+                                  ✂️ {servName}
                                 </div>
 
                                 <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -359,11 +411,11 @@ function AppointmentsCalendarView({
 
                               {/* Quick Action Bar for Slot Card */}
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', paddingTop: '6px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                                <span style={{ fontWeight: '900', color: '#fff', fontSize: '0.82rem' }}>₹{app.total_amount}</span>
+                                <span style={{ fontWeight: '900', color: '#fff', fontSize: '0.82rem' }}>₹{app.total_amount || serv?.price || 350}</span>
 
                                 <div style={{ display: 'flex', gap: '4px' }}>
                                   <button
-                                    onClick={() => setReminderApp(app)}
+                                    onClick={() => setReminderApp({ ...app, customer_name: custName, service_name: servName })}
                                     title="Send Auto SMS/WhatsApp Reminder"
                                     style={{ background: 'rgba(52,211,153,0.2)', border: 'none', color: '#34d399', borderRadius: '6px', padding: '4px 7px', cursor: 'pointer' }}
                                   >
@@ -372,8 +424,8 @@ function AppointmentsCalendarView({
 
                                   <button
                                     onClick={() => {
-                                      setReschedulingApp(app);
-                                      setRescheduleDate(String(app.appointment_date).split('T')[0]);
+                                      setReschedulingApp({ ...app, customer_name: custName });
+                                      setRescheduleDate(formatDateKey(app.appointment_date));
                                       setRescheduleTime(app.appointment_time || '11:00');
                                       setRescheduleStylist(app.stylist_id);
                                     }}
@@ -390,7 +442,7 @@ function AppointmentsCalendarView({
                                         customer_id: app.customer_id,
                                         stylist_id: app.stylist_id,
                                         service_id: app.service_id,
-                                        appointment_date: String(app.appointment_date).split('T')[0],
+                                        appointment_date: formatDateKey(app.appointment_date),
                                         appointment_time: app.appointment_time,
                                         status: app.status,
                                         notes: app.notes || ''
@@ -430,9 +482,9 @@ function AppointmentsCalendarView({
               const dayOffset = idx - (currDate.getDay() === 0 ? 6 : currDate.getDay() - 1);
               const target = new Date(currDate);
               target.setDate(target.getDate() + dayOffset);
-              const targetStr = target.toISOString().split('T')[0];
+              const targetStr = formatDateKey(target);
               const isSelected = targetStr === selectedDate;
-              const dayApps = appointments.filter(a => String(a.appointment_date).split('T')[0] === targetStr);
+              const dayApps = appointments.filter(a => formatDateKey(a.appointment_date) === targetStr);
 
               return (
                 <div
@@ -460,12 +512,16 @@ function AppointmentsCalendarView({
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {dayApps.slice(0, 4).map(app => (
-                      <div key={app.id} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '6px', padding: '6px 8px', fontSize: '0.72rem', borderLeft: '3px solid var(--accent-gold)' }}>
-                        <div style={{ fontWeight: '700', color: '#fff' }}>{app.appointment_time} - {app.customer_name}</div>
-                        <div style={{ color: 'var(--text-muted)' }}>{app.service_name}</div>
-                      </div>
-                    ))}
+                    {dayApps.slice(0, 4).map(app => {
+                      const custName = app.customer_name || customers.find(c => String(c.id) === String(app.customer_id))?.name || 'Walk-in Client';
+                      const servName = app.service_name || services.find(s => String(s.id) === String(app.service_id))?.name || 'Salon Service';
+                      return (
+                        <div key={app.id} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '6px', padding: '6px 8px', fontSize: '0.72rem', borderLeft: '3px solid var(--accent-gold)' }}>
+                          <div style={{ fontWeight: '700', color: '#fff' }}>{app.appointment_time} - {custName}</div>
+                          <div style={{ color: 'var(--text-muted)' }}>{servName}</div>
+                        </div>
+                      );
+                    })}
                     {dayApps.length > 4 && (
                       <div style={{ fontSize: '0.7rem', color: 'var(--accent-gold)', textAlign: 'center' }}>+ {dayApps.length - 4} more</div>
                     )}
@@ -524,117 +580,123 @@ function AppointmentsCalendarView({
                   </td>
                 </tr>
               ) : (
-                filteredAppointments.map((app) => (
-                  <tr key={app.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ fontWeight: '800', color: 'var(--accent-gold)' }}>#APT-{app.id}</div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                        <Clock size={12} style={{ display: 'inline', marginRight: '4px' }} />
-                        {String(app.appointment_date).split('T')[0]} at {app.appointment_time}
-                      </div>
-                    </td>
+                filteredAppointments.map((app) => {
+                  const custName = app.customer_name || customers.find(c => String(c.id) === String(app.customer_id))?.name || 'Walk-in Client';
+                  const servName = app.service_name || services.find(s => String(s.id) === String(app.service_id))?.name || 'Salon Service';
+                  const stylName = app.stylist_name || stylists.find(st => String(st.id) === String(app.stylist_id))?.name || 'Staff';
 
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ fontWeight: '700', color: '#fff' }}>{app.customer_name || 'Walk-in Client'}</div>
-                    </td>
+                  return (
+                    <tr key={app.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ fontWeight: '800', color: 'var(--accent-gold)' }}>#APT-{app.id}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                          <Clock size={12} style={{ display: 'inline', marginRight: '4px' }} />
+                          {formatDateKey(app.appointment_date)} at {app.appointment_time}
+                        </div>
+                      </td>
 
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600' }}>
-                        <Scissors size={14} style={{ color: 'var(--accent-gold)' }} />
-                        {app.service_name || 'Salon Service'}
-                      </div>
-                    </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ fontWeight: '700', color: '#fff' }}>{custName}</div>
+                      </td>
 
-                    <td style={{ padding: '12px 16px', fontSize: '0.85rem', color: 'var(--text-sub)' }}>
-                      {app.stylist_name || 'Rohan Sharma'}
-                    </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600' }}>
+                          <Scissors size={14} style={{ color: 'var(--accent-gold)' }} />
+                          {servName}
+                        </div>
+                      </td>
 
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{ fontSize: '0.74rem', background: 'rgba(99,102,241,0.15)', color: '#818cf8', padding: '3px 8px', borderRadius: '6px', fontWeight: '700' }}>
-                        {app.source || 'Online Portal'}
-                      </span>
-                    </td>
+                      <td style={{ padding: '12px 16px', fontSize: '0.85rem', color: 'var(--text-sub)' }}>
+                        {stylName}
+                      </td>
 
-                    <td style={{ padding: '12px 16px' }}>
-                      <select
-                        value={app.status}
-                        onChange={(e) => onUpdateAppointmentStatus(app.id, e.target.value)}
-                        style={{
-                          background: app.status === 'Completed' ? 'rgba(16, 185, 129, 0.2)' : app.status === 'In-Progress' ? 'rgba(245, 158, 11, 0.2)' : app.status === 'Cancelled' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.2)',
-                          color: app.status === 'Completed' ? 'var(--success)' : app.status === 'In-Progress' ? 'var(--accent-gold)' : app.status === 'Cancelled' ? '#ef4444' : 'var(--primary-indigo)',
-                          border: '1px solid var(--border)',
-                          padding: '4px 8px',
-                          borderRadius: '12px',
-                          fontSize: '0.78rem',
-                          fontWeight: '800',
-                          cursor: 'pointer',
-                          outline: 'none'
-                        }}
-                      >
-                        <option value="Scheduled">Scheduled</option>
-                        <option value="In-Progress">In-Progress</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Cancelled">Cancelled</option>
-                      </select>
-                    </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{ fontSize: '0.74rem', background: 'rgba(99,102,241,0.15)', color: '#818cf8', padding: '3px 8px', borderRadius: '6px', fontWeight: '700' }}>
+                          {app.source || 'Online Portal'}
+                        </span>
+                      </td>
 
-                    <td style={{ padding: '12px 16px', fontWeight: '800', color: '#fff' }}>
-                      ₹ {parseFloat(app.total_amount || 350).toFixed(2)}
-                    </td>
-
-                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                        <button
-                          onClick={() => setReminderApp(app)}
-                          title="Send Auto Reminder (SMS / WhatsApp)"
-                          style={{ padding: '5px 10px', background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: '8px', color: '#34d399', fontSize: '0.76rem', fontWeight: '700', cursor: 'pointer' }}
-                        >
-                          <MessageSquare size={12} />
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            setReschedulingApp(app);
-                            setRescheduleDate(String(app.appointment_date).split('T')[0]);
-                            setRescheduleTime(app.appointment_time || '11:00');
-                            setRescheduleStylist(app.stylist_id);
+                      <td style={{ padding: '12px 16px' }}>
+                        <select
+                          value={app.status}
+                          onChange={(e) => onUpdateAppointmentStatus(app.id, e.target.value)}
+                          style={{
+                            background: app.status === 'Completed' ? 'rgba(16, 185, 129, 0.2)' : app.status === 'In-Progress' ? 'rgba(245, 158, 11, 0.2)' : app.status === 'Cancelled' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.2)',
+                            color: app.status === 'Completed' ? 'var(--success)' : app.status === 'In-Progress' ? 'var(--accent-gold)' : app.status === 'Cancelled' ? '#ef4444' : 'var(--primary-indigo)',
+                            border: '1px solid var(--border)',
+                            padding: '4px 8px',
+                            borderRadius: '12px',
+                            fontSize: '0.78rem',
+                            fontWeight: '800',
+                            cursor: 'pointer',
+                            outline: 'none'
                           }}
-                          title="1-Click Reschedule"
-                          style={{ padding: '5px 10px', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '8px', color: 'var(--accent-gold)', fontSize: '0.76rem', fontWeight: '700', cursor: 'pointer' }}
                         >
-                          <RefreshCw size={12} />
-                        </button>
+                          <option value="Scheduled">Scheduled</option>
+                          <option value="In-Progress">In-Progress</option>
+                          <option value="Completed">Completed</option>
+                          <option value="Cancelled">Cancelled</option>
+                        </select>
+                      </td>
 
-                        <button
-                          onClick={() => {
-                            setEditingApp(app);
-                            setEditData({
-                              customer_id: app.customer_id,
-                              stylist_id: app.stylist_id,
-                              service_id: app.service_id,
-                              appointment_date: String(app.appointment_date).split('T')[0],
-                              appointment_time: app.appointment_time,
-                              status: app.status,
-                              notes: app.notes || ''
-                            });
-                          }}
-                          title="Edit Booking"
-                          style={{ padding: '5px 10px', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '8px', color: '#818cf8', fontSize: '0.76rem', fontWeight: '700', cursor: 'pointer' }}
-                        >
-                          <Edit3 size={12} />
-                        </button>
+                      <td style={{ padding: '12px 16px', fontWeight: '800', color: '#fff' }}>
+                        ₹ {parseFloat(app.total_amount || 350).toFixed(2)}
+                      </td>
 
-                        <button
-                          onClick={() => setDeletingApp(app)}
-                          title="Cancel/Delete Booking"
-                          style={{ padding: '5px 10px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', color: '#ef4444', fontSize: '0.76rem', fontWeight: '700', cursor: 'pointer' }}
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                          <button
+                            onClick={() => setReminderApp({ ...app, customer_name: custName, service_name: servName, stylist_name: stylName })}
+                            title="Send Auto Reminder (SMS / WhatsApp)"
+                            style={{ padding: '5px 10px', background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: '8px', color: '#34d399', fontSize: '0.76rem', fontWeight: '700', cursor: 'pointer' }}
+                          >
+                            <MessageSquare size={12} />
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setReschedulingApp({ ...app, customer_name: custName });
+                              setRescheduleDate(formatDateKey(app.appointment_date));
+                              setRescheduleTime(app.appointment_time || '11:00');
+                              setRescheduleStylist(app.stylist_id);
+                            }}
+                            title="1-Click Reschedule"
+                            style={{ padding: '5px 10px', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '8px', color: 'var(--accent-gold)', fontSize: '0.76rem', fontWeight: '700', cursor: 'pointer' }}
+                          >
+                            <RefreshCw size={12} />
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setEditingApp(app);
+                              setEditData({
+                                customer_id: app.customer_id,
+                                stylist_id: app.stylist_id,
+                                service_id: app.service_id,
+                                appointment_date: formatDateKey(app.appointment_date),
+                                appointment_time: app.appointment_time,
+                                status: app.status,
+                                notes: app.notes || ''
+                              });
+                            }}
+                            title="Edit Booking"
+                            style={{ padding: '5px 10px', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '8px', color: '#818cf8', fontSize: '0.76rem', fontWeight: '700', cursor: 'pointer' }}
+                          >
+                            <Edit3 size={12} />
+                          </button>
+
+                          <button
+                            onClick={() => setDeletingApp({ ...app, customer_name: custName })}
+                            title="Cancel/Delete Booking"
+                            style={{ padding: '5px 10px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', color: '#ef4444', fontSize: '0.76rem', fontWeight: '700', cursor: 'pointer' }}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -657,7 +719,7 @@ function AppointmentsCalendarView({
             <form onSubmit={handleAddSubmit}>
               <div className="form-group">
                 <label>Select Customer</label>
-                <select value={newApp.customer_id} onChange={(e) => setNewApp({ ...newApp, customer_id: parseInt(e.target.value) })}>
+                <select value={newApp.customer_id} onChange={(e) => setNewApp({ ...newApp, customer_id: e.target.value })}>
                   {customers.map(c => <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>)}
                 </select>
               </div>
@@ -665,14 +727,14 @@ function AppointmentsCalendarView({
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div className="form-group">
                   <label>Select Service</label>
-                  <select value={newApp.service_id} onChange={(e) => setNewApp({ ...newApp, service_id: parseInt(e.target.value) })}>
+                  <select value={newApp.service_id} onChange={(e) => setNewApp({ ...newApp, service_id: e.target.value })}>
                     {services.map(s => <option key={s.id} value={s.id}>{s.name} (₹{s.price})</option>)}
                   </select>
                 </div>
 
                 <div className="form-group">
                   <label>Assign Stylist</label>
-                  <select value={newApp.stylist_id} onChange={(e) => setNewApp({ ...newApp, stylist_id: parseInt(e.target.value) })}>
+                  <select value={newApp.stylist_id} onChange={(e) => setNewApp({ ...newApp, stylist_id: e.target.value })}>
                     {stylists.map(st => <option key={st.id} value={st.id}>{st.name} ({st.specialization})</option>)}
                   </select>
                 </div>
@@ -736,14 +798,14 @@ function AppointmentsCalendarView({
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div className="form-group">
                   <label>Select Service</label>
-                  <select value={editData.service_id} onChange={(e) => setEditData({ ...editData, service_id: parseInt(e.target.value) })}>
+                  <select value={editData.service_id} onChange={(e) => setEditData({ ...editData, service_id: e.target.value })}>
                     {services.map(s => <option key={s.id} value={s.id}>{s.name} (₹{s.price})</option>)}
                   </select>
                 </div>
 
                 <div className="form-group">
                   <label>Assign Stylist</label>
-                  <select value={editData.stylist_id} onChange={(e) => setEditData({ ...editData, stylist_id: parseInt(e.target.value) })}>
+                  <select value={editData.stylist_id} onChange={(e) => setEditData({ ...editData, stylist_id: e.target.value })}>
                     {stylists.map(st => <option key={st.id} value={st.id}>{st.name}</option>)}
                   </select>
                 </div>
@@ -806,7 +868,7 @@ function AppointmentsCalendarView({
 
             <div style={{ padding: '12px 16px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '10px', marginBottom: '16px', fontSize: '0.85rem' }}>
               <div>Rescheduling booking for <strong>{reschedulingApp.customer_name}</strong></div>
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '2px' }}>Current: {String(reschedulingApp.appointment_date).split('T')[0]} at {reschedulingApp.appointment_time}</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '2px' }}>Current: {formatDateKey(reschedulingApp.appointment_date)} at {reschedulingApp.appointment_time}</div>
             </div>
 
             <form onSubmit={handleRescheduleSubmit}>
@@ -865,7 +927,7 @@ function AppointmentsCalendarView({
                 💬 Live Reminder Payload Preview
               </div>
               <p style={{ fontSize: '0.88rem', color: '#fff', margin: 0, lineHeight: '1.5', fontFamily: 'sans-serif' }}>
-                "Hi <strong>{reminderApp.customer_name}</strong>! Your salon appointment for <strong>{reminderApp.service_name}</strong> with <strong>{reminderApp.stylist_name}</strong> is confirmed for <strong>{String(reminderApp.appointment_date).split('T')[0]}</strong> at <strong>{reminderApp.appointment_time}</strong>. Please arrive 5 minutes early. Reply 1 to Confirm, 2 to Reschedule. — SalonPulse ERP"
+                "Hi <strong>{reminderApp.customer_name}</strong>! Your salon appointment for <strong>{reminderApp.service_name}</strong> with <strong>{reminderApp.stylist_name}</strong> is confirmed for <strong>{formatDateKey(reminderApp.appointment_date)}</strong> at <strong>{reminderApp.appointment_time}</strong>. Please arrive 5 minutes early. Reply 1 to Confirm, 2 to Reschedule. — SalonPulse ERP"
               </p>
             </div>
 
