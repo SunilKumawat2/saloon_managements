@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Scissors, Lock, Mail, ArrowRight, ShieldCheck, Sparkles, Building, BarChart3, CheckCircle2 } from 'lucide-react';
+import { Scissors, Lock, Mail, ArrowRight, ShieldCheck, Sparkles, Building, BarChart3, CheckCircle2, Sun, Moon } from 'lucide-react';
 import { Admin_Login } from '../services/apiService';
 
-function LoginView({ onLoginSuccess }) {
+function LoginView({ onLoginSuccess, theme = 'dark', onToggleTheme }) {
+
   const [email, setEmail] = useState('admin@saloon.com');
   const [password, setPassword] = useState('admin123');
   const [loading, setLoading] = useState(false);
@@ -59,8 +60,20 @@ function LoginView({ onLoginSuccess }) {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', position: 'relative' }}>
+      {onToggleTheme && (
+        <button
+          onClick={onToggleTheme}
+          className="theme-toggle-btn"
+          style={{ position: 'absolute', top: '24px', right: '24px', zIndex: 10 }}
+          title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+        >
+          {theme === 'dark' ? <Sun size={15} style={{ color: '#fbbf24' }} /> : <Moon size={15} style={{ color: '#6366f1' }} />}
+          <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+        </button>
+      )}
       <div 
+
         className="glass-panel" 
         style={{ 
           maxWidth: '920px', 

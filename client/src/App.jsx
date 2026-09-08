@@ -16,8 +16,11 @@ import {
   Calendar,
   Award,
   MonitorSmartphone,
-  Receipt
+  Receipt,
+  Sun,
+  Moon
 } from 'lucide-react';
+
 
 import LoginView from './views/LoginView';
 import UsersManagementView from './views/UsersManagementView';
@@ -54,11 +57,21 @@ import { BACKEND_URL } from './config/Config';
 
 
 function App() {
+  const [theme, setTheme] = useState(localStorage.getItem('saloon_theme') || 'dark');
   const [currentUser, setCurrentUser] = useState(null);
   const [authToken, setAuthToken] = useState(localStorage.getItem('saloon_jwt_token') || null);
   const [activeTab, setActiveTab] = useState('dashboard');
-  // authLoading: true jab tak session restore ho ya token check ho
   const [authLoading, setAuthLoading] = useState(!!localStorage.getItem('saloon_jwt_token'));
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('saloon_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
 
   // Accordion Dropdown States
   const [isRbacOpen, setIsRbacOpen] = useState(true);
@@ -288,7 +301,7 @@ function App() {
 
   // If not logged in, show Login Screen
   if (!currentUser) {
-    return <LoginView onLoginSuccess={handleLoginSuccess} />;
+    return <LoginView onLoginSuccess={handleLoginSuccess} theme={theme} onToggleTheme={toggleTheme} />;
   }
 
   return (
@@ -475,8 +488,18 @@ function App() {
           </div>
 
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <button
+              onClick={toggleTheme}
+              className="theme-toggle-btn"
+              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            >
+              {theme === 'dark' ? <Sun size={15} style={{ color: '#fbbf24' }} /> : <Moon size={15} style={{ color: '#6366f1' }} />}
+              <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+            </button>
+
             <button 
               onClick={fetchModuleData} 
+
               className="glass-card" 
               style={{ padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--text-sub)' }}
             >
