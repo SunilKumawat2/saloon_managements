@@ -14,8 +14,9 @@ import { getLeads, createLead, updateLeadStatus } from '../controllers/leadContr
 import { getAppointments, createAppointment, updateAppointmentStatus } from '../controllers/appointmentController.js';
 import { getBills, getBillById, createBill } from '../controllers/billingController.js';
 import { uploadUserAvatar, removeUserAvatar } from '../controllers/uploadController.js';
-import uploadAvatar from '../middleware/uploadMiddleware.js';
+import uploadAvatar, { handleUploadAvatar } from '../middleware/uploadMiddleware.js';
 import { getHealth, checkDatabaseStatus } from '../controllers/healthController.js';
+
 
 const router = express.Router();
 
@@ -67,7 +68,8 @@ router.get('/billing/:id', authenticateToken, getBillById);
 router.post('/billing/create', authenticateToken, createBill);
 
 // -------------------- User Avatar Upload Routes (Multer) --------------------
-router.post('/users/:id/avatar', authenticateToken, uploadAvatar.single('avatar'), uploadUserAvatar);
+router.post('/users/:id/avatar', authenticateToken, handleUploadAvatar, uploadUserAvatar);
 router.delete('/users/:id/avatar', authenticateToken, removeUserAvatar);
+
 
 export default router;

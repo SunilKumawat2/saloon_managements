@@ -37,7 +37,22 @@ const fileFilter = (req, file, cb) => {
 const uploadAvatar = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 }, // Max 5MB
+  limits: { fileSize: 10 * 1024 * 1024 }, // Max 10MB
 });
 
+export const handleUploadAvatar = (req, res, next) => {
+  uploadAvatar.single('avatar')(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ success: false, message: 'File is too large! Maximum allowed size is 10MB.' });
+      }
+      return res.status(400).json({ success: false, message: err.message });
+    } else if (err) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+    next();
+  });
+};
+
 export default uploadAvatar;
+
