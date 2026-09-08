@@ -39,6 +39,9 @@ router.delete('/users/:id', authenticateToken, deleteUser);
 // -------------------- Branch Routes (Module 1) --------------------
 router.get('/branches', authenticateToken, getBranches);
 router.post('/branches/create', authenticateToken, createBranch);
+router.put('/branches/:id', authenticateToken, updateBranch);
+router.patch('/branches/:id/status', authenticateToken, toggleBranchStatus);
+router.delete('/branches/:id', authenticateToken, deleteBranch);
 
 // -------------------- Salon Service Catalog Routes --------------------
 router.get('/services', authenticateToken, getServices);

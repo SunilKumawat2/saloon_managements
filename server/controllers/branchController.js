@@ -22,3 +22,34 @@ export const createBranch = async (req, res) => {
     return res.status(500).json({ status: 'error', message: error.message });
   }
 };
+
+export const updateBranch = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, code, city, address, phone } = req.body;
+    const updated = await BranchModel.update(parseInt(id), { name, code, city, address, phone });
+    return res.json({ status: 'success', message: 'Branch updated successfully', data: updated });
+  } catch (error) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+export const toggleBranchStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updated = await BranchModel.toggleStatus(parseInt(id));
+    return res.json({ status: 'success', message: 'Branch status updated', data: updated });
+  } catch (error) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+export const deleteBranch = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await BranchModel.delete(parseInt(id));
+    return res.json({ status: 'success', message: 'Branch deleted successfully' });
+  } catch (error) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};

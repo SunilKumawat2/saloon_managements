@@ -131,6 +131,45 @@ export const Admin_Create_Branch = async (branchData) => {
   }
 };
 
+// <----------------  Admin Update Branch ----------------->
+export const Admin_Update_Branch = async (branchId, branchData) => {
+  try {
+    const token = getToken();
+    const response = await axios.put(`${API_BASE_URL}/branches/${branchId}`, branchData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Admin Toggle Branch Active/Inactive Status ----------------->
+export const Admin_Toggle_Branch_Status = async (branchId) => {
+  try {
+    const token = getToken();
+    const response = await axios.patch(`${API_BASE_URL}/branches/${branchId}/status`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Admin Delete Branch ----------------->
+export const Admin_Delete_Branch = async (branchId) => {
+  try {
+    const token = getToken();
+    const response = await axios.delete(`${API_BASE_URL}/branches/${branchId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
 // <----------------  Admin Get Customers (Module 2 CRM) ----------------->
 export const Admin_Get_Customers = async () => {
   try {

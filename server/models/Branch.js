@@ -29,5 +29,50 @@ export const BranchModel = {
       DEMO_BRANCHES.push(newBranch);
       return newBranch;
     }
+  },
+
+  async update(id, { name, code, city, address, phone }) {
+    try {
+      const query = `
+        UPDATE branches
+        SET name = COALESCE($1, name),
+            code = COALESCE($2, code),
+            city = COALESCE($3, city),
+            address = COALESCE($4, address),
+            phone = COALESCE($5, phone)
+        WHERE id = $6
+        RETURNING *
+      `;
+      const { rows } = await pool.query(query, [name, code, city, address, phone, id]);
+      return rows[0];
+    } catch (err) {
+      DEMO_BRANCHES = DEMO_BRANCHES.map(b => b.id === id ? { ...b, name, code, city, address, phone } : b);
+      return DEMO_BRANCHES.find(b => b.id === id);
+    }
+  },
+
+  async toggleStatus(id) {
+    try {
+      const query = `
+        UPDATE branches SET is_active = NOT is_active WHERE id = $1
+        RETURNING *
+      `;
+      const { rows } = await pool.query(query, [id]);
+      return rows[0];
+    } catch (err) {
+      const branch = DEMO_BRANCHES.find(b => b.id === id);
+      if (branch) branch.is_active = !branch.is_active;
+      return branch;
+    }
+  },
+
+  async delete(id) {
+    try {
+      await pool.query(`DELETE FROM branches WHERE id = $1`, [id]);
+      return { deleted: true };
+    } catch (err) {
+      DEMO_BRANCHES = DEMO_BRANCHES.filter(b => b.id !== id);
+      return { deleted: true };
+    }
   }
 };

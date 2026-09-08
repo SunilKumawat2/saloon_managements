@@ -37,6 +37,9 @@ import {
   Admin_Create_User, 
   Admin_Get_Branches, 
   Admin_Create_Branch, 
+  Admin_Update_Branch,
+  Admin_Toggle_Branch_Status,
+  Admin_Delete_Branch,
   Admin_Get_Roles, 
   Admin_Get_Health,
   Admin_Get_Customers,
@@ -200,6 +203,31 @@ function App() {
       if (res?.data?.data) {
         setBranches(prev => [...prev, res.data.data]);
       }
+    } catch (e) { console.error(e); }
+  };
+
+  const handleUpdateBranch = async (id, branchData) => {
+    try {
+      const res = await Admin_Update_Branch(id, branchData).catch(() => null);
+      if (res?.data?.data) {
+        setBranches(prev => prev.map(b => b.id === id ? res.data.data : b));
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const handleToggleBranchStatus = async (id) => {
+    try {
+      const res = await Admin_Toggle_Branch_Status(id).catch(() => null);
+      if (res?.data?.data) {
+        setBranches(prev => prev.map(b => b.id === id ? res.data.data : b));
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const handleDeleteBranch = async (id) => {
+    try {
+      await Admin_Delete_Branch(id).catch(() => null);
+      setBranches(prev => prev.filter(b => b.id !== id));
     } catch (e) { console.error(e); }
   };
 
@@ -592,7 +620,15 @@ function App() {
 
         {/* Module 1 Views */}
         {activeTab === 'users' && <UsersManagementView users={users} branches={branches} roles={roles} onAddUser={handleAddUser} />}
-        {activeTab === 'branches' && <BranchesManagementView branches={branches} onAddBranch={handleAddBranch} />}
+        {activeTab === 'branches' && (
+          <BranchesManagementView 
+            branches={branches} 
+            onAddBranch={handleAddBranch} 
+            onUpdateBranch={handleUpdateBranch}
+            onToggleBranchStatus={handleToggleBranchStatus}
+            onDeleteBranch={handleDeleteBranch}
+          />
+        )}
         {activeTab === 'matrix' && <PermissionsMatrixView roles={roles} />}
 
         {/* Module 2 Views */}
