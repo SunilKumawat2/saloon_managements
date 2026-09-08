@@ -10,42 +10,52 @@ export const AppointmentModel = {
   async findAll() {
     try {
       const query = `
-        SELECT a.*, c.name as customer_name, s.name as service_name, st.name as stylist_name
+        SELECT a.*, c.name as customer_name, c.phone as customer_phone, c.avatar_url as customer_avatar, s.name as service_name, st.name as stylist_name
         FROM appointments a
         LEFT JOIN customers c ON a.customer_id = c.id
         LEFT JOIN services s ON a.service_id = s.id
         LEFT JOIN stylists st ON a.stylist_id = st.id
-        ORDER BY a.appointment_date DESC, a.appointment_time DESC
+        ORDER BY a.id DESC
       `;
       const { rows } = await pool.query(query);
-      return rows.length > 0 ? rows : DEMO_APPOINTMENTS;
+      return rows;
     } catch (err) {
       return DEMO_APPOINTMENTS;
     }
   },
 
-  async create({ branch_id, customer_id, customer_name, stylist_id, service_id, appointment_date, appointment_time, total_amount, notes }) {
+  async create({ branch_id, customer_id, customer_name, stylist_id, service_id, appointment_date, appointment_time, status, total_amount, notes }) {
     try {
       const query = `
         INSERT INTO appointments (branch_id, customer_id, stylist_id, service_id, appointment_date, appointment_time, status, total_amount, notes)
-        VALUES ($1, $2, $3, $4, $5, $6, 'Scheduled', $7, $8)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *
       `;
-      const { rows } = await pool.query(query, [branch_id || 1, customer_id || 1, stylist_id || 1, service_id || 1, appointment_date, appointment_time, total_amount || 350.00, notes || '']);
+      const { rows } = await pool.query(query, [
+        branch_id || 1,
+        customer_id || 1,
+        stylist_id || 1,
+        service_id || 1,
+        appointment_date || new Date().toISOString().split('T')[0],
+        appointment_time || '10:00',
+        status || 'Scheduled',
+        total_amount || 350.00,
+        notes || ''
+      ]);
       return rows[0];
     } catch (err) {
       const newApp = {
-        id: DEMO_APPOINTMENTS.length + 101,
+        id: Date.now(),
         branch_id: parseInt(branch_id || 1),
         customer_id: parseInt(customer_id || 1),
-        customer_name: customer_name || 'Rahul Kumar',
+        customer_name: customer_name || 'Walk-in Customer',
         stylist_id: parseInt(stylist_id || 1),
-        stylist_name: 'Rohan Sharma',
+        stylist_name: 'Staff',
         service_id: parseInt(service_id || 1),
-        service_name: 'Classic Haircut & Styling',
-        appointment_date,
-        appointment_time,
-        status: 'Scheduled',
+        service_name: 'Hair Treatment',
+        appointment_date: appointment_date || new Date().toISOString().split('T')[0],
+        appointment_time: appointment_time || '10:00',
+        status: status || 'Scheduled',
         total_amount: total_amount || '350.00',
         notes: notes || ''
       };
@@ -55,13 +65,57 @@ export const AppointmentModel = {
   },
 
   async updateStatus(id, status) {
+    const numericId = parseInt(id);
     try {
-      const { rows } = await pool.query('UPDATE appointments SET status = $1 WHERE id = $2 RETURNING *', [status, id]);
-      return rows[0];
-    } catch (err) {
-      const app = DEMO_APPOINTMENTS.find(a => a.id === parseInt(id));
+      const { rows } = await pool.query('UPDATE appointments SET status = $1 WHERE id = $2 RETURNING *', [status, numericId]);
+      if (rows.length > 0) return rows[0];
+      const app = DEMO_APPOINTMENTS.find(a => a.id === numericId);
       if (app) app.status = status;
       return app;
+    } catch (err) {
+      const app = DEMO_APPOINTMENTS.find(a => a.id === numericId);
+      if (app) app.status = status;
+      return app;
+    }
+  },
+
+  async update(id, { stylist_id, service_id, status, appointment_date, appointment_time, notes, total_amount }) {
+    const numericId = parseInt(id);
+    try {
+      const { rows } = await pool.query(
+        `UPDATE appointments
+         SET stylist_id = COALESCE($1, stylist_id),
+             service_id = COALESCE($2, service_id),
+             status = COALESCE($3, status),
+             appointment_date = COALESCE($4::date, appointment_date),
+             appointment_time = COALESCE($5, appointment_time),
+             notes = COALESCE($6, notes),
+             total_amount = COALESCE($7, total_amount)
+         WHERE id = $8 RETURNING *`,
+        [stylist_id, service_id, status, appointment_date || null, appointment_time, notes, total_amount, numericId]
+      );
+      if (rows.length > 0) return rows[0];
+      DEMO_APPOINTMENTS = DEMO_APPOINTMENTS.map(a =>
+        a.id === numericId ? { ...a, stylist_id, service_id, status, appointment_date, appointment_time, notes, total_amount } : a
+      );
+      return DEMO_APPOINTMENTS.find(a => a.id === numericId);
+    } catch (err) {
+      DEMO_APPOINTMENTS = DEMO_APPOINTMENTS.map(a =>
+        a.id === numericId ? { ...a, stylist_id, service_id, status, appointment_date, appointment_time, notes, total_amount } : a
+      );
+      return DEMO_APPOINTMENTS.find(a => a.id === numericId);
+    }
+  },
+
+  async delete(id) {
+    const numericId = parseInt(id);
+    try {
+      await pool.query('DELETE FROM appointments WHERE id = $1', [numericId]);
+      DEMO_APPOINTMENTS = DEMO_APPOINTMENTS.filter(a => a.id !== numericId);
+      return { deleted: true };
+    } catch (err) {
+      DEMO_APPOINTMENTS = DEMO_APPOINTMENTS.filter(a => a.id !== numericId);
+      return { deleted: true };
     }
   }
 };

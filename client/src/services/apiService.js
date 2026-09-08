@@ -447,6 +447,32 @@ export const Admin_Update_Appointment_Status = async (appointmentId, status) => 
   }
 };
 
+// <----------------  Admin Update Appointment ----------------->
+export const Admin_Update_Appointment = async (appointmentId, appointmentData) => {
+  try {
+    const token = getToken();
+    const response = await axios.put(`${API_BASE_URL}/appointments/${appointmentId}`, appointmentData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Admin Delete Appointment ----------------->
+export const Admin_Delete_Appointment = async (appointmentId) => {
+  try {
+    const token = getToken();
+    const response = await axios.delete(`${API_BASE_URL}/appointments/${appointmentId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
 // <----------------  System Health Check ----------------->
 export const Admin_Get_Health = async () => {
   try {

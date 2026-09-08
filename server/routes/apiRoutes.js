@@ -12,7 +12,7 @@ import { getServices, createService } from '../controllers/serviceController.js'
 import { getStylists, createStylist } from '../controllers/stylistController.js';
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '../controllers/customerController.js';
 import { getLeads, createLead, updateLeadStatus, updateLead, deleteLead } from '../controllers/leadController.js';
-import { getAppointments, createAppointment, updateAppointmentStatus } from '../controllers/appointmentController.js';
+import { getAppointments, createAppointment, updateAppointmentStatus, updateAppointment, deleteAppointment } from '../controllers/appointmentController.js';
 import { getBills, getBillById, createBill } from '../controllers/billingController.js';
 import { uploadUserAvatar, removeUserAvatar, uploadCustomerAvatar, removeCustomerAvatar, uploadLeadAvatar, removeLeadAvatar } from '../controllers/uploadController.js';
 import uploadAvatar, { handleUploadAvatar } from '../middleware/uploadMiddleware.js';
@@ -72,6 +72,8 @@ router.delete('/leads/:id', authenticateToken, deleteLead);
 router.get('/appointments', authenticateToken, getAppointments);
 router.post('/appointments/create', authenticateToken, createAppointment);
 router.put('/appointments/:id/status', authenticateToken, updateAppointmentStatus);
+router.put('/appointments/:id', authenticateToken, updateAppointment);
+router.delete('/appointments/:id', authenticateToken, deleteAppointment);
 
 // -------------------- POS Billing Routes (Receptionist Module) --------------------
 router.get('/billing', authenticateToken, getBills);

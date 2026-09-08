@@ -58,6 +58,8 @@ import {
   Admin_Get_Appointments,
   Admin_Create_Appointment,
   Admin_Update_Appointment_Status,
+  Admin_Update_Appointment,
+  Admin_Delete_Appointment,
   Admin_Get_Bills,
   Admin_Create_Bill,
   Get_Admin_Profile
@@ -316,13 +318,29 @@ function App() {
     } catch (e) { console.error("Delete Lead Error:", e); }
   };
 
-  // Handlers for Module 3 Booking
+  // Handlers for Module 3 Booking & Receptionist Queue
   const handleAddAppointment = async (newApp) => {
     try {
-      const res = await Admin_Create_Appointment(newApp).catch(() => null);
+      const res = await Admin_Create_Appointment(newApp);
       if (res?.data?.data) {
         setAppointments(prev => [res.data.data, ...prev]);
       }
+    } catch (e) { console.error(e); }
+  };
+
+  const handleUpdateAppointment = async (id, appData) => {
+    try {
+      const res = await Admin_Update_Appointment(id, appData);
+      if (res?.data?.data) {
+        setAppointments(prev => prev.map(a => a.id === id ? res.data.data : a));
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const handleDeleteAppointment = async (id) => {
+    try {
+      await Admin_Delete_Appointment(id);
+      setAppointments(prev => prev.filter(a => a.id !== id));
     } catch (e) { console.error(e); }
   };
 
@@ -732,7 +750,13 @@ function App() {
             customers={customers}
             stylists={stylists}
             services={services}
+            appointments={appointments}
             onCheckIn={handleCheckIn}
+            onAddAppointment={handleAddAppointment}
+            onUpdateAppointment={handleUpdateAppointment}
+            onDeleteAppointment={handleDeleteAppointment}
+            onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
+            onAddCustomer={handleAddCustomer}
           />
         )}
         {activeTab === 'pos_billing' && posCustomer && (
