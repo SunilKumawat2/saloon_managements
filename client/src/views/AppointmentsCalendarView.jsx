@@ -14,7 +14,7 @@ const TIME_SLOTS = [
   '17:00', '18:00', '19:00', '20:00'
 ];
 
-// Helper: Format Date robustly to YYYY-MM-DD (handling local timezone offsets)
+// Helper: Format Date robustly to YYYY-MM-DD
 const formatDateKey = (dateStr) => {
   if (!dateStr) return '';
   const str = String(dateStr);
@@ -223,13 +223,13 @@ function AppointmentsCalendarView({
       {/* ─── ACTION & VIEW CONTROL BAR ─── */}
       <div className="controls-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '24px' }}>
         {/* Left: View Switcher Tabs */}
-        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', borderRadius: '12px', padding: '4px', border: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', background: 'var(--input-bg)', borderRadius: '12px', padding: '4px', border: '1px solid var(--border)' }}>
           <button
             onClick={() => setViewMode('dayGrid')}
             style={{
               display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px',
               border: 'none', background: viewMode === 'dayGrid' ? 'var(--primary-indigo)' : 'transparent',
-              color: viewMode === 'dayGrid' ? '#fff' : 'var(--text-muted)', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer'
+              color: viewMode === 'dayGrid' ? '#fff' : 'var(--text-sub)', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer'
             }}
           >
             <CalendarDays size={14} /> Interactive Day Grid
@@ -239,7 +239,7 @@ function AppointmentsCalendarView({
             style={{
               display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px',
               border: 'none', background: viewMode === 'weekGrid' ? 'var(--primary-indigo)' : 'transparent',
-              color: viewMode === 'weekGrid' ? '#fff' : 'var(--text-muted)', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer'
+              color: viewMode === 'weekGrid' ? '#fff' : 'var(--text-sub)', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer'
             }}
           >
             <LayoutGrid size={14} /> Week View
@@ -249,7 +249,7 @@ function AppointmentsCalendarView({
             style={{
               display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px',
               border: 'none', background: viewMode === 'tableList' ? 'var(--primary-indigo)' : 'transparent',
-              color: viewMode === 'tableList' ? '#fff' : 'var(--text-muted)', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer'
+              color: viewMode === 'tableList' ? '#fff' : 'var(--text-sub)', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer'
             }}
           >
             <ListFilter size={14} /> Appointments List
@@ -261,7 +261,7 @@ function AppointmentsCalendarView({
           <button
             onClick={() => handleShiftDate(-1)}
             className="glass-card"
-            style={{ padding: '8px 12px', cursor: 'pointer', color: '#fff', borderRadius: '8px' }}
+            style={{ padding: '8px 12px', cursor: 'pointer', color: 'var(--text-main)', borderRadius: '8px' }}
             title="Previous Day"
           >
             <ChevronLeft size={16} />
@@ -278,7 +278,7 @@ function AppointmentsCalendarView({
           <button
             onClick={() => handleShiftDate(1)}
             className="glass-card"
-            style={{ padding: '8px 12px', cursor: 'pointer', color: '#fff', borderRadius: '8px' }}
+            style={{ padding: '8px 12px', cursor: 'pointer', color: 'var(--text-main)', borderRadius: '8px' }}
             title="Next Day"
           >
             <ChevronRight size={16} />
@@ -299,12 +299,12 @@ function AppointmentsCalendarView({
         </button>
       </div>
 
-      {/* ─── 1. INTERACTIVE DAY TIME GRID (BY STYLIST / STAFF COLUMNS) ─── */}
+      {/* ─── 1. INTERACTIVE DAY TIME GRID (THEME ADAPTIVE DESIGN) ─── */}
       {viewMode === 'dayGrid' && (
         <div className="glass-panel" style={{ padding: '24px', overflowX: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)' }}>
                 <Clock size={18} style={{ color: 'var(--accent-gold)' }} />
                 Daily Schedule Matrix — {selectedDate}
               </h3>
@@ -332,12 +332,12 @@ function AppointmentsCalendarView({
           <div style={{ minWidth: '760px' }}>
             {/* Grid Header Columns (Stylists) */}
             <div style={{ display: 'grid', gridTemplateColumns: `100px repeat(${stylists.length || 3}, 1fr)`, gap: '1px', background: 'var(--border)', border: '1px solid var(--border)', borderRadius: '12px 12px 0 0', overflow: 'hidden' }}>
-              <div style={{ background: 'rgba(255,255,255,0.05)', padding: '14px', fontWeight: '800', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+              <div style={{ background: 'var(--input-bg)', padding: '14px', fontWeight: '800', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
                 TIME SLOT
               </div>
               {stylists.map(st => (
-                <div key={st.id} style={{ background: 'rgba(255,255,255,0.04)', padding: '14px', textAlign: 'center' }}>
-                  <div style={{ fontWeight: '800', fontSize: '0.92rem', color: '#fff' }}>{st.name}</div>
+                <div key={st.id} style={{ background: 'var(--input-bg)', padding: '14px', textAlign: 'center' }}>
+                  <div style={{ fontWeight: '800', fontSize: '0.92rem', color: 'var(--text-main)' }}>{st.name}</div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                     <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: st.is_available ? '#34d399' : '#ef4444' }}></span>
                     {st.specialization} · {st.is_available ? 'Available' : 'Busy'}
@@ -350,7 +350,7 @@ function AppointmentsCalendarView({
             {TIME_SLOTS.map(time => (
               <div key={time} style={{ display: 'grid', gridTemplateColumns: `100px repeat(${stylists.length || 3}, 1fr)`, gap: '1px', background: 'var(--border)', borderTop: 'none' }}>
                 {/* Time Column */}
-                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px 10px', fontWeight: '800', fontSize: '0.82rem', color: 'var(--accent-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ background: 'var(--bg-card)', padding: '16px 10px', fontWeight: '800', fontSize: '0.82rem', color: 'var(--accent-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {time}
                 </div>
 
@@ -364,10 +364,10 @@ function AppointmentsCalendarView({
                   });
 
                   return (
-                    <div key={st.id} style={{ background: 'rgba(0,0,0,0.2)', padding: '8px', minHeight: '88px', position: 'relative' }}>
+                    <div key={st.id} style={{ background: 'var(--bg-panel)', padding: '8px', minHeight: '88px', position: 'relative' }}>
                       {matched.length === 0 ? (
-                        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-                          <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.15)' }}>Open Slot</span>
+                        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed var(--border)', borderRadius: '8px' }}>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Open Slot</span>
                         </div>
                       ) : (
                         matched.map(app => {
@@ -381,7 +381,7 @@ function AppointmentsCalendarView({
                             <div
                               key={app.id}
                               style={{
-                                background: app.status === 'Completed' ? 'rgba(16, 185, 129, 0.15)' : app.status === 'In-Progress' ? 'rgba(245, 158, 11, 0.15)' : app.status === 'Cancelled' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(99, 102, 241, 0.15)',
+                                background: app.status === 'Completed' ? 'rgba(16, 185, 129, 0.12)' : app.status === 'In-Progress' ? 'rgba(245, 158, 11, 0.12)' : app.status === 'Cancelled' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(99, 102, 241, 0.12)',
                                 border: `1.5px solid ${app.status === 'Completed' ? '#34d399' : app.status === 'In-Progress' ? '#f59e0b' : app.status === 'Cancelled' ? '#ef4444' : '#818cf8'}`,
                                 borderRadius: '10px',
                                 padding: '10px 12px',
@@ -393,8 +393,8 @@ function AppointmentsCalendarView({
                             >
                               <div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                  <span style={{ fontWeight: '800', fontSize: '0.88rem', color: '#fff' }}>{custName}</span>
-                                  <span style={{ fontSize: '0.68rem', background: 'rgba(255,255,255,0.1)', padding: '1px 6px', borderRadius: '4px', color: 'var(--text-sub)' }}>
+                                  <span style={{ fontWeight: '800', fontSize: '0.88rem', color: 'var(--text-main)' }}>{custName}</span>
+                                  <span style={{ fontSize: '0.68rem', background: 'rgba(99,102,241,0.15)', padding: '1px 6px', borderRadius: '4px', color: 'var(--primary-indigo)', fontWeight: '700' }}>
                                     {app.source || 'Walk-in'}
                                   </span>
                                 </div>
@@ -405,19 +405,19 @@ function AppointmentsCalendarView({
 
                                 <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                   <span>⏱ {duration}m (+15m Buffer)</span>
-                                  <span style={{ color: '#818cf8', fontWeight: '700' }}>🔒 Slot till {bufferEnd}</span>
+                                  <span style={{ color: 'var(--primary-indigo)', fontWeight: '700' }}>🔒 Slot till {bufferEnd}</span>
                                 </div>
                               </div>
 
                               {/* Quick Action Bar for Slot Card */}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', paddingTop: '6px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                                <span style={{ fontWeight: '900', color: '#fff', fontSize: '0.82rem' }}>₹{app.total_amount || serv?.price || 350}</span>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', paddingTop: '6px', borderTop: '1px solid var(--border)' }}>
+                                <span style={{ fontWeight: '900', color: 'var(--text-main)', fontSize: '0.82rem' }}>₹{app.total_amount || serv?.price || 350}</span>
 
                                 <div style={{ display: 'flex', gap: '4px' }}>
                                   <button
                                     onClick={() => setReminderApp({ ...app, customer_name: custName, service_name: servName })}
                                     title="Send Auto SMS/WhatsApp Reminder"
-                                    style={{ background: 'rgba(52,211,153,0.2)', border: 'none', color: '#34d399', borderRadius: '6px', padding: '4px 7px', cursor: 'pointer' }}
+                                    style={{ background: 'rgba(52,211,153,0.2)', border: 'none', color: '#059669', borderRadius: '6px', padding: '4px 7px', cursor: 'pointer' }}
                                   >
                                     <MessageSquare size={12} />
                                   </button>
@@ -430,7 +430,7 @@ function AppointmentsCalendarView({
                                       setRescheduleStylist(app.stylist_id);
                                     }}
                                     title="1-Click Reschedule"
-                                    style={{ background: 'rgba(245,158,11,0.2)', border: 'none', color: 'var(--accent-gold)', borderRadius: '6px', padding: '4px 7px', cursor: 'pointer' }}
+                                    style={{ background: 'rgba(245,158,11,0.2)', border: 'none', color: '#d97706', borderRadius: '6px', padding: '4px 7px', cursor: 'pointer' }}
                                   >
                                     <RefreshCw size={12} />
                                   </button>
@@ -449,7 +449,7 @@ function AppointmentsCalendarView({
                                       });
                                     }}
                                     title="Edit Booking"
-                                    style={{ background: 'rgba(99,102,241,0.2)', border: 'none', color: '#818cf8', borderRadius: '6px', padding: '4px 7px', cursor: 'pointer' }}
+                                    style={{ background: 'rgba(99,102,241,0.2)', border: 'none', color: '#4f46e5', borderRadius: '6px', padding: '4px 7px', cursor: 'pointer' }}
                                   >
                                     <Edit3 size={12} />
                                   </button>
@@ -468,11 +468,11 @@ function AppointmentsCalendarView({
         </div>
       )}
 
-      {/* ─── 2. INTERACTIVE WEEK VIEW GRID ─── */}
+      {/* ─── 2. INTERACTIVE WEEK VIEW GRID (THEME ADAPTIVE) ─── */}
       {viewMode === 'weekGrid' && (
         <div className="glass-panel" style={{ padding: '24px' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <LayoutGrid size={18} style={{ color: '#818cf8' }} />
+          <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)' }}>
+            <LayoutGrid size={18} style={{ color: 'var(--primary-indigo)' }} />
             Weekly Appointments Overview
           </h3>
 
@@ -491,7 +491,7 @@ function AppointmentsCalendarView({
                   key={day}
                   onClick={() => setSelectedDate(targetStr)}
                   style={{
-                    background: isSelected ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255,255,255,0.02)',
+                    background: isSelected ? 'rgba(99, 102, 241, 0.12)' : 'var(--bg-card)',
                     border: `1.5px solid ${isSelected ? 'var(--primary-indigo)' : 'var(--border)'}`,
                     borderRadius: '12px',
                     padding: '14px',
@@ -500,14 +500,14 @@ function AppointmentsCalendarView({
                     transition: 'all 0.2s ease'
                   }}
                 >
-                  <div style={{ fontWeight: '800', fontSize: '0.9rem', color: isSelected ? '#818cf8' : '#fff' }}>
+                  <div style={{ fontWeight: '800', fontSize: '0.9rem', color: isSelected ? 'var(--primary-indigo)' : 'var(--text-main)' }}>
                     {day}
                   </div>
                   <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
                     {targetStr}
                   </div>
 
-                  <div style={{ fontSize: '0.72rem', background: 'rgba(255,255,255,0.06)', padding: '3px 8px', borderRadius: '6px', fontWeight: '700', marginBottom: '10px' }}>
+                  <div style={{ fontSize: '0.72rem', background: 'var(--input-bg)', color: 'var(--text-sub)', padding: '3px 8px', borderRadius: '6px', fontWeight: '700', marginBottom: '10px' }}>
                     {dayApps.length} Booking{dayApps.length !== 1 ? 's' : ''}
                   </div>
 
@@ -516,8 +516,8 @@ function AppointmentsCalendarView({
                       const custName = app.customer_name || customers.find(c => String(c.id) === String(app.customer_id))?.name || 'Walk-in Client';
                       const servName = app.service_name || services.find(s => String(s.id) === String(app.service_id))?.name || 'Salon Service';
                       return (
-                        <div key={app.id} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '6px', padding: '6px 8px', fontSize: '0.72rem', borderLeft: '3px solid var(--accent-gold)' }}>
-                          <div style={{ fontWeight: '700', color: '#fff' }}>{app.appointment_time} - {custName}</div>
+                        <div key={app.id} style={{ background: 'var(--input-bg)', borderRadius: '6px', padding: '6px 8px', fontSize: '0.72rem', borderLeft: '3px solid var(--accent-gold)' }}>
+                          <div style={{ fontWeight: '700', color: 'var(--text-main)' }}>{app.appointment_time} - {custName}</div>
                           <div style={{ color: 'var(--text-muted)' }}>{servName}</div>
                         </div>
                       );
@@ -545,7 +545,7 @@ function AppointmentsCalendarView({
                   placeholder="Search appointment, client, service..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  style={{ width: '100%', paddingLeft: '36px', paddingTop: '8px', paddingBottom: '8px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '10px', color: '#fff', fontSize: '0.85rem' }}
+                  style={{ width: '100%', paddingLeft: '36px', paddingTop: '8px', paddingBottom: '8px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '10px', color: 'var(--text-main)', fontSize: '0.85rem' }}
                 />
               </div>
 
@@ -561,7 +561,7 @@ function AppointmentsCalendarView({
 
           <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: 'rgba(255,255,255,0.03)', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
+              <tr style={{ background: 'var(--input-bg)', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
                 <th style={{ padding: '12px 16px' }}>Booking ID & Time</th>
                 <th style={{ padding: '12px 16px' }}>Customer Name</th>
                 <th style={{ padding: '12px 16px' }}>Salon Service</th>
@@ -596,7 +596,7 @@ function AppointmentsCalendarView({
                       </td>
 
                       <td style={{ padding: '12px 16px' }}>
-                        <div style={{ fontWeight: '700', color: '#fff' }}>{custName}</div>
+                        <div style={{ fontWeight: '700', color: 'var(--text-main)' }}>{custName}</div>
                       </td>
 
                       <td style={{ padding: '12px 16px' }}>
@@ -611,7 +611,7 @@ function AppointmentsCalendarView({
                       </td>
 
                       <td style={{ padding: '12px 16px' }}>
-                        <span style={{ fontSize: '0.74rem', background: 'rgba(99,102,241,0.15)', color: '#818cf8', padding: '3px 8px', borderRadius: '6px', fontWeight: '700' }}>
+                        <span style={{ fontSize: '0.74rem', background: 'rgba(99,102,241,0.15)', color: 'var(--primary-indigo)', padding: '3px 8px', borderRadius: '6px', fontWeight: '700' }}>
                           {app.source || 'Online Portal'}
                         </span>
                       </td>
@@ -621,7 +621,7 @@ function AppointmentsCalendarView({
                           value={app.status}
                           onChange={(e) => onUpdateAppointmentStatus(app.id, e.target.value)}
                           style={{
-                            background: app.status === 'Completed' ? 'rgba(16, 185, 129, 0.2)' : app.status === 'In-Progress' ? 'rgba(245, 158, 11, 0.2)' : app.status === 'Cancelled' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.2)',
+                            background: app.status === 'Completed' ? 'rgba(16, 185, 129, 0.15)' : app.status === 'In-Progress' ? 'rgba(245, 158, 11, 0.15)' : app.status === 'Cancelled' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(99, 102, 241, 0.15)',
                             color: app.status === 'Completed' ? 'var(--success)' : app.status === 'In-Progress' ? 'var(--accent-gold)' : app.status === 'Cancelled' ? '#ef4444' : 'var(--primary-indigo)',
                             border: '1px solid var(--border)',
                             padding: '4px 8px',
@@ -639,7 +639,7 @@ function AppointmentsCalendarView({
                         </select>
                       </td>
 
-                      <td style={{ padding: '12px 16px', fontWeight: '800', color: '#fff' }}>
+                      <td style={{ padding: '12px 16px', fontWeight: '800', color: 'var(--text-main)' }}>
                         ₹ {parseFloat(app.total_amount || 350).toFixed(2)}
                       </td>
 
@@ -648,7 +648,7 @@ function AppointmentsCalendarView({
                           <button
                             onClick={() => setReminderApp({ ...app, customer_name: custName, service_name: servName, stylist_name: stylName })}
                             title="Send Auto Reminder (SMS / WhatsApp)"
-                            style={{ padding: '5px 10px', background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: '8px', color: '#34d399', fontSize: '0.76rem', fontWeight: '700', cursor: 'pointer' }}
+                            style={{ padding: '5px 10px', background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: '8px', color: '#059669', fontSize: '0.76rem', fontWeight: '700', cursor: 'pointer' }}
                           >
                             <MessageSquare size={12} />
                           </button>
@@ -680,7 +680,7 @@ function AppointmentsCalendarView({
                               });
                             }}
                             title="Edit Booking"
-                            style={{ padding: '5px 10px', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '8px', color: '#818cf8', fontSize: '0.76rem', fontWeight: '700', cursor: 'pointer' }}
+                            style={{ padding: '5px 10px', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '8px', color: 'var(--primary-indigo)', fontSize: '0.76rem', fontWeight: '700', cursor: 'pointer' }}
                           >
                             <Edit3 size={12} />
                           </button>
@@ -708,7 +708,7 @@ function AppointmentsCalendarView({
         <div className="modal-overlay">
           <div className="glass-panel modal-content" style={{ maxWidth: '520px', width: '90%', padding: '28px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)' }}>
                 <Calendar size={20} style={{ color: 'var(--accent-gold)' }} /> Book Salon Appointment
               </h3>
               <button onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
@@ -786,8 +786,8 @@ function AppointmentsCalendarView({
         <div className="modal-overlay">
           <div className="glass-panel modal-content" style={{ maxWidth: '520px', width: '90%', padding: '28px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Edit3 size={18} style={{ color: '#818cf8' }} /> Edit Booking #APT-{editingApp.id}
+              <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)' }}>
+                <Edit3 size={18} style={{ color: 'var(--primary-indigo)' }} /> Edit Booking #APT-{editingApp.id}
               </h3>
               <button onClick={() => setEditingApp(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                 <X size={18} />
@@ -858,7 +858,7 @@ function AppointmentsCalendarView({
         <div className="modal-overlay">
           <div className="glass-panel modal-content" style={{ maxWidth: '460px', width: '90%', padding: '28px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)' }}>
                 <RefreshCw size={18} style={{ color: 'var(--accent-gold)' }} /> 1-Click Reschedule Slot
               </h3>
               <button onClick={() => setReschedulingApp(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
@@ -867,7 +867,7 @@ function AppointmentsCalendarView({
             </div>
 
             <div style={{ padding: '12px 16px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '10px', marginBottom: '16px', fontSize: '0.85rem' }}>
-              <div>Rescheduling booking for <strong>{reschedulingApp.customer_name}</strong></div>
+              <div>Rescheduling booking for <strong style={{ color: 'var(--text-main)' }}>{reschedulingApp.customer_name}</strong></div>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '2px' }}>Current: {formatDateKey(reschedulingApp.appointment_date)} at {reschedulingApp.appointment_time}</div>
             </div>
 
@@ -909,7 +909,7 @@ function AppointmentsCalendarView({
         <div className="modal-overlay">
           <div className="glass-panel modal-content" style={{ maxWidth: '500px', width: '90%', padding: '28px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)' }}>
                 <Send size={18} style={{ color: '#34d399' }} /> Auto Appointment Reminders (SMS / WhatsApp)
               </h3>
               <button onClick={() => setReminderApp(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
@@ -918,15 +918,15 @@ function AppointmentsCalendarView({
             </div>
 
             <div style={{ fontSize: '0.85rem', color: 'var(--text-sub)', marginBottom: '16px' }}>
-              Recipient: <strong style={{ color: '#fff' }}>{reminderApp.customer_name}</strong> ({reminderApp.customer_phone || '9876543210'})
+              Recipient: <strong style={{ color: 'var(--text-main)' }}>{reminderApp.customer_name}</strong> ({reminderApp.customer_phone || '9876543210'})
             </div>
 
             {/* Live Message Template Preview Box */}
-            <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', marginBottom: '24px' }}>
+            <div style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', marginBottom: '24px' }}>
               <div style={{ fontSize: '0.72rem', color: 'var(--accent-gold)', fontWeight: '800', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 💬 Live Reminder Payload Preview
               </div>
-              <p style={{ fontSize: '0.88rem', color: '#fff', margin: 0, lineHeight: '1.5', fontFamily: 'sans-serif' }}>
+              <p style={{ fontSize: '0.88rem', color: 'var(--text-main)', margin: 0, lineHeight: '1.5', fontFamily: 'sans-serif' }}>
                 "Hi <strong>{reminderApp.customer_name}</strong>! Your salon appointment for <strong>{reminderApp.service_name}</strong> with <strong>{reminderApp.stylist_name}</strong> is confirmed for <strong>{formatDateKey(reminderApp.appointment_date)}</strong> at <strong>{reminderApp.appointment_time}</strong>. Please arrive 5 minutes early. Reply 1 to Confirm, 2 to Reschedule. — SalonPulse ERP"
               </p>
             </div>
@@ -935,7 +935,7 @@ function AppointmentsCalendarView({
               <button
                 type="button"
                 onClick={() => handleSendReminder('sms')}
-                style={{ flex: 1, padding: '10px 14px', background: 'rgba(99, 102, 241, 0.2)', border: '1px solid #818cf8', color: '#818cf8', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                style={{ flex: 1, padding: '10px 14px', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid var(--primary-indigo)', color: 'var(--primary-indigo)', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               >
                 <MessageSquare size={16} /> Send SMS Gateway
               </button>
@@ -943,7 +943,7 @@ function AppointmentsCalendarView({
               <button
                 type="button"
                 onClick={() => handleSendReminder('whatsapp')}
-                style={{ flex: 1, padding: '10px 14px', background: 'rgba(52, 211, 153, 0.2)', border: '1px solid #34d399', color: '#34d399', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                style={{ flex: 1, padding: '10px 14px', background: 'rgba(52, 211, 153, 0.15)', border: '1px solid #34d399', color: '#059669', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               >
                 <Send size={16} /> WhatsApp Business API
               </button>
@@ -965,7 +965,7 @@ function AppointmentsCalendarView({
               <Trash2 size={26} />
             </div>
 
-            <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '8px' }}>Cancel Booking #APT-{deletingApp.id}?</h3>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '8px', color: 'var(--text-main)' }}>Cancel Booking #APT-{deletingApp.id}?</h3>
             <p style={{ fontSize: '0.88rem', color: 'var(--text-sub)', marginBottom: '24px', lineHeight: '1.5' }}>
               Are you sure you want to cancel the booking for <strong>{deletingApp.customer_name}</strong>?
             </p>
