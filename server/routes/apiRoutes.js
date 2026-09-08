@@ -6,7 +6,7 @@ import { authenticateToken } from '../middleware/authMiddleware.js';
 // Controllers Import
 import { loginUser, getMe } from '../controllers/authController.js';
 import { getUsers, getRoles, createUser, updateUser, deleteUser, toggleUserStatus } from '../controllers/userController.js';
-import { getBranches, createBranch } from '../controllers/branchController.js';
+import { getBranches, createBranch, updateBranch, toggleBranchStatus, deleteBranch } from '../controllers/branchController.js';
 import { getServices, createService } from '../controllers/serviceController.js';
 import { getStylists, createStylist } from '../controllers/stylistController.js';
 import { getCustomers, createCustomer } from '../controllers/customerController.js';
