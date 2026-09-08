@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Scope of Work (SOW) - CRM & Salon Management Web Application</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    
+    @page {
+      size: A4;
+      margin: 15mm 15mm 20mm 15mm;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      color: #1e293b;
+      background-color: #ffffff;
+      line-height: 1.5;
+      font-size: 13px;
+    }
+    
+    .header {
+      border-bottom: 3px solid #f59e0b;
+      padding-bottom: 20px;
+      margin-bottom: 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    
+    .header-title h1 {
+      font-size: 24px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+    }
+    
+    .header-title p {
+      font-size: 14px;
+      color: #64748b;
+      font-weight: 500;
+      margin-top: 4px;
+    }
+    
+    .badge {
+      background: #fef3c7;
+      color: #b45309;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 12px;
+      border: 1px solid #fde68a;
+    }
+    
+    .overview-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-left: 4px solid #f59e0b;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 25px;
+    }
+    
+    .overview-card h3 {
+      font-size: 14px;
+      color: #0f172a;
+      margin-bottom: 6px;
+    }
+    
+    .module-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 18px;
+      page-break-inside: avoid;
+    }
+    
+    .module-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    
+    .module-num {
+      background: #0f172a;
+      color: #f59e0b;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 13px;
+    }
+    
+    .module-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    
+    .feature-list {
+      list-style-type: none;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 16px;
+    }
+    
+    .feature-list li {
+      position: relative;
+      padding-left: 18px;
+      font-size: 12.5px;
+      color: #334155;
+    }
+    
+    .feature-list li::before {
+      content: "•";
+      color: #f59e0b;
+      font-size: 18px;
+      position: absolute;
+      left: 2px;
+      top: -3px;
+      font-weight: bold;
+    }
+    
+    .timeline-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      margin-bottom: 25px;
+    }
+    
+    .timeline-table th, .timeline-table td {
+      border: 1px solid #cbd5e1;
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 12.5px;
+    }
+    
+    .timeline-table th {
+      background: #0f172a;
+      color: #ffffff;
+      font-weight: 600;
+    }
+    
+    .timeline-table tr:nth-child(even) {
+      background: #f8fafc;
+    }
+
+    .footer {
+      margin-top: 30px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 15px;
+      text-align: center;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-title">
+      <h1>Scope of Work (SOW)</h1>
+      <p>CRM & Salon Management Web Application System</p>
+    </div>
+    <div class="badge">Comprehensive ERP & CRM</div>
+  </div>
+
+  <div class="overview-card">
+    <h3>📌 Project Overview</h3>
+    <p>Design and develop a centralized web-based platform integrating Customer Relationship Management (CRM) and Salon Operations Management. The system streamlines customer handling, appointment scheduling, staff management, POS billing, inventory tracking, and marketing automation.</p>
+  </div>
+
+  <h2 style="font-size: 16px; color: #0f172a; margin-bottom: 15px; font-weight: 800;">Core Modules Breakdown (10 Modules)</h2>
+
+  <!-- Module 1 -->
+  <div class="module-card">
+    <div class="module-header">
+      <div class="module-num">1</div>
+      <div class="module-title">User Roles & Role-Based Access Control (RBAC)</div>
+    </div>
+    <ul class="feature-list">
+      <li><strong>Admin:</strong> Full system control, branch management, salary settings</li>
+      <li><strong>Manager:</strong> Daily operational control, inventory & reports access</li>
+      <li><strong>Receptionist:</strong> Appointments, customer walk-in check-in, POS billing</li>
+      <li><strong>Staff / Stylist:</strong> Limited access (assigned schedules & commission view)</li>
+      <li><strong>Customer (Optional):</strong> Self-service online booking portal</li>
+      <li><strong>Multi-Branch Support:</strong> Centralized multi-location salon management</li>
+    </ul>
+  </div>
+
+  <!-- Module 2 -->
+  <div class="module-card">
+    <div class="module-header">
+      <div class="module-num">2</div>
+      <div class="module-title">Customer Relationship Management (CRM) & Lead System</div>
+    </div>
+    <ul class="feature-list">
+      <li>Customer profiles (Name, Phone, Email, DOB, Anniversary)</li>
+      <li>Detailed visit history, preferred stylists & service notes</li>
+      <li>Lead capture from walk-ins, website, and social media</li>
+      <li>Lead status tracking (New, Contacted, Converted)</li>
+      <li>Automated follow-up reminders for receptionists</li>
+      <li>Customer segmentation based on visit frequency</li>
+    </ul>
+  </div>
+
+  <!-- Module 3 -->
+  <div class="module-card">
+    <div class="module-header">
+      <div class="module-num">3</div>
+      <div class="module-title">Appointment & Calendar Booking System</div>
+    </div>
+    <ul class="feature-list">
+      <li>Online self-booking & offline walk-in booking portal</li>
+      <li>Interactive calendar-based scheduling (Day/Week view)</li>
+      <li>Real-time staff availability & slot duration management</li>
+      <li>Auto appointment reminders (SMS/WhatsApp API integration)</li>
+      <li>One-click reschedule and cancellation functionality</li>
+      <li>Service buffer time and slot locking</li>
+    </ul>
+  </div>
+
+  <!-- Module 4 -->
+  <div class="module-card">
+    <div class="module-header">
+      <div class="module-num">4</div>
+      <div class="module-title">Salon Service & Package Management</div>
+    </div>
+    <ul class="feature-list">
+      <li>Comprehensive service catalog (Haircut, Spa, Facial, Color)</li>
+      <li>Dynamic pricing & service duration configuration</li>
+      <li>Service package creation (bundled combos & discounts)</li>
+      <li>Category-wise service classification</li>
+    </ul>
+  </div>
+
+  <!-- Module 5 -->
+  <div class="module-card">
+    <div class="module-header">
+      <div class="module-num">5</div>
+      <div class="module-title">Billing & Point of Sale (POS) System</div>
+    </div>
+    <ul class="feature-list">
+      <li>Fast invoice generation with print receipt support</li>
+      <li>Multiple payment modes (Cash, Card, UPI, Split Payment)</li>
+      <li>Discount coupon code integration & manual overrides</li>
+      <li>GST and tax rate configuration</li>
+      <li>Stylist tip and commission tag per bill</li>
+    </ul>
+  </div>
+
+  <!-- Module 6 -->
+  <div class="module-card">
+    <div class="module-header">
+      <div class="module-num">6</div>
+      <div class="module-title">Inventory & Product Stock Management</div>
+    </div>
+    <ul class="feature-list">
+      <li>Retail & internal usage product stock tracking</li>
+      <li>Supplier database & purchase order entry</li>
+      <li>Automated low stock alerts & minimum thresholds</li>
+      <li>Service-wise product consumption tracking</li>
+    </ul>
+  </div>
+
+  <!-- Module 7 -->
+  <div class="module-card">
+    <div class="module-header">
+      <div class="module-num">7</div>
+      <div class="module-title">Loyalty & Membership Program</div>
+    </div>
+    <ul class="feature-list">
+      <li>Points-based reward system (earn & redeem on billing)</li>
+      <li>Membership plans (Silver, Gold, Platinum tiers)</li>
+      <li>Referral program tracking & automated reward triggers</li>
+      <li>Member-only discount rules</li>
+    </ul>
+  </div>
+
+  <!-- Module 8 -->
+  <div class="module-card">
+    <div class="module-header">
+      <div class="module-num">8</div>
+      <div class="module-title">Marketing Automation & Communication</div>
+    </div>
+    <ul class="feature-list">
+      <li>Bulk SMS & WhatsApp promotional campaign manager</li>
+      <li>Automated birthday and anniversary offer triggers</li>
+      <li>Customer re-engagement campaigns for inactive users</li>
+      <li>Custom offer templates & delivery tracking</li>
+    </ul>
+  </div>
+
+  <!-- Module 9 -->
+  <div class="module-card">
+    <div class="module-header">
+      <div class="module-num">9</div>
+      <div class="module-title">Reports & Executive Analytics</div>
+    </div>
+    <ul class="feature-list">
+      <li>Daily, weekly, and monthly revenue performance reports</li>
+      <li>Customer retention & churn analytics</li>
+      <li>Staff performance & commission breakdown</li>
+      <li>Service popularity and peak-hours analytics</li>
+      <li>Inventory consumption & profit margin reports</li>
+    </ul>
+  </div>
+
+  <!-- Module 10 -->
+  <div class="module-card">
+    <div class="module-header">
+      <div class="module-num">10</div>
+      <div class="module-title">Admin Panel & Security Settings</div>
+    </div>
+    <ul class="feature-list">
+      <li>Full centralized system control & settings</li>
+      <li>User creation, role assignment, and access control</li>
+      <li>System backup, audit log, and security controls</li>
+      <li>Branch settings & multi-currency/tax settings</li>
+    </ul>
+  </div>
+
+  <!-- Deliverables & Timeline -->
+  <h2 style="font-size: 16px; color: #0f172a; margin-top: 25px; margin-bottom: 10px; font-weight: 800;">Estimated Project Deliverables & Timeline</h2>
+  
+  <table class="timeline-table">
+    <thead>
+      <tr>
+        <th>Phase</th>
+        <th>Description</th>
+        <th>Estimated Duration</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Phase 1: Planning & Design</strong></td>
+        <td>UI/UX wireframes, database architecture, RBAC design</td>
+        <td>1 - 2 Weeks</td>
+      </tr>
+      <tr>
+        <td><strong>Phase 2: Core Development</strong></td>
+        <td>Frontend (React), Backend (Express), Database (PostgreSQL) modules</td>
+        <td>4 - 5 Weeks</td>
+      </tr>
+      <tr>
+        <td><strong>Phase 3: Testing & QA</strong></td>
+        <td>System integration testing, POS billing QA, security check</td>
+        <td>2 Weeks</td>
+      </tr>
+      <tr>
+        <td><strong>Phase 4: Deployment</strong></td>
+        <td>Server deployment, SSL setup, database migration, user training</td>
+        <td>1 Week</td>
+      </tr>
+      <tr style="background: #fef3c7; font-weight: bold;">
+        <td>Total Timeline</td>
+        <td>Complete End-to-End System Delivery</td>
+        <td>~8 - 10 Weeks</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <p>Salon Management & CRM System • Scope of Work Document • Confidential</p>
+  </div>
+
+</body>
+</html>
