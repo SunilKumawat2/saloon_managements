@@ -46,6 +46,7 @@ import {
   Admin_Create_Customer,
   Admin_Update_Customer,
   Admin_Delete_Customer,
+  Admin_Upload_Customer_Avatar,
   Admin_Get_Leads,
   Admin_Create_Lead,
   Admin_Update_Lead_Status,
@@ -234,20 +235,31 @@ function App() {
   };
 
   // Handlers for Module 2 CRM & Leads
-  const handleAddCustomer = async (newCust) => {
+  const handleAddCustomer = async (newCust, avatarFile) => {
     try {
       const res = await Admin_Create_Customer(newCust).catch(() => null);
       if (res?.data?.data) {
-        setCustomers(prev => [res.data.data, ...prev]);
+        let customer = res.data.data;
+        // Upload photo if selected
+        if (avatarFile && customer.id) {
+          const avatarRes = await Admin_Upload_Customer_Avatar(customer.id, avatarFile).catch(() => null);
+          if (avatarRes?.data?.data) customer = avatarRes.data.data;
+        }
+        setCustomers(prev => [customer, ...prev]);
       }
     } catch (e) { console.error(e); }
   };
 
-  const handleUpdateCustomer = async (id, custData) => {
+  const handleUpdateCustomer = async (id, custData, avatarFile) => {
     try {
       const res = await Admin_Update_Customer(id, custData).catch(() => null);
-      if (res?.data?.data) {
-        setCustomers(prev => prev.map(c => c.id === id ? res.data.data : c));
+      let customer = res?.data?.data;
+      if (avatarFile && id) {
+        const avatarRes = await Admin_Upload_Customer_Avatar(id, avatarFile).catch(() => null);
+        if (avatarRes?.data?.data) customer = avatarRes.data.data;
+      }
+      if (customer) {
+        setCustomers(prev => prev.map(c => c.id === id ? customer : c));
       }
     } catch (e) { console.error(e); }
   };

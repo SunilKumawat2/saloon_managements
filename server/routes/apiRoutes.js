@@ -14,7 +14,7 @@ import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '..
 import { getLeads, createLead, updateLeadStatus } from '../controllers/leadController.js';
 import { getAppointments, createAppointment, updateAppointmentStatus } from '../controllers/appointmentController.js';
 import { getBills, getBillById, createBill } from '../controllers/billingController.js';
-import { uploadUserAvatar, removeUserAvatar } from '../controllers/uploadController.js';
+import { uploadUserAvatar, removeUserAvatar, uploadCustomerAvatar, removeCustomerAvatar } from '../controllers/uploadController.js';
 import uploadAvatar, { handleUploadAvatar } from '../middleware/uploadMiddleware.js';
 import { getHealth, checkDatabaseStatus } from '../controllers/healthController.js';
 
@@ -79,6 +79,10 @@ router.post('/billing/create', authenticateToken, createBill);
 // -------------------- User Avatar Upload Routes (Multer) --------------------
 router.post('/users/:id/avatar', authenticateToken, handleUploadAvatar, uploadUserAvatar);
 router.delete('/users/:id/avatar', authenticateToken, removeUserAvatar);
+
+// -------------------- Customer Photo Upload Routes (Multer) --------------------
+router.post('/customers/:id/avatar', authenticateToken, handleUploadAvatar, uploadCustomerAvatar);
+router.delete('/customers/:id/avatar', authenticateToken, removeCustomerAvatar);
 
 
 export default router;

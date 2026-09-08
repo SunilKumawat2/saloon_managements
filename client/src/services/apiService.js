@@ -235,6 +235,34 @@ export const Admin_Delete_Customer = async (customerId) => {
   }
 };
 
+// <----------------  Admin Upload Customer Profile Photo ----------------->
+export const Admin_Upload_Customer_Avatar = async (customerId, file) => {
+  try {
+    const token = getToken();
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const response = await axios.post(`${API_BASE_URL}/customers/${customerId}/avatar`, formData, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Admin Remove Customer Profile Photo ----------------->
+export const Admin_Remove_Customer_Avatar = async (customerId) => {
+  try {
+    const token = getToken();
+    const response = await axios.delete(`${API_BASE_URL}/customers/${customerId}/avatar`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
 // <----------------  Admin Get Leads (Module 2 CRM) ----------------->
 export const Admin_Get_Leads = async () => {
   try {
