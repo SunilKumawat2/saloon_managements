@@ -11,7 +11,7 @@ import { getBranches, createBranch, updateBranch, toggleBranchStatus, deleteBran
 import { getServices, createService } from '../controllers/serviceController.js';
 import { getStylists, createStylist } from '../controllers/stylistController.js';
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '../controllers/customerController.js';
-import { getLeads, createLead, updateLeadStatus } from '../controllers/leadController.js';
+import { getLeads, createLead, updateLeadStatus, updateLead, deleteLead } from '../controllers/leadController.js';
 import { getAppointments, createAppointment, updateAppointmentStatus } from '../controllers/appointmentController.js';
 import { getBills, getBillById, createBill } from '../controllers/billingController.js';
 import { uploadUserAvatar, removeUserAvatar, uploadCustomerAvatar, removeCustomerAvatar } from '../controllers/uploadController.js';
@@ -65,6 +65,8 @@ router.delete('/customers/:id', authenticateToken, deleteCustomer);
 router.get('/leads', authenticateToken, getLeads);
 router.post('/leads/create', authenticateToken, createLead);
 router.put('/leads/:id/status', authenticateToken, updateLeadStatus);
+router.put('/leads/:id', authenticateToken, updateLead);
+router.delete('/leads/:id', authenticateToken, deleteLead);
 
 // -------------------- Appointment & Booking Routes (Module 3) --------------------
 router.get('/appointments', authenticateToken, getAppointments);

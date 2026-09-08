@@ -50,6 +50,8 @@ import {
   Admin_Get_Leads,
   Admin_Create_Lead,
   Admin_Update_Lead_Status,
+  Admin_Update_Lead,
+  Admin_Delete_Lead,
   Admin_Get_Services,
   Admin_Get_Stylists,
   Admin_Get_Appointments,
@@ -274,9 +276,7 @@ function App() {
   const handleAddLead = async (newLead) => {
     try {
       const res = await Admin_Create_Lead(newLead).catch(() => null);
-      if (res?.data?.data) {
-        setLeads(prev => [res.data.data, ...prev]);
-      }
+      if (res?.data?.data) setLeads(prev => [res.data.data, ...prev]);
     } catch (e) { console.error(e); }
   };
 
@@ -284,6 +284,22 @@ function App() {
     try {
       await Admin_Update_Lead_Status(id, status).catch(() => null);
       setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l));
+    } catch (e) { console.error(e); }
+  };
+
+  const handleUpdateLead = async (id, leadData) => {
+    try {
+      const res = await Admin_Update_Lead(id, leadData).catch(() => null);
+      if (res?.data?.data) {
+        setLeads(prev => prev.map(l => l.id === id ? res.data.data : l));
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const handleDeleteLead = async (id) => {
+    try {
+      await Admin_Delete_Lead(id).catch(() => null);
+      setLeads(prev => prev.filter(l => l.id !== id));
     } catch (e) { console.error(e); }
   };
 
@@ -675,7 +691,15 @@ function App() {
             onDeleteCustomer={handleDeleteCustomer}
           />
         )}
-        {activeTab === 'leads' && <LeadsManagementView leads={leads} onAddLead={handleAddLead} onUpdateLeadStatus={handleUpdateLeadStatus} />}
+        {activeTab === 'leads' && (
+          <LeadsManagementView
+            leads={leads}
+            onAddLead={handleAddLead}
+            onUpdateLead={handleUpdateLead}
+            onDeleteLead={handleDeleteLead}
+            onUpdateLeadStatus={handleUpdateLeadStatus}
+          />
+        )}
 
         {/* Module 3 Views */}
         {activeTab === 'appointments' && (

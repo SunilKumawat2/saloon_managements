@@ -27,13 +27,32 @@ export const updateLeadStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    if (!status) {
-      return res.status(400).json({ status: 'error', message: 'Status is required' });
-    }
-
+    if (!status) return res.status(400).json({ status: 'error', message: 'Status is required' });
     const updatedLead = await LeadModel.updateStatus(id, status);
     return res.json({ status: 'success', message: 'Lead status updated', data: updatedLead });
   } catch (error) {
     return res.status(500).json({ status: 'error', message: error.message });
   }
 };
+
+export const updateLead = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, phone, email, source, notes, followup_date, status } = req.body;
+    const updated = await LeadModel.update(parseInt(id), { name, phone, email, source, notes, followup_date, status });
+    return res.json({ status: 'success', message: 'Lead updated successfully', data: updated });
+  } catch (error) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+export const deleteLead = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await LeadModel.delete(parseInt(id));
+    return res.json({ status: 'success', message: 'Lead deleted successfully' });
+  } catch (error) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+

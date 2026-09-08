@@ -302,6 +302,32 @@ export const Admin_Update_Lead_Status = async (leadId, status) => {
   }
 };
 
+// <----------------  Admin Update Lead (Module 2 CRM) ----------------->
+export const Admin_Update_Lead = async (leadId, leadData) => {
+  try {
+    const token = getToken();
+    const response = await axios.put(`${API_BASE_URL}/leads/${leadId}`, leadData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Admin Delete Lead (Module 2 CRM) ----------------->
+export const Admin_Delete_Lead = async (leadId) => {
+  try {
+    const token = getToken();
+    const response = await axios.delete(`${API_BASE_URL}/leads/${leadId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
 // <----------------  Admin Get Salon Services ----------------->
 export const Admin_Get_Services = async () => {
   try {
