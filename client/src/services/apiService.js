@@ -105,6 +105,19 @@ export const Admin_Get_Roles = async () => {
   }
 };
 
+// <----------------  Admin Update Role Permissions (RBAC Matrix) ----------------->
+export const Admin_Update_Role_Permissions = async (roleId, permissions) => {
+  try {
+    const token = getToken();
+    const response = await axios.put(`${API_BASE_URL}/roles/${roleId}/permissions`, { permissions }, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
 // <----------------  Admin Get Branches ----------------->
 export const Admin_Get_Branches = async () => {
   try {

@@ -629,7 +629,12 @@ function App() {
             onDeleteBranch={handleDeleteBranch}
           />
         )}
-        {activeTab === 'matrix' && <PermissionsMatrixView roles={roles} />}
+        {activeTab === 'matrix' && (
+          <PermissionsMatrixView 
+            roles={roles} 
+            onUpdateRoles={(updatedRole) => setRoles(prev => prev.map(r => r.id === updatedRole.id ? updatedRole : r))}
+          />
+        )}
 
         {/* Module 2 Views */}
         {activeTab === 'customers' && <CustomersCRMView customers={customers} onAddCustomer={handleAddCustomer} />}
