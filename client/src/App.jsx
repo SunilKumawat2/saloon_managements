@@ -740,6 +740,8 @@ function App() {
             stylists={stylists} 
             services={services} 
             onAddAppointment={handleAddAppointment} 
+            onUpdateAppointment={handleUpdateAppointment}
+            onDeleteAppointment={handleDeleteAppointment}
             onUpdateAppointmentStatus={handleUpdateAppointmentStatus} 
           />
         )}
