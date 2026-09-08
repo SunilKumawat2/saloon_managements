@@ -5,25 +5,25 @@ import { Admin_Update_Role_Permissions } from '../services/apiService';
 // ─── Permission Definitions ───
 const ALL_PERMISSIONS = [
   // System
-  { key: 'all',                        label: 'Full System Control',       emoji: '🔐', desc: 'Poora system control — kuch bhi kar sakta hai', category: 'System' },
-  { key: 'manage_users',               label: 'Staff & User Management',   emoji: '👥', desc: 'Nayi staff add, edit aur delete kar sakta hai', category: 'System' },
-  { key: 'manage_branches',            label: 'Branch Management',         emoji: '🏢', desc: 'Nayi branches add aur manage kar sakta hai', category: 'System' },
-  { key: 'manage_branch_users',        label: 'Branch Staff Control',      emoji: '👤', desc: 'Sirf apni branch ki staff manage kar sakta hai', category: 'System' },
+  { key: 'all',                        label: 'Full System Control',       emoji: '🔐', desc: 'Complete unrestricted access to the entire system', category: 'System' },
+  { key: 'manage_users',               label: 'Staff & User Management',   emoji: '👥', desc: 'Add, edit and delete staff members and assign roles', category: 'System' },
+  { key: 'manage_branches',            label: 'Branch Management',         emoji: '🏢', desc: 'Create and manage salon branches', category: 'System' },
+  { key: 'manage_branch_users',        label: 'Branch Staff Control',      emoji: '👤', desc: 'Manage staff within own branch only', category: 'System' },
   // Finance
-  { key: 'manage_finances',            label: 'Revenue & Reports',         emoji: '💰', desc: 'Income reports aur financial data dekh sakta hai', category: 'Finance' },
-  { key: 'manage_billing',             label: 'Billing & Checkout',        emoji: '🧾', desc: 'Bill generate aur payment accept kar sakta hai', category: 'Finance' },
-  { key: 'view_reports',               label: 'Branch Reports',            emoji: '📊', desc: 'Branch ki performance report dekh sakta hai', category: 'Finance' },
+  { key: 'manage_finances',            label: 'Revenue & Reports',         emoji: '💰', desc: 'View income reports and financial data', category: 'Finance' },
+  { key: 'manage_billing',             label: 'Billing & Checkout',        emoji: '🧾', desc: 'Generate bills and accept payments at checkout', category: 'Finance' },
+  { key: 'view_reports',               label: 'Branch Reports',            emoji: '📊', desc: 'View branch-level performance and operational reports', category: 'Finance' },
   // Operations
-  { key: 'manage_services',            label: 'Services & Pricing',        emoji: '✂️', desc: 'Services ka naam aur price set kar sakta hai', category: 'Operations' },
-  { key: 'manage_appointments',        label: 'Booking & Calendar',        emoji: '📅', desc: 'Appointments book, reschedule ya cancel kar sakta hai', category: 'Operations' },
-  { key: 'manage_inventory',           label: 'Stock & Inventory',         emoji: '📦', desc: 'Salon ka product stock track kar sakta hai', category: 'Operations' },
+  { key: 'manage_services',            label: 'Services & Pricing',        emoji: '✂️', desc: 'Add, edit and set prices for salon services', category: 'Operations' },
+  { key: 'manage_appointments',        label: 'Booking & Calendar',        emoji: '📅', desc: 'Create, reschedule and cancel appointments', category: 'Operations' },
+  { key: 'manage_inventory',           label: 'Stock & Inventory',         emoji: '📦', desc: 'Track and manage salon product inventory', category: 'Operations' },
   // CRM
-  { key: 'view_customers',             label: 'Customer Directory (CRM)',  emoji: '📋', desc: 'Sabhi customers ki profile aur contact dekh sakta hai', category: 'CRM' },
+  { key: 'view_customers',             label: 'Customer Directory (CRM)',  emoji: '📋', desc: 'Access all customer profiles and contact details', category: 'CRM' },
   // Restricted
-  { key: 'view_assigned_appointments', label: 'Own Schedule Only',         emoji: '🗓️', desc: 'Sirf apne assigned appointments dekh sakta hai', category: 'Restricted' },
+  { key: 'view_assigned_appointments', label: 'Own Schedule Only',         emoji: '🗓️', desc: 'View only personally assigned appointments', category: 'Restricted' },
   // Customer
-  { key: 'book_appointments',          label: 'Book Appointment',          emoji: '📱', desc: 'Customer khud appointment book kar sakta hai', category: 'Customer' },
-  { key: 'view_history',               label: 'View Visit History',        emoji: '🕐', desc: 'Customer apni purani visits dekh sakta hai', category: 'Customer' },
+  { key: 'book_appointments',          label: 'Book Appointment',          emoji: '📱', desc: 'Customers can book their own appointments online', category: 'Customer' },
+  { key: 'view_history',               label: 'View Visit History',        emoji: '🕐', desc: 'Customers can view their own past visit history', category: 'Customer' },
 ];
 
 const CATEGORIES = ['System', 'Finance', 'Operations', 'CRM', 'Restricted', 'Customer'];
@@ -150,20 +150,20 @@ function PermissionsMatrixView({ roles, onUpdateRoles }) {
         <div style={{ fontSize: '1.6rem', flexShrink: 0 }}>💡</div>
         <div>
           <div style={{ fontWeight: '800', fontSize: '0.95rem', color: 'var(--text-main)', marginBottom: '6px' }}>
-            Permissions kaise set karein?
+            How to Manage Permissions
           </div>
           <div style={{ fontSize: '0.83rem', color: 'var(--text-sub)', lineHeight: '1.7' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(0,230,118,0.15)', padding: '1px 8px', borderRadius: '6px', color: 'var(--success)', fontWeight: '700', marginRight: '6px' }}>
               ✓ Green
             </span>
-            matlab <strong>Permission Hai</strong> &nbsp;•&nbsp;
+            means <strong>Permission Granted</strong> &nbsp;•&nbsp;
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(239,68,68,0.12)', padding: '1px 8px', borderRadius: '6px', color: '#ef4444', fontWeight: '700', marginRight: '6px', marginLeft: '6px' }}>
               ✗ Red
             </span>
-            matlab <strong>Permission Nahi Hai</strong>
+            means <strong>Permission Denied</strong>
             <br />
-            👆 <strong>Kisi bhi cell par click karo</strong> — permission on ya off ho jayegi.
-            Phir upar us role ke <strong style={{ color: 'var(--success)' }}>💾 Save</strong> button dabao — database mein save ho jayega.
+            👆 <strong>Click any cell</strong> to toggle a permission on or off.
+            Then click the <strong style={{ color: 'var(--success)' }}>💾 Save</strong> button at the top of each role column to save changes to the database.
           </div>
         </div>
       </div>
@@ -174,7 +174,7 @@ function PermissionsMatrixView({ roles, onUpdateRoles }) {
           <thead>
             <tr>
               <th style={{ minWidth: '260px', paddingLeft: '20px', textAlign: 'left' }}>
-                🔑 Permission / Adhikar
+                🔑 Permission Scope
               </th>
               {roles.map(role => {
                 const isDirty = !!dirtyMap[role.id];
@@ -224,7 +224,7 @@ function PermissionsMatrixView({ roles, onUpdateRoles }) {
                         <button
                           onClick={(e) => resetRole(e, role.id)}
                           disabled={!isDirty}
-                          title="Reset — undo changes"
+                          title="Reset — undo unsaved changes"
                           style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             width: '28px', height: '28px', borderRadius: '7px',
@@ -241,7 +241,7 @@ function PermissionsMatrixView({ roles, onUpdateRoles }) {
                       {/* Unsaved changes indicator */}
                       {isDirty && (
                         <span style={{ fontSize: '0.65rem', color: '#fbbf24', fontWeight: '700', background: 'rgba(251,191,36,0.12)', padding: '2px 8px', borderRadius: '6px' }}>
-                          ⚠ Unsaved
+                          ⚠ Unsaved Changes
                         </span>
                       )}
                     </div>
@@ -276,12 +276,12 @@ function PermissionsMatrixView({ roles, onUpdateRoles }) {
                         userSelect: 'none',
                       }}
                     >
-                      {category === 'System' && '⚙️ System'}
-                      {category === 'Finance' && '💰 Finance'}
-                      {category === 'Operations' && '🔧 Operations'}
-                      {category === 'CRM' && '👤 CRM'}
-                      {category === 'Restricted' && '🔒 Restricted'}
-                      {category === 'Customer' && '🛍️ Customer'}
+                      {category === 'System' && '⚙️ System — Core Admin Controls'}
+                      {category === 'Finance' && '💰 Finance & Billing'}
+                      {category === 'Operations' && '🔧 Operations & Services'}
+                      {category === 'CRM' && '👤 Customer Relationship (CRM)'}
+                      {category === 'Restricted' && '🔒 Restricted — Limited View'}
+                      {category === 'Customer' && '🛍️ Customer Self-Service'}
                     </td>
                   </tr>
 
@@ -312,10 +312,10 @@ function PermissionsMatrixView({ roles, onUpdateRoles }) {
                               disabled={isLocked}
                               title={
                                 isLocked
-                                  ? 'Admin ka Full Control lock hai — hata nahi sakte'
+                                  ? 'Admin Full Control is locked and cannot be removed'
                                   : granted
-                                    ? 'Click karein — permission hatao'
-                                    : 'Click karein — permission do'
+                                    ? 'Click to revoke this permission'
+                                    : 'Click to grant this permission'
                               }
                               style={{
                                 display: 'inline-flex',
