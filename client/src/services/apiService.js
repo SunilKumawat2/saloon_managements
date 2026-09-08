@@ -328,6 +328,34 @@ export const Admin_Delete_Lead = async (leadId) => {
   }
 };
 
+// <----------------  Admin Upload Lead Profile Photo ----------------->
+export const Admin_Upload_Lead_Avatar = async (leadId, file) => {
+  try {
+    const token = getToken();
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const response = await axios.post(`${API_BASE_URL}/leads/${leadId}/avatar`, formData, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Admin Remove Lead Profile Photo ----------------->
+export const Admin_Remove_Lead_Avatar = async (leadId) => {
+  try {
+    const token = getToken();
+    const response = await axios.delete(`${API_BASE_URL}/leads/${leadId}/avatar`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
 // <----------------  Admin Get Salon Services ----------------->
 export const Admin_Get_Services = async () => {
   try {

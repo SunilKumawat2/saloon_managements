@@ -52,6 +52,7 @@ import {
   Admin_Update_Lead_Status,
   Admin_Update_Lead,
   Admin_Delete_Lead,
+  Admin_Upload_Lead_Avatar,
   Admin_Get_Services,
   Admin_Get_Stylists,
   Admin_Get_Appointments,
@@ -273,10 +274,17 @@ function App() {
     } catch (e) { console.error(e); }
   };
 
-  const handleAddLead = async (newLead) => {
+  const handleAddLead = async (leadData, avatarFile) => {
     try {
-      const res = await Admin_Create_Lead(newLead);
-      if (res?.data?.data) setLeads(prev => [res.data.data, ...prev]);
+      const res = await Admin_Create_Lead(leadData);
+      let created = res?.data?.data;
+      if (created && avatarFile) {
+        const upRes = await Admin_Upload_Lead_Avatar(created.id, avatarFile).catch(() => null);
+        if (upRes?.data?.avatarUrl) {
+          created = { ...created, avatar_url: upRes.data.avatarUrl };
+        }
+      }
+      if (created) setLeads(prev => [created, ...prev]);
     } catch (e) { console.error("Create Lead Error:", e); }
   };
 
@@ -287,12 +295,17 @@ function App() {
     } catch (e) { console.error("Update Status Error:", e); }
   };
 
-  const handleUpdateLead = async (id, leadData) => {
+  const handleUpdateLead = async (id, leadData, avatarFile) => {
     try {
       const res = await Admin_Update_Lead(id, leadData);
-      if (res?.data?.data) {
-        setLeads(prev => prev.map(l => l.id === id ? res.data.data : l));
+      let updated = res?.data?.data || { id, ...leadData };
+      if (avatarFile) {
+        const upRes = await Admin_Upload_Lead_Avatar(id, avatarFile).catch(() => null);
+        if (upRes?.data?.avatarUrl) {
+          updated = { ...updated, avatar_url: upRes.data.avatarUrl };
+        }
       }
+      setLeads(prev => prev.map(l => l.id === id ? { ...updated, avatar_url: updated.avatar_url || l.avatar_url } : l));
     } catch (e) { console.error("Update Lead Error:", e); }
   };
 

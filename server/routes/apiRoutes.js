@@ -14,7 +14,7 @@ import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '..
 import { getLeads, createLead, updateLeadStatus, updateLead, deleteLead } from '../controllers/leadController.js';
 import { getAppointments, createAppointment, updateAppointmentStatus } from '../controllers/appointmentController.js';
 import { getBills, getBillById, createBill } from '../controllers/billingController.js';
-import { uploadUserAvatar, removeUserAvatar, uploadCustomerAvatar, removeCustomerAvatar } from '../controllers/uploadController.js';
+import { uploadUserAvatar, removeUserAvatar, uploadCustomerAvatar, removeCustomerAvatar, uploadLeadAvatar, removeLeadAvatar } from '../controllers/uploadController.js';
 import uploadAvatar, { handleUploadAvatar } from '../middleware/uploadMiddleware.js';
 import { getHealth, checkDatabaseStatus } from '../controllers/healthController.js';
 
@@ -85,6 +85,10 @@ router.delete('/users/:id/avatar', authenticateToken, removeUserAvatar);
 // -------------------- Customer Photo Upload Routes (Multer) --------------------
 router.post('/customers/:id/avatar', authenticateToken, handleUploadAvatar, uploadCustomerAvatar);
 router.delete('/customers/:id/avatar', authenticateToken, removeCustomerAvatar);
+
+// -------------------- Lead Photo Upload Routes (Multer) --------------------
+router.post('/leads/:id/avatar', authenticateToken, handleUploadAvatar, uploadLeadAvatar);
+router.delete('/leads/:id/avatar', authenticateToken, removeLeadAvatar);
 
 
 export default router;

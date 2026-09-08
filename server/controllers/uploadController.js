@@ -40,7 +40,6 @@ export const uploadCustomerAvatar = async (req, res) => {
       [avatarUrl, customerId]
     );
     if (result.rows.length === 0) {
-      // Fallback: update demo customer
       return res.json({ success: true, data: { id: customerId, avatar_url: avatarUrl }, avatarUrl });
     }
     res.json({ success: true, data: result.rows[0], message: 'Customer photo uploaded!', avatarUrl });
@@ -60,3 +59,32 @@ export const removeCustomerAvatar = async (req, res) => {
   }
 };
 
+// POST /api/v1/leads/:id/avatar — Upload lead profile photo
+export const uploadLeadAvatar = async (req, res) => {
+  try {
+    const leadId = parseInt(req.params.id);
+    if (!req.file) return res.status(400).json({ success: false, message: 'No image file uploaded.' });
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    const result = await pool.query(
+      `UPDATE leads SET avatar_url = $1 WHERE id = $2 RETURNING *`,
+      [avatarUrl, leadId]
+    );
+    if (result.rows.length === 0) {
+      return res.json({ success: true, data: { id: leadId, avatar_url: avatarUrl }, avatarUrl });
+    }
+    res.json({ success: true, data: result.rows[0], message: 'Lead photo uploaded!', avatarUrl });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to upload lead photo.' });
+  }
+};
+
+// DELETE /api/v1/leads/:id/avatar
+export const removeLeadAvatar = async (req, res) => {
+  try {
+    const leadId = parseInt(req.params.id);
+    await pool.query(`UPDATE leads SET avatar_url = NULL WHERE id = $1`, [leadId]);
+    res.json({ success: true, message: 'Lead photo removed.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to remove lead photo.' });
+  }
+};

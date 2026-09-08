@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Target, Plus, Phone, Mail, Clock, AlertTriangle,
   BellRing, CheckCircle2, Edit3, Trash2, X, Search,
-  UserCheck, Sparkles
+  UserCheck, Sparkles, Camera, Upload
 } from 'lucide-react';
+
+const API_BASE = 'http://localhost:5000';
 
 // Helper: Check if a date is overdue or today
 const getReminderStatus = (followupDate) => {
@@ -19,12 +21,62 @@ const getReminderStatus = (followupDate) => {
   return null;
 };
 
+// ─── Lead Avatar component (shows photo or initials fallback) ───
+const LeadAvatar = ({ lead, previewUrl, size = 44, style = {} }) => {
+  const avatarUrl = previewUrl || (lead?.avatar_url ? `${API_BASE}${lead.avatar_url}` : null);
+  const initials = lead?.name
+    ? lead.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : 'LP';
+
+  return avatarUrl ? (
+    <img
+      src={avatarUrl}
+      alt={lead?.name || 'Lead'}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        objectFit: 'cover',
+        border: '2px solid rgba(99, 102, 241, 0.3)',
+        flexShrink: 0,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+        ...style
+      }}
+      onError={(e) => { e.target.style.display = 'none'; }}
+    />
+  ) : (
+    <div style={{
+      width: size,
+      height: size,
+      borderRadius: '50%',
+      flexShrink: 0,
+      background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: size * 0.38,
+      fontWeight: '800',
+      color: '#fff',
+      border: '2px solid rgba(255,255,255,0.1)',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+      ...style
+    }}>
+      {initials}
+    </div>
+  );
+};
+
 function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead, onUpdateLeadStatus }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
   const [deletingLead, setDeletingLead] = useState(null);
   const [statusFilter, setStatusFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Image Upload State
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
+  const fileInputRef = useRef(null);
 
   // Form State for Add / Edit
   const [formData, setFormData] = useState({
@@ -54,6 +106,15 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
     return matchesStatus && matchesSearch;
   });
 
+  // Handle Photo Picker Selection
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
+    }
+  };
+
   // Open Add Modal
   const handleOpenAdd = () => {
     setFormData({
@@ -65,6 +126,8 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
       followup_date: '',
       status: 'New'
     });
+    setAvatarFile(null);
+    setAvatarPreview('');
     setShowAddModal(true);
   };
 
@@ -80,12 +143,14 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
       followup_date: lead.followup_date ? String(lead.followup_date).split('T')[0] : '',
       status: lead.status || 'New'
     });
+    setAvatarFile(null);
+    setAvatarPreview(lead.avatar_url ? `${API_BASE}${lead.avatar_url}` : '');
   };
 
   // Submit Add
   const handleAddSubmit = (e) => {
     e.preventDefault();
-    if (onAddLead) onAddLead(formData);
+    if (onAddLead) onAddLead(formData, avatarFile);
     setShowAddModal(false);
   };
 
@@ -93,7 +158,7 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
   const handleEditSubmit = (e) => {
     e.preventDefault();
     if (onUpdateLead && editingLead) {
-      onUpdateLead(editingLead.id, formData);
+      onUpdateLead(editingLead.id, formData, avatarFile);
     }
     setEditingLead(null);
   };
@@ -134,15 +199,12 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
                   gap: '14px',
                   background: reminder.bg,
                   border: `1px solid ${reminder.color}33`,
-                  borderRadius: '10px',
+                  borderRadius: '12px',
                   padding: '12px 16px',
                 }}>
-                  {reminder.type === 'overdue'
-                    ? <AlertTriangle size={16} style={{ color: reminder.color, flexShrink: 0 }} />
-                    : <Clock size={16} style={{ color: reminder.color, flexShrink: 0 }} />
-                  }
+                  <LeadAvatar lead={lead} size={38} />
                   <div style={{ flex: 1 }}>
-                    <span style={{ fontWeight: '800', color: '#fff' }}>{lead.name}</span>
+                    <span style={{ fontWeight: '800', color: '#fff', fontSize: '0.95rem' }}>{lead.name}</span>
                     <span style={{ marginLeft: '8px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                       ({lead.source}) — {lead.phone}
                     </span>
@@ -249,7 +311,7 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
       </div>
 
       {/* ─── Lead Cards Pipeline Grid ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '22px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '22px' }}>
         {filtered.length === 0 ? (
           <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', gridColumn: '1 / -1' }}>
             <Target size={36} style={{ opacity: 0.3, marginBottom: '12px' }} />
@@ -273,12 +335,16 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
               )}
               
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
-                  <div>
-                    <span style={{ fontSize: '0.74rem', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', padding: '3px 8px', borderRadius: '6px', fontWeight: '800' }}>
-                      Source: {lead.source}
-                    </span>
-                    <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginTop: '8px', marginBottom: 0 }}>{lead.name}</h3>
+                {/* Header with Photo Avatar & Name */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <LeadAvatar lead={lead} size={48} />
+                    <div>
+                      <span style={{ fontSize: '0.72rem', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', padding: '2px 8px', borderRadius: '6px', fontWeight: '800' }}>
+                        Source: {lead.source}
+                      </span>
+                      <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginTop: '4px', marginBottom: 0, color: '#fff' }}>{lead.name}</h3>
+                    </div>
                   </div>
 
                   <select
@@ -293,7 +359,8 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
                       fontSize: '0.78rem',
                       fontWeight: '800',
                       cursor: 'pointer',
-                      outline: 'none'
+                      outline: 'none',
+                      flexShrink: 0
                     }}
                   >
                     <option value="New">New</option>
@@ -324,7 +391,7 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                 <button
                   onClick={() => handleOpenEdit(lead)}
-                  title="Edit Lead Details"
+                  title="Edit Lead Details & Photo"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -339,7 +406,7 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
                     cursor: 'pointer'
                   }}
                 >
-                  <Edit3 size={13} /> Edit
+                  <Edit3 size={13} /> Edit Details
                 </button>
 
                 <button
@@ -381,6 +448,58 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
             </div>
             
             <form onSubmit={handleAddSubmit}>
+              {/* Profile Photo Upload Picker */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20px' }}>
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    position: 'relative',
+                    width: '84px',
+                    height: '84px',
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    overflow: 'hidden',
+                    border: '2px dashed var(--accent-gold)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(255,255,255,0.02)',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.3)'
+                  }}
+                >
+                  <LeadAvatar lead={{ name: formData.name }} previewUrl={avatarPreview} size={84} />
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'rgba(0,0,0,0.45)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    opacity: avatarPreview ? 0 : 1,
+                    transition: 'opacity 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; }}
+                  onMouseLeave={(e) => { if (avatarPreview) e.currentTarget.style.opacity = '0'; }}
+                  >
+                    <Camera size={22} />
+                    <span style={{ fontSize: '0.62rem', fontWeight: '800', marginTop: '2px' }}>UPLOAD</span>
+                  </div>
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  style={{ display: 'none' }}
+                />
+                <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+                  Click camera icon to select profile photo
+                </span>
+              </div>
+
               <div className="form-group">
                 <label>Prospect Name *</label>
                 <input
@@ -460,7 +579,7 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
                   Cancel
                 </button>
                 <button type="submit" className="btn-primary">
-                  Save Lead
+                  Save Prospect Lead
                 </button>
               </div>
             </form>
@@ -482,6 +601,58 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
             </div>
 
             <form onSubmit={handleEditSubmit}>
+              {/* Profile Photo Upload Picker */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20px' }}>
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    position: 'relative',
+                    width: '84px',
+                    height: '84px',
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    overflow: 'hidden',
+                    border: '2px dashed #818cf8',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(255,255,255,0.02)',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.3)'
+                  }}
+                >
+                  <LeadAvatar lead={editingLead} previewUrl={avatarPreview} size={84} />
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'rgba(0,0,0,0.45)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    opacity: avatarPreview ? 0 : 1,
+                    transition: 'opacity 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; }}
+                  onMouseLeave={(e) => { if (avatarPreview) e.currentTarget.style.opacity = '0'; }}
+                  >
+                    <Camera size={22} />
+                    <span style={{ fontSize: '0.62rem', fontWeight: '800', marginTop: '2px' }}>CHANGE</span>
+                  </div>
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  style={{ display: 'none' }}
+                />
+                <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+                  Click camera icon to change profile photo
+                </span>
+              </div>
+
               <div className="form-group">
                 <label>Prospect Name *</label>
                 <input
