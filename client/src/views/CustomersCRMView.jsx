@@ -1,25 +1,60 @@
 import React, { useState } from 'react';
-import { UserCheck, Search, Plus, Phone, Mail, Award, Crown, Star, Users, Edit3, Trash2, AlertTriangle } from 'lucide-react';
+import {
+  Search, Plus, Phone, Mail, Award, Crown, Star, Users,
+  Edit3, Trash2, AlertTriangle, Eye, X, Calendar, User,
+  Heart, MapPin, StickyNote, Gift, ChevronRight
+} from 'lucide-react';
 
-// ─── Customer Segmentation Logic ───
+// ─── Segmentation ───
 const getSegment = (customer) => {
   const points = customer.loyalty_points || 0;
-  if (points >= 200) return { label: 'VIP',        color: '#f59e0b', bg: 'rgba(245,158,11,0.15)',  icon: '👑' };
-  if (points >= 51)  return { label: 'Regular',    color: '#818cf8', bg: 'rgba(99,102,241,0.15)',  icon: '⭐' };
-  return               { label: 'New Client', color: '#34d399', bg: 'rgba(52,211,153,0.15)',  icon: '🆕' };
+  if (points >= 200) return { label: 'VIP',        color: '#f59e0b', bg: 'rgba(245,158,11,0.18)',  icon: '👑' };
+  if (points >= 51)  return { label: 'Regular',    color: '#818cf8', bg: 'rgba(99,102,241,0.18)',  icon: '⭐' };
+  return               { label: 'New Client', color: '#34d399', bg: 'rgba(52,211,153,0.18)',  icon: '🆕' };
 };
 
 const EMPTY_FORM = { name: '', phone: '', email: '', gender: 'Female', dob: '', anniversary: '', notes: '', loyalty_points: '' };
 
-function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDeleteCustomer }) {
-  const [searchTerm, setSearchTerm]       = useState('');
-  const [segmentFilter, setSegmentFilter] = useState('All');
+// ─── Loyalty progress bar ───
+const LoyaltyBar = ({ points }) => {
+  const next = points >= 200 ? 200 : points >= 51 ? 200 : 51;
+  const pct  = Math.min((points / next) * 100, 100);
+  const color = points >= 200 ? '#f59e0b' : points >= 51 ? '#818cf8' : '#34d399';
+  return (
+    <div>
+      <div style={{ height: '8px', borderRadius: '8px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: '8px', transition: 'width 0.6s ease' }} />
+      </div>
+      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+        {points >= 200 ? 'VIP Status Achieved 👑' : `${points} / ${next} pts to next level`}
+      </div>
+    </div>
+  );
+};
 
-  // Modal state: null = closed | 'add' | 'edit'
-  const [modalMode, setModalMode]     = useState(null);
-  const [editTarget, setEditTarget]   = useState(null);
-  const [formData, setFormData]       = useState(EMPTY_FORM);
-  const [deleteTarget, setDeleteTarget] = useState(null);
+// ─── Info Row ───
+const InfoRow = ({ icon, label, value }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+    <span style={{ color: 'var(--text-muted)', flexShrink: 0 }}>{icon}</span>
+    <div style={{ flex: 1 }}>
+      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+      <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', fontWeight: '600', marginTop: '1px' }}>{value || '—'}</div>
+    </div>
+  </div>
+);
+
+function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDeleteCustomer }) {
+  const [searchTerm, setSearchTerm]         = useState('');
+  const [segmentFilter, setSegmentFilter]   = useState('All');
+
+  // modals
+  const [modalMode, setModalMode]           = useState(null); // 'add' | 'edit' | null
+  const [editTarget, setEditTarget]         = useState(null);
+  const [formData, setFormData]             = useState(EMPTY_FORM);
+  const [deleteTarget, setDeleteTarget]     = useState(null);
+
+  // profile drawer
+  const [profileCustomer, setProfileCustomer] = useState(null);
 
   // ─── Filtering ───
   const filtered = customers.filter(c => {
@@ -35,146 +70,131 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
   const regularCount = customers.filter(c => getSegment(c).label === 'Regular').length;
   const newCount     = customers.filter(c => getSegment(c).label === 'New Client').length;
 
-  // ─── Open Modals ───
-  const openAdd = () => {
-    setFormData(EMPTY_FORM);
-    setEditTarget(null);
-    setModalMode('add');
-  };
+  // ─── Form helpers ───
+  const field = (key) => ({ value: formData[key], onChange: e => setFormData(p => ({ ...p, [key]: e.target.value })) });
 
-  const openEdit = (customer) => {
-    setEditTarget(customer);
+  const openAdd = () => { setFormData(EMPTY_FORM); setEditTarget(null); setModalMode('add'); };
+  const openEdit = (c) => {
+    setEditTarget(c);
     setFormData({
-      name:          customer.name         || '',
-      phone:         customer.phone        || '',
-      email:         customer.email        || '',
-      gender:        customer.gender       || 'Female',
-      dob:           customer.dob ? String(customer.dob).split('T')[0] : '',
-      anniversary:   customer.anniversary  ? String(customer.anniversary).split('T')[0] : '',
-      notes:         customer.notes        || '',
-      loyalty_points: customer.loyalty_points !== undefined ? customer.loyalty_points : '',
+      name: c.name || '', phone: c.phone || '', email: c.email || '',
+      gender: c.gender || 'Female',
+      dob: c.dob ? String(c.dob).split('T')[0] : '',
+      anniversary: c.anniversary ? String(c.anniversary).split('T')[0] : '',
+      notes: c.notes || '',
+      loyalty_points: c.loyalty_points !== undefined ? c.loyalty_points : '',
     });
     setModalMode('edit');
   };
-
   const closeModal = () => { setModalMode(null); setEditTarget(null); };
 
-  // ─── Submit Add / Edit ───
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (modalMode === 'edit' && editTarget) {
-      onUpdateCustomer(editTarget.id, formData);
-    } else {
-      onAddCustomer(formData);
-    }
+    if (modalMode === 'edit' && editTarget) onUpdateCustomer(editTarget.id, formData);
+    else onAddCustomer(formData);
     closeModal();
   };
 
-  // ─── Delete ───
   const handleDeleteConfirm = () => {
-    if (deleteTarget) {
-      onDeleteCustomer(deleteTarget.id);
-      setDeleteTarget(null);
-    }
+    if (deleteTarget) { onDeleteCustomer(deleteTarget.id); setDeleteTarget(null); setProfileCustomer(null); }
   };
 
-  const field = (key) => ({ value: formData[key], onChange: e => setFormData(p => ({ ...p, [key]: e.target.value })) });
-
   return (
-    <div>
-      {/* ─── Segment Tiles ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
-        {[
-          { label: 'VIP', count: vipCount,     color: '#f59e0b', icon: <Crown size={20} />,  sub: '200+ loyalty points' },
-          { label: 'Regular', count: regularCount, color: '#818cf8', icon: <Star size={20} />,   sub: '51–199 loyalty points' },
-          { label: 'New Client', count: newCount,     color: '#34d399', icon: <Users size={20} />, sub: '0–50 loyalty points' },
-        ].map(({ label, count, color, icon, sub }) => (
-          <div
-            key={label}
-            className="glass-card"
-            onClick={() => setSegmentFilter(segmentFilter === label ? 'All' : label)}
-            style={{
-              padding: '18px 20px', cursor: 'pointer',
-              border: segmentFilter === label ? `1.5px solid ${color}` : '1px solid var(--border)',
-              transition: 'all 0.25s',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <span style={{ color }}>{icon}</span>
-              <span style={{ fontWeight: '800', color, fontSize: '0.88rem' }}>{label} Clients</span>
-            </div>
-            <div style={{ fontSize: '2rem', fontWeight: '900', color }}>{count}</div>
-            <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '4px' }}>{sub}</div>
-          </div>
-        ))}
-      </div>
+    <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
 
-      {/* Segment filter indicator */}
-      {segmentFilter !== 'All' && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', padding: '10px 16px', background: 'rgba(255,255,255,0.04)', borderRadius: '10px', border: '1px solid var(--border)' }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-sub)' }}>
-            Showing: <strong>{segmentFilter}</strong> ({filtered.length} clients)
-          </span>
-          <button onClick={() => setSegmentFilter('All')} style={{ marginLeft: 'auto', background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: 'var(--text-muted)', padding: '4px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.78rem' }}>
-            Clear Filter ✕
+      {/* ─── Main Content ─── */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+
+        {/* Segment Tiles */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
+          {[
+            { label: 'VIP',        count: vipCount,     color: '#f59e0b', icon: <Crown size={20} />,  sub: '200+ loyalty points' },
+            { label: 'Regular',    count: regularCount, color: '#818cf8', icon: <Star size={20} />,   sub: '51–199 loyalty points' },
+            { label: 'New Client', count: newCount,     color: '#34d399', icon: <Users size={20} />,  sub: '0–50 loyalty points' },
+          ].map(({ label, count, color, icon, sub }) => (
+            <div
+              key={label} className="glass-card"
+              onClick={() => setSegmentFilter(segmentFilter === label ? 'All' : label)}
+              style={{ padding: '18px 20px', cursor: 'pointer', border: segmentFilter === label ? `1.5px solid ${color}` : '1px solid var(--border)', transition: 'all 0.25s' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                <span style={{ color }}>{icon}</span>
+                <span style={{ fontWeight: '800', color, fontSize: '0.88rem' }}>{label} Clients</span>
+              </div>
+              <div style={{ fontSize: '2rem', fontWeight: '900', color }}>{count}</div>
+              <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '4px' }}>{sub}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Segment filter badge */}
+        {segmentFilter !== 'All' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', padding: '10px 16px', background: 'rgba(255,255,255,0.04)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-sub)' }}>
+              Showing: <strong>{segmentFilter}</strong> ({filtered.length} clients)
+            </span>
+            <button onClick={() => setSegmentFilter('All')} style={{ marginLeft: 'auto', background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: 'var(--text-muted)', padding: '4px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.78rem' }}>
+              Clear Filter ✕
+            </button>
+          </div>
+        )}
+
+        {/* Search & Add */}
+        <div className="controls-bar">
+          <div style={{ position: 'relative' }}>
+            <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
+            <input type="text" className="search-input" style={{ paddingLeft: '36px' }}
+              placeholder="Search by name or phone..."
+              value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+          </div>
+          <button className="btn-primary" onClick={openAdd}>
+            <Plus size={16} /> Add New Client
           </button>
         </div>
-      )}
 
-      {/* ─── Search & Add Bar ─── */}
-      <div className="controls-bar">
-        <div style={{ position: 'relative' }}>
-          <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
-          <input
-            type="text" className="search-input" style={{ paddingLeft: '36px' }}
-            placeholder="Search by name or phone..."
-            value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <button className="btn-primary" onClick={openAdd}>
-          <Plus size={16} /> Add New Client Profile
-        </button>
-      </div>
-
-      {/* ─── Customer Table ─── */}
-      <div className="glass-panel" style={{ overflow: 'hidden' }}>
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Client Profile</th>
-              <th>Contact Details</th>
-              <th>Gender & DOB</th>
-              <th>Segment & Loyalty</th>
-              <th>Special Notes</th>
-              <th style={{ textAlign: 'right' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
+        {/* Table */}
+        <div className="glass-panel" style={{ overflow: 'hidden' }}>
+          <table className="data-table">
+            <thead>
               <tr>
-                <td colSpan="6" style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
-                  No customer profiles found.
-                </td>
+                <th>Client Profile</th>
+                <th>Contact Details</th>
+                <th>Gender & DOB</th>
+                <th>Segment & Loyalty</th>
+                <th>Notes</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
-            ) : (
-              filtered.map((c) => {
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
+                    No customer profiles found.
+                  </td>
+                </tr>
+              ) : filtered.map((c) => {
                 const segment = getSegment(c);
+                const isActive = profileCustomer?.id === c.id;
                 return (
-                  <tr key={c.id}>
-                    {/* Profile */}
+                  <tr key={c.id} style={{ background: isActive ? 'rgba(0,230,118,0.04)' : undefined }}>
+
+                    {/* Profile — click to open drawer */}
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
+                        onClick={() => setProfileCustomer(isActive ? null : c)}>
                         <div className="user-avatar" style={{ background: c.gender === 'Female' ? 'linear-gradient(135deg,#ec4899,#8b5cf6)' : 'linear-gradient(135deg,#6366f1,#3b82f6)', flexShrink: 0 }}>
                           {c.name.charAt(0)}
                         </div>
                         <div>
-                          <div style={{ fontWeight: '700' }}>{c.name}</div>
+                          <div style={{ fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            {c.name}
+                            <ChevronRight size={13} style={{ color: 'var(--accent)', opacity: 0.7 }} />
+                          </div>
                           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>ID: #CRM-{String(c.id).padStart(3, '0')}</div>
                         </div>
                       </div>
                     </td>
 
-                    {/* Contact */}
                     <td>
                       <div style={{ fontSize: '0.85rem' }}>
                         <div><Phone size={12} style={{ display: 'inline', marginRight: '4px', color: 'var(--accent-gold)' }} />{c.phone}</div>
@@ -184,17 +204,13 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
                       </div>
                     </td>
 
-                    {/* Gender & DOB */}
                     <td>
                       <div style={{ fontSize: '0.84rem' }}>
                         <div>{c.gender}</div>
-                        <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
-                          DOB: {c.dob ? String(c.dob).split('T')[0] : 'N/A'}
-                        </div>
+                        <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>DOB: {c.dob ? String(c.dob).split('T')[0] : 'N/A'}</div>
                       </div>
                     </td>
 
-                    {/* Segment */}
                     <td>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: segment.bg, color: segment.color, padding: '3px 8px', borderRadius: '10px', fontWeight: '800', fontSize: '0.76rem', width: 'fit-content' }}>
@@ -206,37 +222,104 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
                       </div>
                     </td>
 
-                    {/* Notes */}
-                    <td style={{ color: 'var(--text-sub)', fontSize: '0.85rem', maxWidth: '200px' }}>
+                    <td style={{ color: 'var(--text-sub)', fontSize: '0.85rem', maxWidth: '180px' }}>
                       {c.notes || '—'}
                     </td>
 
-                    {/* Action Buttons */}
                     <td>
                       <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                        <button
-                          className="action-icon-btn edit"
-                          onClick={() => openEdit(c)}
-                          title="Edit Customer"
-                        >
+                        <button className="action-icon-btn view" onClick={() => setProfileCustomer(isActive ? null : c)} title="View Full Profile" style={{ color: 'var(--accent)' }}>
+                          <Eye size={14} />
+                        </button>
+                        <button className="action-icon-btn edit" onClick={() => openEdit(c)} title="Edit Customer">
                           <Edit3 size={14} />
                         </button>
-                        <button
-                          className="action-icon-btn delete"
-                          onClick={() => setDeleteTarget(c)}
-                          title="Delete Customer"
-                        >
+                        <button className="action-icon-btn delete" onClick={() => setDeleteTarget(c)} title="Delete Customer">
                           <Trash2 size={14} />
                         </button>
                       </div>
                     </td>
                   </tr>
                 );
-              })
-            )}
-          </tbody>
-        </table>
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      {/* ─── Profile Drawer (Right Panel) ─── */}
+      {profileCustomer && (() => {
+        const seg = getSegment(profileCustomer);
+        const c = profileCustomer;
+        return (
+          <div style={{
+            width: '320px', flexShrink: 0,
+            background: 'var(--glass-bg)', border: '1px solid var(--border)',
+            borderRadius: '16px', padding: '24px',
+            position: 'sticky', top: '0',
+            animation: 'fadeInRight 0.22s ease',
+          }}>
+            {/* Close */}
+            <button onClick={() => setProfileCustomer(null)} style={{ position: 'absolute', top: '14px', right: '14px', background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '8px', padding: '4px', cursor: 'pointer', color: 'var(--text-muted)' }}>
+              <X size={16} />
+            </button>
+
+            {/* Avatar & Name */}
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <div style={{
+                width: '72px', height: '72px', borderRadius: '50%',
+                background: c.gender === 'Female' ? 'linear-gradient(135deg,#ec4899,#8b5cf6)' : 'linear-gradient(135deg,#6366f1,#3b82f6)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '2rem', fontWeight: '800', color: '#fff',
+                margin: '0 auto 12px',
+                boxShadow: `0 0 0 4px ${seg.bg}`,
+              }}>
+                {c.name.charAt(0)}
+              </div>
+              <div style={{ fontWeight: '800', fontSize: '1.05rem' }}>{c.name}</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>ID: #CRM-{String(c.id).padStart(3, '0')}</div>
+              <div style={{ marginTop: '8px' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: seg.bg, color: seg.color, padding: '4px 12px', borderRadius: '12px', fontWeight: '800', fontSize: '0.8rem' }}>
+                  {seg.icon} {seg.label}
+                </span>
+              </div>
+            </div>
+
+            {/* Loyalty Points */}
+            <div style={{ background: 'rgba(245,158,11,0.08)', borderRadius: '10px', padding: '14px', marginBottom: '18px', border: '1px solid rgba(245,158,11,0.2)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontWeight: '700', fontSize: '0.82rem', color: 'var(--accent-gold)' }}>
+                  <Award size={13} style={{ display: 'inline', marginRight: '4px' }} />
+                  Loyalty Points
+                </span>
+                <span style={{ fontWeight: '900', fontSize: '1.1rem', color: 'var(--accent-gold)' }}>{c.loyalty_points || 0}</span>
+              </div>
+              <LoyaltyBar points={c.loyalty_points || 0} />
+            </div>
+
+            {/* Details */}
+            <div style={{ marginBottom: '18px' }}>
+              <InfoRow icon={<Phone size={15} />}    label="Mobile"      value={c.phone} />
+              <InfoRow icon={<Mail size={15} />}     label="Email"       value={c.email} />
+              <InfoRow icon={<User size={15} />}     label="Gender"      value={c.gender} />
+              <InfoRow icon={<Calendar size={15} />} label="Date of Birth" value={c.dob ? String(c.dob).split('T')[0] : null} />
+              <InfoRow icon={<Heart size={15} />}    label="Anniversary" value={c.anniversary ? String(c.anniversary).split('T')[0] : null} />
+              <InfoRow icon={<StickyNote size={15} />} label="Preferences / Notes" value={c.notes} />
+              <InfoRow icon={<Gift size={15} />}     label="Member Since" value={c.created_at ? String(c.created_at).split('T')[0] : 'N/A'} />
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className="btn-primary" style={{ flex: 1, fontSize: '0.82rem', padding: '8px 12px' }} onClick={() => { openEdit(c); setProfileCustomer(null); }}>
+                <Edit3 size={13} /> Edit Profile
+              </button>
+              <button onClick={() => setDeleteTarget(c)} style={{ padding: '8px 12px', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.08)', color: '#ef4444', cursor: 'pointer', fontWeight: '700', fontSize: '0.82rem' }}>
+                <Trash2 size={13} />
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ─── Add / Edit Modal ─── */}
       {modalMode && (
@@ -245,13 +328,11 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
             <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '18px' }}>
               {modalMode === 'edit' ? '✏️ Edit Client Profile' : '+ Add New Client Profile'}
             </h3>
-
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Full Name</label>
                 <input type="text" required placeholder="e.g. Priya Sharma" {...field('name')} />
               </div>
-
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div className="form-group">
                   <label>Mobile Number</label>
@@ -266,12 +347,10 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
                   </select>
                 </div>
               </div>
-
               <div className="form-group">
                 <label>Email Address</label>
                 <input type="email" placeholder="client@gmail.com" {...field('email')} />
               </div>
-
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div className="form-group">
                   <label>Date of Birth</label>
@@ -282,33 +361,26 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
                   <input type="date" {...field('anniversary')} />
                 </div>
               </div>
-
               {modalMode === 'edit' && (
                 <div className="form-group">
                   <label>Loyalty Points</label>
                   <input type="number" min="0" placeholder="e.g. 150" {...field('loyalty_points')} />
                 </div>
               )}
-
               <div className="form-group">
                 <label>Preferences / Treatment Notes</label>
                 <input type="text" placeholder="e.g. Sensitive skin, prefers organic products" {...field('notes')} />
               </div>
-
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
-                <button type="button" onClick={closeModal} className="glass-card" style={{ padding: '8px 18px', cursor: 'pointer', color: 'var(--text-sub)' }}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  {modalMode === 'edit' ? 'Save Changes' : 'Create Profile'}
-                </button>
+                <button type="button" onClick={closeModal} className="glass-card" style={{ padding: '8px 18px', cursor: 'pointer', color: 'var(--text-sub)' }}>Cancel</button>
+                <button type="submit" className="btn-primary">{modalMode === 'edit' ? 'Save Changes' : 'Create Profile'}</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* ─── Delete Confirmation Modal ─── */}
+      {/* ─── Delete Confirm ─── */}
       {deleteTarget && (
         <div className="modal-overlay">
           <div className="glass-panel modal-content" style={{ maxWidth: '400px', textAlign: 'center' }}>
@@ -318,19 +390,22 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
             <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '8px' }}>Delete Client Profile?</h3>
             <p style={{ color: 'var(--text-sub)', fontSize: '0.84rem', marginBottom: '22px', lineHeight: '1.5' }}>
               Are you sure you want to permanently delete <strong style={{ color: 'var(--text-main)' }}>{deleteTarget.name}</strong>?
-              Their appointment and billing history may also be affected. This action cannot be undone.
+              This action cannot be undone.
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-              <button type="button" onClick={() => setDeleteTarget(null)} className="glass-card" style={{ padding: '8px 18px', cursor: 'pointer', color: 'var(--text-sub)', fontWeight: '600' }}>
-                Cancel
-              </button>
-              <button type="button" onClick={handleDeleteConfirm} className="btn-primary" style={{ background: '#ef4444', borderColor: '#ef4444' }}>
-                Yes, Delete
-              </button>
+              <button type="button" onClick={() => setDeleteTarget(null)} className="glass-card" style={{ padding: '8px 18px', cursor: 'pointer', color: 'var(--text-sub)', fontWeight: '600' }}>Cancel</button>
+              <button type="button" onClick={handleDeleteConfirm} className="btn-primary" style={{ background: '#ef4444', borderColor: '#ef4444' }}>Yes, Delete</button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Fade-in keyframe */}
+      <style>{`
+        @keyframes fadeInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        .action-icon-btn.view { background: rgba(0,230,118,0.08); color: #00e676; border: 1px solid rgba(0,230,118,0.25); }
+        .action-icon-btn.view:hover { background: rgba(0,230,118,0.2); }
+      `}</style>
     </div>
   );
 }
