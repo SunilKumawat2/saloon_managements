@@ -10,7 +10,7 @@ export const LeadModel = {
   async findAll() {
     try {
       const { rows } = await pool.query('SELECT * FROM leads ORDER BY id DESC');
-      return rows.length > 0 ? rows : DEMO_LEADS;
+      return rows;
     } catch (err) {
       return DEMO_LEADS;
     }
@@ -27,7 +27,7 @@ export const LeadModel = {
       return rows[0];
     } catch (err) {
       const newLead = {
-        id: DEMO_LEADS.length + 1,
+        id: Date.now(),
         branch_id: parseInt(branch_id || 1),
         name,
         phone,
@@ -44,17 +44,22 @@ export const LeadModel = {
   },
 
   async updateStatus(id, status) {
+    const numericId = parseInt(id);
     try {
-      const { rows } = await pool.query('UPDATE leads SET status = $1 WHERE id = $2 RETURNING *', [status, id]);
-      return rows[0];
+      const { rows } = await pool.query('UPDATE leads SET status = $1 WHERE id = $2 RETURNING *', [status, numericId]);
+      if (rows.length > 0) return rows[0];
+      const lead = DEMO_LEADS.find(l => l.id === numericId);
+      if (lead) lead.status = status;
+      return lead;
     } catch (err) {
-      const lead = DEMO_LEADS.find(l => l.id === parseInt(id));
+      const lead = DEMO_LEADS.find(l => l.id === numericId);
       if (lead) lead.status = status;
       return lead;
     }
   },
 
   async update(id, { name, phone, email, source, notes, followup_date, status }) {
+    const numericId = parseInt(id);
     try {
       const { rows } = await pool.query(
         `UPDATE leads
@@ -66,25 +71,30 @@ export const LeadModel = {
              followup_date = COALESCE($6::date, followup_date),
              status = COALESCE($7, status)
          WHERE id = $8 RETURNING *`,
-        [name, phone, email, source, notes, followup_date || null, status, id]
+        [name, phone, email, source, notes, followup_date || null, status, numericId]
       );
-      return rows[0];
+      if (rows.length > 0) return rows[0];
+      DEMO_LEADS = DEMO_LEADS.map(l =>
+        l.id === numericId ? { ...l, name, phone, email, source, notes, followup_date, status } : l
+      );
+      return DEMO_LEADS.find(l => l.id === numericId);
     } catch (err) {
       DEMO_LEADS = DEMO_LEADS.map(l =>
-        l.id === id ? { ...l, name, phone, email, source, notes, followup_date, status } : l
+        l.id === numericId ? { ...l, name, phone, email, source, notes, followup_date, status } : l
       );
-      return DEMO_LEADS.find(l => l.id === id);
+      return DEMO_LEADS.find(l => l.id === numericId);
     }
   },
 
   async delete(id) {
+    const numericId = parseInt(id);
     try {
-      await pool.query('DELETE FROM leads WHERE id = $1', [id]);
+      await pool.query('DELETE FROM leads WHERE id = $1', [numericId]);
+      DEMO_LEADS = DEMO_LEADS.filter(l => l.id !== numericId);
       return { deleted: true };
     } catch (err) {
-      DEMO_LEADS = DEMO_LEADS.filter(l => l.id !== id);
+      DEMO_LEADS = DEMO_LEADS.filter(l => l.id !== numericId);
       return { deleted: true };
     }
   }
 };
-

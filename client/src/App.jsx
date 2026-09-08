@@ -275,32 +275,32 @@ function App() {
 
   const handleAddLead = async (newLead) => {
     try {
-      const res = await Admin_Create_Lead(newLead).catch(() => null);
+      const res = await Admin_Create_Lead(newLead);
       if (res?.data?.data) setLeads(prev => [res.data.data, ...prev]);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Create Lead Error:", e); }
   };
 
   const handleUpdateLeadStatus = async (id, status) => {
     try {
-      await Admin_Update_Lead_Status(id, status).catch(() => null);
+      await Admin_Update_Lead_Status(id, status);
       setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l));
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Update Status Error:", e); }
   };
 
   const handleUpdateLead = async (id, leadData) => {
     try {
-      const res = await Admin_Update_Lead(id, leadData).catch(() => null);
+      const res = await Admin_Update_Lead(id, leadData);
       if (res?.data?.data) {
         setLeads(prev => prev.map(l => l.id === id ? res.data.data : l));
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Update Lead Error:", e); }
   };
 
   const handleDeleteLead = async (id) => {
     try {
-      await Admin_Delete_Lead(id).catch(() => null);
+      await Admin_Delete_Lead(id);
       setLeads(prev => prev.filter(l => l.id !== id));
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Delete Lead Error:", e); }
   };
 
   // Handlers for Module 3 Booking
