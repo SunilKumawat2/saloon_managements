@@ -43,13 +43,20 @@ export const UserModel = {
   async create({ name, email, phone, role_id, branch_id, password }) {
     try {
       const query = `
-        INSERT INTO users (name, email, phone, role_id, branch_id, password)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING *
+        WITH inserted AS (
+          INSERT INTO users (name, email, phone, role_id, branch_id, password)
+          VALUES ($1, $2, $3, $4, $5, $6)
+          RETURNING *
+        )
+        SELECT u.*, r.name as role_name, b.name as branch_name
+        FROM inserted u
+        LEFT JOIN roles r ON u.role_id = r.id
+        LEFT JOIN branches b ON u.branch_id = b.id
       `;
-      const { rows } = await pool.query(query, [name, email, phone, role_id, branch_id, password || 'default123']);
+      const { rows } = await pool.query(query, [name, email, phone, parseInt(role_id), parseInt(branch_id || 1), password || 'default123']);
       return rows[0];
     } catch (err) {
+      console.error('UserModel.create DB error:', err);
       const newUser = {
         id: DEMO_USERS.length + 1,
         name,
@@ -70,19 +77,25 @@ export const UserModel = {
   async update(id, { name, email, phone, role_id, branch_id }) {
     try {
       const query = `
-        UPDATE users
-        SET name = COALESCE($1, name),
-            email = COALESCE($2, email),
-            phone = COALESCE($3, phone),
-            role_id = COALESCE($4, role_id),
-            branch_id = COALESCE($5, branch_id)
-        WHERE id = $6
-        RETURNING u.*, (SELECT r.name FROM roles r WHERE r.id = users.role_id) as role_name,
-                        (SELECT b.name FROM branches b WHERE b.id = users.branch_id) as branch_name
+        WITH updated AS (
+          UPDATE users
+          SET name = COALESCE($1, name),
+              email = COALESCE($2, email),
+              phone = COALESCE($3, phone),
+              role_id = COALESCE($4, role_id),
+              branch_id = COALESCE($5, branch_id)
+          WHERE id = $6
+          RETURNING *
+        )
+        SELECT u.*, r.name as role_name, b.name as branch_name
+        FROM updated u
+        LEFT JOIN roles r ON u.role_id = r.id
+        LEFT JOIN branches b ON u.branch_id = b.id
       `;
-      const { rows } = await pool.query(query, [name, email, phone, role_id, branch_id, id]);
+      const { rows } = await pool.query(query, [name, email, phone, role_id ? parseInt(role_id) : null, branch_id ? parseInt(branch_id) : null, id]);
       return rows[0];
     } catch (err) {
+      console.error('UserModel.update DB error:', err);
       DEMO_USERS = DEMO_USERS.map(u => u.id === id ? { ...u, name, email, phone, role_id, branch_id } : u);
       return DEMO_USERS.find(u => u.id === id);
     }
