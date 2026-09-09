@@ -117,18 +117,40 @@ function App() {
   const [posCustomer, setPosCustomer] = useState(null);
   const [posStylistId, setPosStylistId] = useState(null);
 
-  // Data States — initialized with rich MOCK data for instant Vercel demo rendering
+  // Helper function to restore state from localStorage with fallback
+  const getStoredData = (key, fallback) => {
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) return JSON.parse(saved);
+    } catch (e) { console.error('LocalStorage Read Error:', e); }
+    return fallback;
+  };
+
+  // Data States — initialized from localStorage for guaranteed refresh persistence
   const [users, setUsers] = useState(MOCK_USERS);
   const [branches, setBranches] = useState(MOCK_BRANCHES);
   const [roles, setRoles] = useState(MOCK_ROLES);
   const [customers, setCustomers] = useState(MOCK_CUSTOMERS);
   const [leads, setLeads] = useState(MOCK_LEADS);
-  const [services, setServices] = useState(MOCK_SERVICES);
-  const [packages, setPackages] = useState(MOCK_PACKAGES);
+  const [services, setServices] = useState(() => getStoredData('saloon_services_custom', MOCK_SERVICES));
+  const [packages, setPackages] = useState(() => getStoredData('saloon_packages_custom', MOCK_PACKAGES));
   const [stylists, setStylists] = useState(MOCK_STYLISTS);
   const [appointments, setAppointments] = useState(MOCK_APPOINTMENTS);
   const [bills, setBills] = useState(MOCK_BILLS);
   const [dbStatus, setDbStatus] = useState({ connected: false, checking: true });
+
+  // Sync state to localStorage whenever services or packages change
+  useEffect(() => {
+    try {
+      localStorage.setItem('saloon_services_custom', JSON.stringify(services));
+    } catch (e) { console.error(e); }
+  }, [services]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('saloon_packages_custom', JSON.stringify(packages));
+    } catch (e) { console.error(e); }
+  }, [packages]);
 
   const fetchModuleData = async () => {
     setDbStatus(prev => ({ ...prev, checking: true }));
@@ -158,12 +180,16 @@ function App() {
       const leadsRes = await Admin_Get_Leads().catch(() => null);
       if (leadsRes?.data?.data && leadsRes.data.data.length > 0) setLeads(leadsRes.data.data);
 
-      // 4. Fetch Module 4 Services & Packages Data
+      // 4. Fetch Module 4 Services & Packages Data (Sync with DB if API live)
       const servRes = await Admin_Get_Services().catch(() => null);
-      if (servRes?.data?.data && servRes.data.data.length > 0) setServices(servRes.data.data);
+      if (servRes?.data?.data && servRes.data.data.length > 0) {
+        setServices(servRes.data.data);
+      }
 
       const pkgRes = await Admin_Get_Packages().catch(() => null);
-      if (pkgRes?.data?.data && pkgRes.data.data.length > 0) setPackages(pkgRes.data.data);
+      if (pkgRes?.data?.data && pkgRes.data.data.length > 0) {
+        setPackages(pkgRes.data.data);
+      }
 
       const stRes = await Admin_Get_Stylists().catch(() => null);
       if (stRes?.data?.data && stRes.data.data.length > 0) setStylists(stRes.data.data);
