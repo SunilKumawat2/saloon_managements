@@ -1,0 +1,29 @@
+After run this commond on the vs code terminal then code automcatlly live after 10 to 15 sec
+npx vercel --prod
+
+Real Production Database (PostgreSQL) ko Live Cloud par chalane ke 3 simple steps hote hain:
+
+🗄️ Step 1: Free Cloud PostgreSQL Database Banayein
+Cloud par FREE PostgreSQL DB lene ke liye sabse best 2 platforms hain:
+
+Neon Tech (https://neon.tech) (Recommended - 1 Click me milta hai)
+Supabase (https://supabase.com)
+👉 Kaise karna hai:
+
+neon.tech par jake FREE account banayein aur Create Project par click karein (saloon_db).
+Aapko wahan Database Connection Details (Host, User, Password, Database Name) mil jayenge.
+⚙️ Step 2: Database Schema Cloud DB par Deploy Karein
+Cloud DB banne ke baad usme humare tables banane ke liye:
+
+Neon Dashboard me SQL Editor tab khol kar humare server/config/schema.sql file ke pure code ko paste karke Run kar dein.
+Saare tables (users, branches, customers, leads, appointments, bills) cloud DB par 1 second me ban jayenge!
+🔑 Step 3: Vercel par Database Connection Add Karein
+Browser mein Vercel Project ke Settings -> Environment Variables par jaayein.
+Neon DB ki details wahan add kar dein:
+DB_HOST: (Neon Host URL)
+DB_USER: (Neon User)
+DB_PASSWORD: (Neon Password)
+DB_NAME: saloon_db
+DB_PORT: 5432
+Save par click karke npx vercel --prod run kar dein!
+💡 Iske baad aapka Live Site (saloonmanagments.vercel.app) real Cloud Database se connect ho jayega, aur jo bhi customer, lead ya appointment add hogi woh cloud database me permanently save hogi!

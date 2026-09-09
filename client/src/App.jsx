@@ -32,6 +32,7 @@ import AppointmentsCalendarView from './views/AppointmentsCalendarView';
 import ReceptionistView from './views/ReceptionistView';
 import POSBillingView from './views/POSBillingView';
 import BillingHistoryView from './views/BillingHistoryView';
+import ServicesPackagesView from './views/ServicesPackagesView';
 
 import { 
   Admin_Get_Users, 
@@ -55,6 +56,13 @@ import {
   Admin_Delete_Lead,
   Admin_Upload_Lead_Avatar,
   Admin_Get_Services,
+  Admin_Create_Service,
+  Admin_Update_Service,
+  Admin_Delete_Service,
+  Admin_Get_Packages,
+  Admin_Create_Package,
+  Admin_Update_Package,
+  Admin_Delete_Package,
   Admin_Get_Stylists,
   Admin_Get_Appointments,
   Admin_Create_Appointment,
@@ -67,6 +75,19 @@ import {
 } from './services/apiService';
 import { BACKEND_URL } from './config/Config';
 
+
+import { 
+  MOCK_USERS, 
+  MOCK_BRANCHES, 
+  MOCK_ROLES, 
+  MOCK_SERVICES, 
+  MOCK_PACKAGES,
+  MOCK_STYLISTS, 
+  MOCK_CUSTOMERS, 
+  MOCK_LEADS, 
+  MOCK_APPOINTMENTS, 
+  MOCK_BILLS 
+} from './mockData';
 
 function App() {
   const [theme, setTheme] = useState(localStorage.getItem('saloon_theme') || 'dark');
@@ -88,6 +109,7 @@ function App() {
   // Accordion Dropdown States
   const [isRbacOpen, setIsRbacOpen] = useState(true);
   const [isCrmOpen, setIsCrmOpen] = useState(true);
+  const [isServicesOpen, setIsServicesOpen] = useState(true);
   const [isBookingOpen, setIsBookingOpen] = useState(true);
   const [isReceptionOpen, setIsReceptionOpen] = useState(true);
 
@@ -95,16 +117,17 @@ function App() {
   const [posCustomer, setPosCustomer] = useState(null);
   const [posStylistId, setPosStylistId] = useState(null);
 
-  // Data States
-  const [users, setUsers] = useState([]);
-  const [branches, setBranches] = useState([]);
-  const [roles, setRoles] = useState([]);
-  const [customers, setCustomers] = useState([]);
-  const [leads, setLeads] = useState([]);
-  const [services, setServices] = useState([]);
-  const [stylists, setStylists] = useState([]);
-  const [appointments, setAppointments] = useState([]);
-  const [bills, setBills] = useState([]);
+  // Data States — initialized with rich MOCK data for instant Vercel demo rendering
+  const [users, setUsers] = useState(MOCK_USERS);
+  const [branches, setBranches] = useState(MOCK_BRANCHES);
+  const [roles, setRoles] = useState(MOCK_ROLES);
+  const [customers, setCustomers] = useState(MOCK_CUSTOMERS);
+  const [leads, setLeads] = useState(MOCK_LEADS);
+  const [services, setServices] = useState(MOCK_SERVICES);
+  const [packages, setPackages] = useState(MOCK_PACKAGES);
+  const [stylists, setStylists] = useState(MOCK_STYLISTS);
+  const [appointments, setAppointments] = useState(MOCK_APPOINTMENTS);
+  const [bills, setBills] = useState(MOCK_BILLS);
   const [dbStatus, setDbStatus] = useState({ connected: false, checking: true });
 
   const fetchModuleData = async () => {
@@ -120,33 +143,36 @@ function App() {
 
       // 2. Fetch Module 1 Data
       const usersRes = await Admin_Get_Users().catch(() => null);
-      if (usersRes?.data?.data) setUsers(usersRes.data.data);
+      if (usersRes?.data?.data && usersRes.data.data.length > 0) setUsers(usersRes.data.data);
 
       const branchesRes = await Admin_Get_Branches().catch(() => null);
-      if (branchesRes?.data?.data) setBranches(branchesRes.data.data);
+      if (branchesRes?.data?.data && branchesRes.data.data.length > 0) setBranches(branchesRes.data.data);
 
       const rolesRes = await Admin_Get_Roles().catch(() => null);
-      if (rolesRes?.data?.data) setRoles(rolesRes.data.data);
+      if (rolesRes?.data?.data && rolesRes.data.data.length > 0) setRoles(rolesRes.data.data);
 
       // 3. Fetch Module 2 CRM & Lead Data
       const custRes = await Admin_Get_Customers().catch(() => null);
-      if (custRes?.data?.data) setCustomers(custRes.data.data);
+      if (custRes?.data?.data && custRes.data.data.length > 0) setCustomers(custRes.data.data);
 
       const leadsRes = await Admin_Get_Leads().catch(() => null);
-      if (leadsRes?.data?.data) setLeads(leadsRes.data.data);
+      if (leadsRes?.data?.data && leadsRes.data.data.length > 0) setLeads(leadsRes.data.data);
 
-      // 4. Fetch Module 3 Booking & Services Data
+      // 4. Fetch Module 4 Services & Packages Data
       const servRes = await Admin_Get_Services().catch(() => null);
-      if (servRes?.data?.data) setServices(servRes.data.data);
+      if (servRes?.data?.data && servRes.data.data.length > 0) setServices(servRes.data.data);
+
+      const pkgRes = await Admin_Get_Packages().catch(() => null);
+      if (pkgRes?.data?.data && pkgRes.data.data.length > 0) setPackages(pkgRes.data.data);
 
       const stRes = await Admin_Get_Stylists().catch(() => null);
-      if (stRes?.data?.data) setStylists(stRes.data.data);
+      if (stRes?.data?.data && stRes.data.data.length > 0) setStylists(stRes.data.data);
 
       const appRes = await Admin_Get_Appointments().catch(() => null);
-      if (appRes?.data?.data) setAppointments(appRes.data.data);
+      if (appRes?.data?.data && appRes.data.data.length > 0) setAppointments(appRes.data.data);
 
       const billsRes = await Admin_Get_Bills().catch(() => null);
-      if (billsRes?.data?.data) setBills(billsRes.data.data);
+      if (billsRes?.data?.data && billsRes.data.data.length > 0) setBills(billsRes.data.data);
 
     } catch (err) {
       console.error('API Fetch Error:', err);
@@ -319,6 +345,53 @@ function App() {
     } catch (e) { console.error("Delete Lead Error:", e); }
   };
 
+  // Handlers for Module 4 Service & Package Management
+  const handleAddService = async (serviceData) => {
+    try {
+      const res = await Admin_Create_Service(serviceData).catch(() => null);
+      const created = res?.data?.data || { id: Date.now(), ...serviceData };
+      setServices(prev => [...prev, created]);
+    } catch (e) { console.error("Create Service Error:", e); }
+  };
+
+  const handleUpdateService = async (id, serviceData) => {
+    try {
+      const res = await Admin_Update_Service(id, serviceData).catch(() => null);
+      const updated = res?.data?.data || { id, ...serviceData };
+      setServices(prev => prev.map(s => s.id === id ? { ...s, ...updated } : s));
+    } catch (e) { console.error("Update Service Error:", e); }
+  };
+
+  const handleDeleteService = async (id) => {
+    try {
+      await Admin_Delete_Service(id).catch(() => null);
+      setServices(prev => prev.filter(s => s.id !== id));
+    } catch (e) { console.error("Delete Service Error:", e); }
+  };
+
+  const handleAddPackage = async (packageData) => {
+    try {
+      const res = await Admin_Create_Package(packageData).catch(() => null);
+      const created = res?.data?.data || { id: Date.now(), ...packageData };
+      setPackages(prev => [...prev, created]);
+    } catch (e) { console.error("Create Package Error:", e); }
+  };
+
+  const handleUpdatePackage = async (id, packageData) => {
+    try {
+      const res = await Admin_Update_Package(id, packageData).catch(() => null);
+      const updated = res?.data?.data || { id, ...packageData };
+      setPackages(prev => prev.map(p => p.id === id ? { ...p, ...updated } : p));
+    } catch (e) { console.error("Update Package Error:", e); }
+  };
+
+  const handleDeletePackage = async (id) => {
+    try {
+      await Admin_Delete_Package(id).catch(() => null);
+      setPackages(prev => prev.filter(p => p.id !== id));
+    } catch (e) { console.error("Delete Package Error:", e); }
+  };
+
   // Handlers for Module 3 Booking & Receptionist Queue
   const handleAddAppointment = async (newApp) => {
     try {
@@ -489,6 +562,28 @@ function App() {
               )}
             </div>
 
+            {/* Dropdown 3: Service & Package Catalog (Module 4) */}
+            <div style={{ marginTop: '4px' }}>
+              <button 
+                className={`nav-dropdown-toggle ${isServicesOpen ? 'open' : ''} ${['services_packages'].includes(activeTab) ? 'active' : ''}`}
+                onClick={() => setIsServicesOpen(!isServicesOpen)}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Scissors size={17} style={{ color: ['services_packages'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
+                  <span>Services & Packages</span>
+                </div>
+                {isServicesOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+              </button>
+
+              {isServicesOpen && (
+                <div className="nav-dropdown-menu">
+                  <button className={`sub-nav-btn ${activeTab === 'services_packages' ? 'active' : ''}`} onClick={() => setActiveTab('services_packages')}>
+                    <Scissors size={14} /> Catalog & Combos ({services.length + packages.length})
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Dropdown 3: Appointments & Booking (Module 3) */}
             <div style={{ marginTop: '4px' }}>
               <button 
@@ -585,6 +680,7 @@ function App() {
               {activeTab === 'matrix' && 'Role & Permission Matrix'}
               {activeTab === 'customers' && 'Customer CRM Profiles'}
               {activeTab === 'leads' && 'Lead Management Pipeline'}
+              {activeTab === 'services_packages' && 'Salon Service & Package Management'}
               {activeTab === 'appointments' && 'Appointment & Calendar Booking'}
               {activeTab === 'reception_checkin' && 'Receptionist — Walk-in Check-in Counter'}
               {activeTab === 'pos_billing' && `POS Billing — ${posCustomer?.name || 'Customer'}`}
@@ -730,6 +826,20 @@ function App() {
             onUpdateLead={handleUpdateLead}
             onDeleteLead={handleDeleteLead}
             onUpdateLeadStatus={handleUpdateLeadStatus}
+          />
+        )}
+
+        {/* Module 4 Views: Salon Service & Package Catalog */}
+        {activeTab === 'services_packages' && (
+          <ServicesPackagesView
+            services={services}
+            packages={packages}
+            onAddService={handleAddService}
+            onUpdateService={handleUpdateService}
+            onDeleteService={handleDeleteService}
+            onAddPackage={handleAddPackage}
+            onUpdatePackage={handleUpdatePackage}
+            onDeletePackage={handleDeletePackage}
           />
         )}
 

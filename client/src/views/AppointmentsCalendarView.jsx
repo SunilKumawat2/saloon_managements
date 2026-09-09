@@ -177,10 +177,31 @@ function AppointmentsCalendarView({
     setDeletingApp(null);
   };
 
-  // Send Simulated SMS / WhatsApp Reminder
+  // Send Real SMS / WhatsApp Reminder Deep Links
   const handleSendReminder = (type) => {
-    const channel = type === 'whatsapp' ? 'WhatsApp 🟢' : 'SMS 💬';
-    setReminderToast(`✅ Auto-reminder sent via ${channel} to ${reminderApp.customer_name} (${reminderApp.customer_phone || 'Customer'})!`);
+    if (!reminderApp) return;
+
+    const rawPhone = (reminderApp.customer_phone || '9876543210').replace(/\D/g, '');
+    const phoneWithCountry = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
+    const custName = reminderApp.customer_name || 'Valued Client';
+    const servName = reminderApp.service_name || 'Salon Service';
+    const stylName = reminderApp.stylist_name || 'Senior Stylist';
+    const dateStr = formatDateKey(reminderApp.appointment_date);
+    const timeStr = reminderApp.appointment_time || '11:00';
+
+    const messageText = `Hi ${custName}! Your salon appointment for ${servName} with ${stylName} is confirmed for ${dateStr} at ${timeStr}. Please arrive 5 minutes early. Reply 1 to Confirm, 2 to Reschedule. — SalonPulse ERP`;
+    const encodedText = encodeURIComponent(messageText);
+
+    if (type === 'whatsapp') {
+      const waUrl = `https://api.whatsapp.com/send?phone=${phoneWithCountry}&text=${encodedText}`;
+      window.open(waUrl, '_blank');
+      setReminderToast(`✅ Opened WhatsApp Web with reminder for ${custName} (${rawPhone})!`);
+    } else {
+      const smsUrl = `sms:${rawPhone}?body=${encodedText}`;
+      window.open(smsUrl, '_blank');
+      setReminderToast(`✅ Sent SMS Reminder Gateway trigger to ${custName} (${rawPhone})!`);
+    }
+
     setTimeout(() => {
       setReminderToast('');
       setReminderApp(null);

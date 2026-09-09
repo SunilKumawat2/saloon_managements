@@ -8,7 +8,28 @@ import { loginUser, getMe } from '../controllers/authController.js';
 import { getUsers, getRoles, createUser, updateUser, deleteUser, toggleUserStatus } from '../controllers/userController.js';
 import { updateRolePermissions } from '../controllers/roleController.js';
 import { getBranches, createBranch, updateBranch, toggleBranchStatus, deleteBranch } from '../controllers/branchController.js';
-import { getServices, createService } from '../controllers/serviceController.js';
+import { 
+  getServices, 
+  createService, 
+  updateService, 
+  deleteService, 
+  getPackages, 
+  createPackage, 
+  updatePackage, 
+  deletePackage 
+} from '../controllers/serviceController.js';
+
+// -------------------- Salon Service Catalog Routes (Module 4) --------------------
+router.get('/services', authenticateToken, getServices);
+router.post('/services/create', authenticateToken, createService);
+router.put('/services/:id', authenticateToken, updateService);
+router.delete('/services/:id', authenticateToken, deleteService);
+
+// -------------------- Bundled Combo Package Routes (Module 4) --------------------
+router.get('/packages', authenticateToken, getPackages);
+router.post('/packages/create', authenticateToken, createPackage);
+router.put('/packages/:id', authenticateToken, updatePackage);
+router.delete('/packages/:id', authenticateToken, deletePackage);
 import { getStylists, createStylist } from '../controllers/stylistController.js';
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '../controllers/customerController.js';
 import { getLeads, createLead, updateLeadStatus, updateLead, deleteLead } from '../controllers/leadController.js';

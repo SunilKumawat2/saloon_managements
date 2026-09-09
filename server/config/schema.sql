@@ -44,6 +44,30 @@ CREATE TABLE IF NOT EXISTS services (
     description TEXT,
     price DECIMAL(10, 2) NOT NULL,
     duration_minutes INT NOT NULL DEFAULT 30,
+    buffer_time_minutes INT DEFAULT 15,
+    commission_rate DECIMAL(5, 2) DEFAULT 10.00,
+    is_active BOOLEAN DEFAULT TRUE,
+    is_package BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE services ADD COLUMN IF NOT EXISTS buffer_time_minutes INT DEFAULT 15;
+ALTER TABLE services ADD COLUMN IF NOT EXISTS commission_rate DECIMAL(5, 2) DEFAULT 10.00;
+ALTER TABLE services ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+ALTER TABLE services ADD COLUMN IF NOT EXISTS is_package BOOLEAN DEFAULT FALSE;
+
+-- Table: packages (Module 4 Bundled Combo Packages)
+CREATE TABLE IF NOT EXISTS packages (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    category VARCHAR(50) DEFAULT 'Combo Package',
+    description TEXT,
+    package_price DECIMAL(10, 2) NOT NULL,
+    standalone_price DECIMAL(10, 2) NOT NULL,
+    discount_percentage DECIMAL(5, 2) DEFAULT 0,
+    validity_days INT DEFAULT 30,
+    is_active BOOLEAN DEFAULT TRUE,
+    service_ids JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

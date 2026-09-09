@@ -382,6 +382,84 @@ export const Admin_Create_Service = async (serviceData) => {
   }
 };
 
+// <----------------  Admin Update Salon Service (Module 4) ----------------->
+export const Admin_Update_Service = async (serviceId, serviceData) => {
+  try {
+    const token = getToken();
+    const response = await axios.put(`${API_BASE_URL}/services/${serviceId}`, serviceData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Admin Delete Salon Service (Module 4) ----------------->
+export const Admin_Delete_Service = async (serviceId) => {
+  try {
+    const token = getToken();
+    const response = await axios.delete(`${API_BASE_URL}/services/${serviceId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Admin Get Bundled Combo Packages (Module 4) ----------------->
+export const Admin_Get_Packages = async () => {
+  try {
+    const token = getToken();
+    const response = await axios.get(`${API_BASE_URL}/packages`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Admin Create Combo Package (Module 4) ----------------->
+export const Admin_Create_Package = async (packageData) => {
+  try {
+    const token = getToken();
+    const response = await axios.post(`${API_BASE_URL}/packages/create`, packageData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Admin Update Combo Package (Module 4) ----------------->
+export const Admin_Update_Package = async (packageId, packageData) => {
+  try {
+    const token = getToken();
+    const response = await axios.put(`${API_BASE_URL}/packages/${packageId}`, packageData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Admin Delete Combo Package (Module 4) ----------------->
+export const Admin_Delete_Package = async (packageId) => {
+  try {
+    const token = getToken();
+    const response = await axios.delete(`${API_BASE_URL}/packages/${packageId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
 // <----------------  Admin Get Stylists / Staff ----------------->
 export const Admin_Get_Stylists = async () => {
   try {
