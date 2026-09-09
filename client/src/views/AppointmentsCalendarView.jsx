@@ -6,7 +6,7 @@ import {
   Sparkles, RefreshCw, CalendarDays, LayoutGrid, ListFilter
 } from 'lucide-react';
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? window.location.origin : 'http://localhost:5000';
 
 const TIME_SLOTS = [
   '09:00', '10:00', '11:00', '12:00',

@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { Admin_Upload_Customer_Avatar } from '../services/apiService';
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? window.location.origin : 'http://localhost:5000';
 
 // ─── Segmentation ───
 const getSegment = (customer) => {

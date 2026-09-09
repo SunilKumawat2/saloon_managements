@@ -5,7 +5,7 @@ import {
   Edit3, Trash2, X, CreditCard, ChevronRight, Sparkles, Filter
 } from 'lucide-react';
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? window.location.origin : 'http://localhost:5000';
 
 // Avatar component
 const CustomerAvatar = ({ name, avatarUrl, size = 42 }) => {

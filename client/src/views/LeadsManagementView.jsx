@@ -5,7 +5,7 @@ import {
   UserCheck, Sparkles, Camera, Upload
 } from 'lucide-react';
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? window.location.origin : 'http://localhost:5000';
 
 // Helper: Check if a date is overdue or today
 const getReminderStatus = (followupDate) => {
