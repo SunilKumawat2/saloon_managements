@@ -258,54 +258,69 @@ function App() {
     }
   };
 
+  // ─── Helper: safely decode JWT token payload (base64url → JSON) ───
+  const decodeJWT = (token) => {
+    try {
+      const base64Url = token.split('.')[1];
+      // base64url uses - and _ instead of + and /
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      // Pad to multiple of 4
+      const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+      return JSON.parse(atob(padded));
+    } catch (e) {
+      return null;
+    }
+  };
+
   // ─── Restore user session on page refresh ───
   useEffect(() => {
     const savedToken = localStorage.getItem('saloon_jwt_token');
     if (savedToken && !currentUser) {
       setAuthLoading(true);
 
-      // Decode token locally as immediate fallback (so user is never logged out on API error)
-      let tokenPayload = null;
-      try {
-        const base64Payload = savedToken.split('.')[1];
-        tokenPayload = JSON.parse(atob(base64Payload));
-      } catch (e) {
-        // token corrupted
-      }
+      // STEP 1: Decode JWT locally — immediate, no network needed
+      const tokenPayload = decodeJWT(savedToken);
 
-      // Check token expiry
+      // STEP 2: Check token expiry
       const now = Math.floor(Date.now() / 1000);
       if (tokenPayload && tokenPayload.exp && tokenPayload.exp < now) {
         // Token genuinely expired — clear and logout
         localStorage.removeItem('saloon_jwt_token');
+        localStorage.removeItem('saloon_user_cache');
         setAuthToken(null);
         setAuthLoading(false);
         return;
       }
 
-      // Try fetching fresh user from server (gets updated permissions from DB)
+      // STEP 3: Use localStorage cached user data as immediate fallback
+      // This ensures the user NEVER gets a blank screen on refresh
+      const cachedUser = (() => {
+        try { return JSON.parse(localStorage.getItem('saloon_user_cache') || 'null'); }
+        catch { return null; }
+      })();
+
+      if (cachedUser) {
+        // Instantly restore session from cache — no network wait
+        setCurrentUser(cachedUser);
+      } else if (tokenPayload) {
+        setCurrentUser(tokenPayload);
+      }
+
+      // STEP 4: Then try fetching fresh user from server in background
+      // (gets latest permissions from DB — updates silently without logout)
       Get_Admin_Profile()
         .then(res => {
           if (res?.data?.data) {
-            // Fresh data from DB (includes latest permissions)
-            setCurrentUser(res.data.data);
-          } else if (tokenPayload) {
-            // API returned nothing but token is valid — use token data as fallback
-            setCurrentUser(tokenPayload);
-          } else {
-            localStorage.removeItem('saloon_jwt_token');
-            setAuthToken(null);
+            // Fresh data from DB — update state + cache
+            const freshUser = res.data.data;
+            setCurrentUser(freshUser);
+            localStorage.setItem('saloon_user_cache', JSON.stringify(freshUser));
           }
+          // If API returns nothing, keep whatever was set from cache/token above
         })
         .catch(() => {
-          // Network/API error — DO NOT logout. Use JWT decoded payload as fallback.
-          if (tokenPayload) {
-            console.warn('API unavailable on refresh — using cached token session as fallback');
-            setCurrentUser(tokenPayload);
-          } else {
-            localStorage.removeItem('saloon_jwt_token');
-            setAuthToken(null);
-          }
+          // Network/API error — DO NOT logout. User already restored from cache above.
+          console.warn('API unavailable on refresh — using cached session');
         })
         .finally(() => setAuthLoading(false));
     } else {
@@ -322,12 +337,15 @@ function App() {
     setCurrentUser(loginData.user);
     setAuthToken(loginData.token);
     localStorage.setItem('saloon_jwt_token', loginData.token);
+    // Cache user data for instant session restore on refresh
+    localStorage.setItem('saloon_user_cache', JSON.stringify(loginData.user));
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
     setAuthToken(null);
     localStorage.removeItem('saloon_jwt_token');
+    localStorage.removeItem('saloon_user_cache');
   };
 
   // Handlers for Module 1
