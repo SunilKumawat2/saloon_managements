@@ -25,12 +25,16 @@ import {
 function ServicesPackagesView({ 
   services = [], 
   packages = [], 
+  categories = [],
   onAddService, 
   onUpdateService, 
   onDeleteService,
   onAddPackage,
   onUpdatePackage,
-  onDeletePackage
+  onDeletePackage,
+  onAddCategory,
+  onUpdateCategory,
+  onDeleteCategory
 }) {
   const [activeCategory, setActiveCategory] = useState('All');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
@@ -39,9 +43,23 @@ function ServicesPackagesView({
   // Modals state
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
   const [isPackageModalOpen, setIsPackageModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingService, setEditingService] = useState(null);
   const [editingPackage, setEditingPackage] = useState(null);
-  const [deletingItem, setDeletingItem] = useState(null); // { type: 'service'|'package', item }
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [deletingItem, setDeletingItem] = useState(null); // { type: 'service'|'package'|'category', item }
+
+  // Category Form State
+  const [categoryForm, setCategoryForm] = useState({ name: '', description: '' });
+
+  // Quick Service Form State (inside Package Modal)
+  const [showQuickAddService, setShowQuickAddService] = useState(false);
+  const [quickServiceForm, setQuickServiceForm] = useState({
+    name: '',
+    category: 'Hair',
+    price: '',
+    duration_minutes: 30
+  });
 
   // Service Form State
   const [serviceForm, setServiceForm] = useState({
@@ -115,9 +133,25 @@ function ServicesPackagesView({
     setIsServiceModalOpen(false);
   };
 
+  // Helper to safely parse service_ids from string JSON or Array
+  const parseServiceIds = (raw) => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === 'string') {
+      try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  };
+
   // ─── Handlers for Package Modal ───
   const handleOpenAddPackage = () => {
     setEditingPackage(null);
+    setShowQuickAddService(false);
     setPackageForm({
       name: '',
       category: 'Combo Package',
@@ -130,6 +164,30 @@ function ServicesPackagesView({
     setIsPackageModalOpen(true);
   };
 
+  const handleSubmitQuickService = async () => {
+    if (!quickServiceForm.name.trim() || !quickServiceForm.price) return;
+    const payload = {
+      ...quickServiceForm,
+      price: parseFloat(quickServiceForm.price),
+      duration_minutes: parseInt(quickServiceForm.duration_minutes || 30),
+      buffer_time_minutes: 15,
+      commission_rate: 10.0,
+      is_active: true
+    };
+    
+    if (onAddService) {
+      const created = await onAddService(payload);
+      if (created?.id) {
+        setPackageForm(prev => ({
+          ...prev,
+          service_ids: [...parseServiceIds(prev.service_ids), created.id]
+        }));
+      }
+    }
+    setQuickServiceForm({ name: '', category: 'Hair', price: '', duration_minutes: 30 });
+    setShowQuickAddService(false);
+  };
+
   const handleOpenEditPackage = (pkg) => {
     setEditingPackage(pkg);
     setPackageForm({
@@ -139,23 +197,24 @@ function ServicesPackagesView({
       validity_days: pkg.validity_days || 30,
       description: pkg.description || '',
       is_active: pkg.is_active !== undefined ? pkg.is_active : true,
-      service_ids: pkg.service_ids || []
+      service_ids: parseServiceIds(pkg.service_ids)
     });
     setIsPackageModalOpen(true);
   };
 
   const togglePackageServiceId = (serviceId) => {
     setPackageForm(prev => {
-      const exists = prev.service_ids.includes(serviceId);
+      const currentIds = parseServiceIds(prev.service_ids);
+      const exists = currentIds.some(id => String(id) === String(serviceId));
       const updated = exists 
-        ? prev.service_ids.filter(id => id !== serviceId)
-        : [...prev.service_ids, serviceId];
+        ? currentIds.filter(id => String(id) !== String(serviceId))
+        : [...currentIds, serviceId];
       return { ...prev, service_ids: updated };
     });
   };
 
   // Calculate Standalone total price for selected services in Package Form
-  const selectedStandaloneTotal = packageForm.service_ids.reduce((sum, id) => {
+  const selectedStandaloneTotal = parseServiceIds(packageForm.service_ids).reduce((sum, id) => {
     const s = services.find(srv => String(srv.id) === String(id));
     return sum + (s ? parseFloat(s.price || 0) : 0);
   }, 0);
@@ -183,6 +242,29 @@ function ServicesPackagesView({
     setIsPackageModalOpen(false);
   };
 
+  // ─── Handlers for Category Modal ───
+  const handleCategorySubmit = (e) => {
+    e.preventDefault();
+    if (!categoryForm.name.trim()) return;
+    if (editingCategory && onUpdateCategory) {
+      onUpdateCategory(editingCategory.id, categoryForm);
+    } else if (onAddCategory) {
+      onAddCategory(categoryForm);
+    }
+    setEditingCategory(null);
+    setCategoryForm({ name: '', description: '' });
+  };
+
+  const handleStartEditCategory = (cat) => {
+    setEditingCategory(cat);
+    setCategoryForm({ name: cat.name || '', description: cat.description || '' });
+  };
+
+  const handleCancelCategoryEdit = () => {
+    setEditingCategory(null);
+    setCategoryForm({ name: '', description: '' });
+  };
+
   // ─── Delete Confirmation Handler ───
   const handleConfirmDelete = () => {
     if (!deletingItem) return;
@@ -190,12 +272,18 @@ function ServicesPackagesView({
       onDeleteService(deletingItem.item.id);
     } else if (deletingItem.type === 'package' && onDeletePackage) {
       onDeletePackage(deletingItem.item.id);
+    } else if (deletingItem.type === 'category' && onDeleteCategory) {
+      onDeleteCategory(deletingItem.item.id);
     }
     setDeletingItem(null);
   };
 
-  // Categories list
-  const CATEGORIES = ['All', 'Hair', 'Beard', 'Facial', 'Hair Spa', 'Color', 'Packages & Combos'];
+  // Dynamic Categories list
+  const categoryNamesList = categories && categories.length > 0
+    ? categories.map(c => typeof c === 'string' ? c : c.name)
+    : ['Hair', 'Beard', 'Facial', 'Hair Spa', 'Color'];
+
+  const CATEGORIES = Array.from(new Set(['All', ...categoryNamesList, 'Packages & Combos']));
 
   // Filtered Services & Packages
   const filteredServices = services.filter(s => {
@@ -352,6 +440,14 @@ function ServicesPackagesView({
           </div>
 
           {/* Action Buttons */}
+          <button 
+            onClick={() => setIsCategoryModalOpen(true)} 
+            className="glass-card" 
+            style={{ padding: '8px 16px', fontSize: '0.84rem', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', color: 'var(--text-main)', border: '1px solid var(--border)', fontWeight: '700' }}
+          >
+            <Tag size={15} style={{ color: 'var(--accent-gold)' }} /> Manage Categories
+          </button>
+
           <button onClick={handleOpenAddService} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.84rem' }}>
             <Plus size={16} /> Add Standalone Service
           </button>
@@ -409,9 +505,33 @@ function ServicesPackagesView({
                           <span style={{ fontSize: '0.74rem', background: 'rgba(99,102,241,0.12)', color: 'var(--primary-indigo)', border: '1px solid rgba(99,102,241,0.3)', padding: '3px 10px', borderRadius: '20px', fontWeight: '800' }}>
                             {srv.category}
                           </span>
-                          <span style={{ fontSize: '0.74rem', background: srv.is_active !== false ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: srv.is_active !== false ? '#10b981' : '#ef4444', padding: '3px 8px', borderRadius: '6px', fontWeight: '800' }}>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (onUpdateService) {
+                                onUpdateService(srv.id, { ...srv, is_active: srv.is_active === false ? true : false });
+                              }
+                            }}
+                            title="Click to toggle Active / Inactive status in database"
+                            style={{ 
+                              fontSize: '0.74rem', 
+                              background: srv.is_active !== false ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', 
+                              color: srv.is_active !== false ? '#10b981' : '#ef4444', 
+                              border: srv.is_active !== false ? '1px solid rgba(16,185,129,0.4)' : '1px solid rgba(239,68,68,0.4)',
+                              padding: '3px 9px', 
+                              borderRadius: '6px', 
+                              fontWeight: '800',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: srv.is_active !== false ? '#10b981' : '#ef4444' }}></span>
                             {srv.is_active !== false ? 'Active' : 'Inactive'}
-                          </span>
+                          </button>
                         </div>
 
                         <h4 style={{ fontSize: '1.05rem', fontWeight: '800', color: 'var(--text-main)', marginBottom: '8px' }}>
@@ -629,9 +749,33 @@ function ServicesPackagesView({
                     {srv.commission_rate || 10}% Stylist Comm.
                   </td>
                   <td style={{ padding: '12px 16px' }}>
-                    <span style={{ fontSize: '0.74rem', background: srv.is_active !== false ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: srv.is_active !== false ? '#10b981' : '#ef4444', padding: '3px 8px', borderRadius: '6px', fontWeight: '800' }}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onUpdateService) {
+                          onUpdateService(srv.id, { ...srv, is_active: srv.is_active === false ? true : false });
+                        }
+                      }}
+                      title="Click to toggle Active / Inactive status in database"
+                      style={{ 
+                        fontSize: '0.74rem', 
+                        background: srv.is_active !== false ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', 
+                        color: srv.is_active !== false ? '#10b981' : '#ef4444', 
+                        border: srv.is_active !== false ? '1px solid rgba(16,185,129,0.4)' : '1px solid rgba(239,68,68,0.4)',
+                        padding: '3px 9px', 
+                        borderRadius: '6px', 
+                        fontWeight: '800',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: srv.is_active !== false ? '#10b981' : '#ef4444' }}></span>
                       {srv.is_active !== false ? 'Active' : 'Inactive'}
-                    </span>
+                    </button>
                   </td>
                   <td style={{ padding: '12px 16px', fontWeight: '900', color: 'var(--accent-gold)', fontSize: '0.95rem' }}>
                     ₹{parseFloat(srv.price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -729,13 +873,9 @@ function ServicesPackagesView({
                     value={serviceForm.category}
                     onChange={(e) => setServiceForm({ ...serviceForm, category: e.target.value })}
                   >
-                    <option value="Hair">Hair</option>
-                    <option value="Beard">Beard</option>
-                    <option value="Facial">Facial</option>
-                    <option value="Hair Spa">Hair Spa</option>
-                    <option value="Color">Color</option>
-                    <option value="Nails">Nails</option>
-                    <option value="Makeup">Makeup</option>
+                    {categoryNamesList.map(catName => (
+                      <option key={catName} value={catName}>{catName}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -792,6 +932,18 @@ function ServicesPackagesView({
                 />
               </div>
 
+              <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '12px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem', color: 'var(--text-main)', fontWeight: '700' }}>
+                  <input
+                    type="checkbox"
+                    checked={serviceForm.is_active !== false}
+                    onChange={(e) => setServiceForm({ ...serviceForm, is_active: e.target.checked })}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#10b981' }}
+                  />
+                  <span>Service Active & Available for Salon Booking</span>
+                </label>
+              </div>
+
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
                 <button type="button" onClick={() => setIsServiceModalOpen(false)} className="glass-card" style={{ padding: '10px 18px', cursor: 'pointer', color: 'var(--text-sub)' }}>
                   Cancel
@@ -834,33 +986,56 @@ function ServicesPackagesView({
 
               {/* Included Multi-Service Checklist */}
               <div className="form-group">
-                <label style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <span>Select Included Services *</span>
-                  <span style={{ color: 'var(--accent-gold)', fontWeight: '700' }}>
+                  <span style={{ color: 'var(--accent-gold)', fontWeight: '700', fontSize: '0.84rem' }}>
                     Standalone Total: ₹{selectedStandaloneTotal.toFixed(2)}
                   </span>
                 </label>
 
-                <div style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px', maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {services.map(srv => {
-                    const isChecked = packageForm.service_ids.includes(srv.id);
-                    return (
-                      <label 
-                        key={srv.id} 
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: isChecked ? 'rgba(16, 185, 129, 0.12)' : 'transparent', borderRadius: '6px', cursor: 'pointer' }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: 'var(--text-main)' }}>
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => togglePackageServiceId(srv.id)}
-                          />
-                          <span>{srv.name} <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>({srv.category})</span></span>
-                        </div>
-                        <span style={{ fontSize: '0.82rem', fontWeight: '800', color: 'var(--accent-gold)' }}>₹{srv.price}</span>
-                      </label>
-                    );
-                  })}
+                <div style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '8px', maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {services && services.length > 0 ? (
+                    services.map(srv => {
+                      const currentIds = parseServiceIds(packageForm.service_ids);
+                      const isChecked = currentIds.some(id => String(id) === String(srv.id));
+                      return (
+                        <label 
+                          key={srv.id} 
+                          style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between', 
+                            padding: '8px 12px', 
+                            background: isChecked ? 'rgba(16, 185, 129, 0.12)' : 'transparent', 
+                            border: isChecked ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid var(--border)',
+                            borderRadius: '8px', 
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: 'var(--text-main)', flex: 1, minWidth: 0 }}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => togglePackageServiceId(srv.id)}
+                              style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#10b981', flexShrink: 0, margin: 0 }}
+                            />
+                            <span style={{ fontWeight: isChecked ? '600' : '400', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {srv.name} <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>({srv.category})</span>
+                            </span>
+                          </div>
+
+                          <span style={{ fontSize: '0.84rem', fontWeight: '700', color: isChecked ? '#10b981' : 'var(--accent-gold)', marginLeft: '12px', flexShrink: 0 }}>
+                            ₹{parseFloat(srv.price).toFixed(2)}
+                          </span>
+                        </label>
+                      );
+                    })
+                  ) : (
+                    <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.84rem' }}>
+                      No services available. Create a service first.
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -905,6 +1080,18 @@ function ServicesPackagesView({
                 />
               </div>
 
+              <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '12px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontSize: '0.85rem', color: 'var(--text-main)', fontWeight: '700' }}>
+                  <input
+                    type="checkbox"
+                    checked={packageForm.is_active !== false}
+                    onChange={(e) => setPackageForm({ ...packageForm, is_active: e.target.checked })}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#10b981' }}
+                  />
+                  <span>Combo Package Active & Published</span>
+                </label>
+              </div>
+
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
                 <button type="button" onClick={() => setIsPackageModalOpen(false)} className="glass-card" style={{ padding: '10px 18px', cursor: 'pointer', color: 'var(--text-sub)' }}>
                   Cancel
@@ -919,7 +1106,125 @@ function ServicesPackagesView({
         </div>
       )}
 
-      {/* ─── MODAL 3: DELETE CONFIRMATION ─── */}
+      {/* ─── MODAL 3: DYNAMIC CATEGORY MANAGER MODAL ─── */}
+      {isCategoryModalOpen && (
+        <div className="modal-overlay">
+          <div className="glass-panel modal-content" style={{ maxWidth: '580px', width: '92%', padding: '28px' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Tag size={20} style={{ color: 'var(--accent-gold)' }} />
+                Manage Service Categories
+              </h3>
+              <button onClick={() => { setIsCategoryModalOpen(false); handleCancelCategoryEdit(); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Category Create / Edit Form */}
+            <form onSubmit={handleCategorySubmit} style={{ background: 'var(--input-bg)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '20px' }}>
+              <div style={{ fontSize: '0.86rem', fontWeight: '700', color: 'var(--accent-gold)', marginBottom: '10px' }}>
+                {editingCategory ? `Edit Category: "${editingCategory.name}"` : '+ Create New Dynamic Category'}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>Category Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Nail Care, Facial Spa"
+                    value={categoryForm.name}
+                    onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>Description (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="Category details..."
+                    value={categoryForm.description}
+                    onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px' }}>
+                {editingCategory && (
+                  <button type="button" onClick={handleCancelCategoryEdit} className="glass-card" style={{ padding: '6px 14px', fontSize: '0.8rem', cursor: 'pointer' }}>
+                    Cancel
+                  </button>
+                )}
+                <button type="submit" className="btn-primary" style={{ padding: '6px 18px', fontSize: '0.82rem' }}>
+                  {editingCategory ? 'Update Category' : '+ Add Category'}
+                </button>
+              </div>
+            </form>
+
+            {/* Existing Categories Table */}
+            <div style={{ maxHeight: '220px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '10px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem', color: 'var(--text-main)' }}>
+                <thead>
+                  <tr style={{ background: 'var(--input-bg)', borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
+                    <th style={{ padding: '10px 14px' }}>Category Name</th>
+                    <th style={{ padding: '10px 14px' }}>Description</th>
+                    <th style={{ padding: '10px 14px', textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {categories && categories.length > 0 ? (
+                    categories.map(cat => {
+                      const catObj = typeof cat === 'string' ? { id: cat, name: cat, description: '' } : cat;
+                      return (
+                        <tr key={catObj.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '10px 14px', fontWeight: '700', color: 'var(--accent-gold)' }}>
+                            {catObj.name}
+                          </td>
+                          <td style={{ padding: '10px 14px', color: 'var(--text-sub)' }}>
+                            {catObj.description || '—'}
+                          </td>
+                          <td style={{ padding: '10px 14px', textAlign: 'right' }}>
+                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                              <button 
+                                onClick={() => handleStartEditCategory(catObj)}
+                                style={{ background: 'rgba(99,102,241,0.15)', border: 'none', color: 'var(--primary-indigo)', padding: '5px 8px', borderRadius: '6px', cursor: 'pointer' }}
+                                title="Edit Category"
+                              >
+                                <Edit3 size={14} />
+                              </button>
+                              <button 
+                                onClick={() => setDeletingItem({ type: 'category', item: catObj })}
+                                style={{ background: 'rgba(239,68,68,0.15)', border: 'none', color: '#ef4444', padding: '5px 8px', borderRadius: '6px', cursor: 'pointer' }}
+                                title="Delete Category"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan="3" style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        No categories found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+              <button onClick={() => { setIsCategoryModalOpen(false); handleCancelCategoryEdit(); }} className="glass-card" style={{ padding: '8px 20px', cursor: 'pointer', color: 'var(--text-main)' }}>
+                Done
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL 4: DELETE CONFIRMATION ─── */}
       {deletingItem && (
         <div className="modal-overlay">
           <div className="glass-panel modal-content" style={{ maxWidth: '420px', width: '90%', padding: '28px', textAlign: 'center' }}>
@@ -933,7 +1238,7 @@ function ServicesPackagesView({
             </div>
 
             <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '8px', color: 'var(--text-main)' }}>
-              Delete {deletingItem.type === 'service' ? 'Service' : 'Combo Package'}?
+              Delete {deletingItem.type === 'service' ? 'Service' : deletingItem.type === 'package' ? 'Combo Package' : 'Category'}?
             </h3>
             <p style={{ fontSize: '0.88rem', color: 'var(--text-sub)', marginBottom: '24px', lineHeight: '1.5' }}>
               Are you sure you want to delete <strong>{deletingItem.item.name}</strong>? This action cannot be undone.

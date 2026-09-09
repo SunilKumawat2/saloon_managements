@@ -730,7 +730,9 @@ h1, h2, h3, h4, .font-heading {
   font-weight: 700;
 }
 
-.form-group input, .form-group select, .form-group textarea {
+.form-group input:not([type="checkbox"]):not([type="radio"]), 
+.form-group select, 
+.form-group textarea {
   width: 100%;
   padding: 9px 12px;
   background: var(--input-bg);
@@ -743,9 +745,24 @@ h1, h2, h3, h4, .font-heading {
   transition: var(--transition);
 }
 
-.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+.form-group input:not([type="checkbox"]):not([type="radio"]):focus, 
+.form-group select:focus, 
+.form-group textarea:focus {
   border-color: var(--accent-gold);
   box-shadow: 0 0 0 2px rgba(0, 230, 118, 0.2);
+}
+
+/* Custom Checkbox Alignment & Styling */
+input[type="checkbox"] {
+  width: 18px !important;
+  height: 18px !important;
+  accent-color: #10b981;
+  cursor: pointer;
+  margin: 0 !important;
+  padding: 0 !important;
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 /* Custom Scrollbars */

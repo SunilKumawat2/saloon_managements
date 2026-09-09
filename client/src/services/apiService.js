@@ -460,6 +460,55 @@ export const Admin_Delete_Package = async (packageId) => {
   }
 };
 
+// <----------------  Admin Dynamic Categories (Module 4) ----------------->
+export const Admin_Get_Categories = async () => {
+  try {
+    const token = getToken();
+    const response = await axios.get(`${API_BASE_URL}/categories`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+export const Admin_Create_Category = async (categoryData) => {
+  try {
+    const token = getToken();
+    const response = await axios.post(`${API_BASE_URL}/categories/create`, categoryData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+export const Admin_Update_Category = async (categoryId, categoryData) => {
+  try {
+    const token = getToken();
+    const response = await axios.put(`${API_BASE_URL}/categories/${categoryId}`, categoryData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+export const Admin_Delete_Category = async (categoryId) => {
+  try {
+    const token = getToken();
+    const response = await axios.delete(`${API_BASE_URL}/categories/${categoryId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
 // <----------------  Admin Get Stylists / Staff ----------------->
 export const Admin_Get_Stylists = async () => {
   try {

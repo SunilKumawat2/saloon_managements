@@ -219,3 +219,35 @@ INSERT INTO appointments (id, branch_id, customer_id, stylist_id, service_id, ap
 (102, 1, 2, 2, 3, '2026-09-07', '16:00', 'In-Progress', 1200.00, 'Royal Gold Facial'),
 (103, 2, 3, 3, 4, '2026-09-08', '11:00', 'Completed', 3500.00, 'Keratin Hair Smoothing')
 ON CONFLICT (id) DO UPDATE SET notes = EXCLUDED.notes;
+
+-- Table: service_categories (Dynamic Categories)
+CREATE TABLE IF NOT EXISTS service_categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) UNIQUE NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Seed Data: Service Categories
+INSERT INTO service_categories (id, name, description) VALUES
+(1, 'Hair', 'Haircuts, styling, and hair treatments'),
+(2, 'Beard', 'Beard shaping, trimming, and grooming'),
+(3, 'Facial', 'Skin care, facials, and clean-up treatments'),
+(4, 'Hair Spa', 'Deep conditioning hair spa and treatments'),
+(5, 'Color', 'Hair coloring, highlights, and touch-ups'),
+(6, 'Packages & Combos', 'Bundled special discount combos')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
+
+-- Reset PostgreSQL auto-increment sequences after seed insert
+SELECT setval(pg_get_serial_sequence('branches', 'id'), COALESCE((SELECT MAX(id) FROM branches), 1));
+SELECT setval(pg_get_serial_sequence('roles', 'id'), COALESCE((SELECT MAX(id) FROM roles), 1));
+SELECT setval(pg_get_serial_sequence('users', 'id'), COALESCE((SELECT MAX(id) FROM users), 1));
+SELECT setval(pg_get_serial_sequence('service_categories', 'id'), COALESCE((SELECT MAX(id) FROM service_categories), 1));
+SELECT setval(pg_get_serial_sequence('services', 'id'), COALESCE((SELECT MAX(id) FROM services), 1));
+SELECT setval(pg_get_serial_sequence('packages', 'id'), COALESCE((SELECT MAX(id) FROM packages), 1));
+SELECT setval(pg_get_serial_sequence('stylists', 'id'), COALESCE((SELECT MAX(id) FROM stylists), 1));
+SELECT setval(pg_get_serial_sequence('customers', 'id'), COALESCE((SELECT MAX(id) FROM customers), 1));
+SELECT setval(pg_get_serial_sequence('leads', 'id'), COALESCE((SELECT MAX(id) FROM leads), 1));
+SELECT setval(pg_get_serial_sequence('appointments', 'id'), COALESCE((SELECT MAX(id) FROM appointments), 1));
+SELECT setval(pg_get_serial_sequence('bills', 'id'), COALESCE((SELECT MAX(id) FROM bills), 1));
+

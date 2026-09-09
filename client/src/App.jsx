@@ -63,6 +63,10 @@ import {
   Admin_Create_Package,
   Admin_Update_Package,
   Admin_Delete_Package,
+  Admin_Get_Categories,
+  Admin_Create_Category,
+  Admin_Update_Category,
+  Admin_Delete_Category,
   Admin_Get_Stylists,
   Admin_Get_Appointments,
   Admin_Create_Appointment,
@@ -80,6 +84,7 @@ import {
   MOCK_USERS, 
   MOCK_BRANCHES, 
   MOCK_ROLES, 
+  MOCK_CATEGORIES,
   MOCK_SERVICES, 
   MOCK_PACKAGES,
   MOCK_STYLISTS, 
@@ -93,13 +98,19 @@ function App() {
   const [theme, setTheme] = useState(localStorage.getItem('saloon_theme') || 'dark');
   const [currentUser, setCurrentUser] = useState(null);
   const [authToken, setAuthToken] = useState(localStorage.getItem('saloon_jwt_token') || null);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('saloon_active_tab') || 'dashboard');
   const [authLoading, setAuthLoading] = useState(!!localStorage.getItem('saloon_jwt_token'));
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('saloon_theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    if (activeTab) {
+      localStorage.setItem('saloon_active_tab', activeTab);
+    }
+  }, [activeTab]);
 
   const toggleTheme = () => {
     setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
@@ -132,6 +143,7 @@ function App() {
   const [roles, setRoles] = useState(MOCK_ROLES);
   const [customers, setCustomers] = useState(MOCK_CUSTOMERS);
   const [leads, setLeads] = useState(MOCK_LEADS);
+  const [categories, setCategories] = useState(MOCK_CATEGORIES);
   const [services, setServices] = useState(() => getStoredData('saloon_services_custom', MOCK_SERVICES));
   const [packages, setPackages] = useState(() => getStoredData('saloon_packages_custom', MOCK_PACKAGES));
   const [stylists, setStylists] = useState(MOCK_STYLISTS);
@@ -180,14 +192,19 @@ function App() {
       const leadsRes = await Admin_Get_Leads().catch(() => null);
       if (leadsRes?.data?.data && leadsRes.data.data.length > 0) setLeads(leadsRes.data.data);
 
-      // 4. Fetch Module 4 Services & Packages Data (Sync with DB if API live)
+      // 4. Fetch Module 4 Services, Packages & Categories Data (Sync with DB if API live)
+      const catRes = await Admin_Get_Categories().catch(() => null);
+      if (catRes?.data?.data && Array.isArray(catRes.data.data)) {
+        setCategories(catRes.data.data);
+      }
+
       const servRes = await Admin_Get_Services().catch(() => null);
-      if (servRes?.data?.data && servRes.data.data.length > 0) {
+      if (servRes?.data?.data && Array.isArray(servRes.data.data)) {
         setServices(servRes.data.data);
       }
 
       const pkgRes = await Admin_Get_Packages().catch(() => null);
-      if (pkgRes?.data?.data && pkgRes.data.data.length > 0) {
+      if (pkgRes?.data?.data && Array.isArray(pkgRes.data.data)) {
         setPackages(pkgRes.data.data);
       }
 
@@ -374,48 +391,97 @@ function App() {
   // Handlers for Module 4 Service & Package Management
   const handleAddService = async (serviceData) => {
     try {
-      const res = await Admin_Create_Service(serviceData).catch(() => null);
-      const created = res?.data?.data || { id: Date.now(), ...serviceData };
-      setServices(prev => [...prev, created]);
-    } catch (e) { console.error("Create Service Error:", e); }
+      const res = await Admin_Create_Service(serviceData);
+      if (res?.data?.data) {
+        setServices(prev => [...prev, res.data.data]);
+        return res.data.data;
+      }
+    } catch (e) {
+      console.error("Create Service Error:", e);
+    }
   };
 
   const handleUpdateService = async (id, serviceData) => {
     try {
-      const res = await Admin_Update_Service(id, serviceData).catch(() => null);
-      const updated = res?.data?.data || { id, ...serviceData };
-      setServices(prev => prev.map(s => s.id === id ? { ...s, ...updated } : s));
-    } catch (e) { console.error("Update Service Error:", e); }
+      const res = await Admin_Update_Service(id, serviceData);
+      if (res?.data?.data) {
+        setServices(prev => prev.map(s => Number(s.id) === Number(id) ? { ...s, ...res.data.data } : s));
+      }
+    } catch (e) {
+      console.error("Update Service Error:", e);
+    }
   };
 
   const handleDeleteService = async (id) => {
     try {
-      await Admin_Delete_Service(id).catch(() => null);
-      setServices(prev => prev.filter(s => s.id !== id));
-    } catch (e) { console.error("Delete Service Error:", e); }
+      await Admin_Delete_Service(id);
+      setServices(prev => prev.filter(s => Number(s.id) !== Number(id)));
+    } catch (e) {
+      console.error("Delete Service Error:", e);
+    }
   };
 
   const handleAddPackage = async (packageData) => {
     try {
-      const res = await Admin_Create_Package(packageData).catch(() => null);
-      const created = res?.data?.data || { id: Date.now(), ...packageData };
-      setPackages(prev => [...prev, created]);
-    } catch (e) { console.error("Create Package Error:", e); }
+      const res = await Admin_Create_Package(packageData);
+      if (res?.data?.data) {
+        setPackages(prev => [...prev, res.data.data]);
+      }
+    } catch (e) {
+      console.error("Create Package Error:", e);
+    }
   };
 
   const handleUpdatePackage = async (id, packageData) => {
     try {
-      const res = await Admin_Update_Package(id, packageData).catch(() => null);
-      const updated = res?.data?.data || { id, ...packageData };
-      setPackages(prev => prev.map(p => p.id === id ? { ...p, ...updated } : p));
-    } catch (e) { console.error("Update Package Error:", e); }
+      const res = await Admin_Update_Package(id, packageData);
+      if (res?.data?.data) {
+        setPackages(prev => prev.map(p => Number(p.id) === Number(id) ? { ...p, ...res.data.data } : p));
+      }
+    } catch (e) {
+      console.error("Update Package Error:", e);
+    }
   };
 
   const handleDeletePackage = async (id) => {
     try {
-      await Admin_Delete_Package(id).catch(() => null);
-      setPackages(prev => prev.filter(p => p.id !== id));
-    } catch (e) { console.error("Delete Package Error:", e); }
+      await Admin_Delete_Package(id);
+      setPackages(prev => prev.filter(p => Number(p.id) !== Number(id)));
+    } catch (e) {
+      console.error("Delete Package Error:", e);
+    }
+  };
+
+  // Handlers for Module 4 Dynamic Category Management
+  const handleAddCategory = async (categoryData) => {
+    try {
+      const res = await Admin_Create_Category(categoryData);
+      if (res?.data?.data) {
+        setCategories(prev => [...prev, res.data.data]);
+      }
+    } catch (e) {
+      console.error("Create Category Error:", e);
+    }
+  };
+
+  const handleUpdateCategory = async (id, categoryData) => {
+    try {
+      const res = await Admin_Update_Category(id, categoryData);
+      if (res?.data?.data) {
+        setCategories(prev => prev.map(c => Number(c.id) === Number(id) ? { ...c, ...res.data.data } : c));
+      }
+    } catch (e) {
+      console.error("Update Category Error:", e);
+    }
+  };
+
+  const handleDeleteCategory = async (id) => {
+    try {
+      await Admin_Delete_Category(id);
+      setCategories(prev => prev.filter(c => Number(c.id) !== Number(id)));
+    } catch (e) {
+      console.error("Delete Category Error:", e);
+    }
   };
 
   // Handlers for Module 3 Booking & Receptionist Queue
@@ -860,12 +926,16 @@ function App() {
           <ServicesPackagesView
             services={services}
             packages={packages}
+            categories={categories}
             onAddService={handleAddService}
             onUpdateService={handleUpdateService}
             onDeleteService={handleDeleteService}
             onAddPackage={handleAddPackage}
             onUpdatePackage={handleUpdatePackage}
             onDeletePackage={handleDeletePackage}
+            onAddCategory={handleAddCategory}
+            onUpdateCategory={handleUpdateCategory}
+            onDeleteCategory={handleDeleteCategory}
           />
         )}
 

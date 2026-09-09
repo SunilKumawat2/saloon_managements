@@ -46,12 +46,25 @@ const Bill = {
       const tax_amount = parseFloat((subtotal * 0.18).toFixed(2));
       const total = parseFloat((subtotal + tax_amount).toFixed(2));
 
+      // Check customer & stylist existence to avoid foreign key violations
+      let validCustomerId = null;
+      if (customer_id) {
+        const cCheck = await client.query(`SELECT id FROM customers WHERE id = $1`, [customer_id]);
+        if (cCheck.rows.length > 0) validCustomerId = customer_id;
+      }
+
+      let validStylistId = null;
+      if (stylist_id) {
+        const sCheck = await client.query(`SELECT id FROM stylists WHERE id = $1`, [stylist_id]);
+        if (sCheck.rows.length > 0) validStylistId = stylist_id;
+      }
+
       // Insert bill
       const billRes = await client.query(`
         INSERT INTO bills (branch_id, customer_id, stylist_id, subtotal, tax_amount, total, payment_mode, notes)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING *
-      `, [branch_id || null, customer_id || null, stylist_id || null, subtotal, tax_amount, total, payment_mode || 'Cash', notes || null]);
+      `, [branch_id || null, validCustomerId, validStylistId, subtotal, tax_amount, total, payment_mode || 'Cash', notes || null]);
 
       const bill = billRes.rows[0];
 

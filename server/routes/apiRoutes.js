@@ -18,18 +18,12 @@ import {
   updatePackage, 
   deletePackage 
 } from '../controllers/serviceController.js';
-
-// -------------------- Salon Service Catalog Routes (Module 4) --------------------
-router.get('/services', authenticateToken, getServices);
-router.post('/services/create', authenticateToken, createService);
-router.put('/services/:id', authenticateToken, updateService);
-router.delete('/services/:id', authenticateToken, deleteService);
-
-// -------------------- Bundled Combo Package Routes (Module 4) --------------------
-router.get('/packages', authenticateToken, getPackages);
-router.post('/packages/create', authenticateToken, createPackage);
-router.put('/packages/:id', authenticateToken, updatePackage);
-router.delete('/packages/:id', authenticateToken, deletePackage);
+import { 
+  getCategories, 
+  createCategory, 
+  updateCategory, 
+  deleteCategory 
+} from '../controllers/categoryController.js';
 import { getStylists, createStylist } from '../controllers/stylistController.js';
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '../controllers/customerController.js';
 import { getLeads, createLead, updateLeadStatus, updateLead, deleteLead } from '../controllers/leadController.js';
@@ -38,7 +32,6 @@ import { getBills, getBillById, createBill } from '../controllers/billingControl
 import { uploadUserAvatar, removeUserAvatar, uploadCustomerAvatar, removeCustomerAvatar, uploadLeadAvatar, removeLeadAvatar } from '../controllers/uploadController.js';
 import uploadAvatar, { handleUploadAvatar } from '../middleware/uploadMiddleware.js';
 import { getHealth, checkDatabaseStatus } from '../controllers/healthController.js';
-
 
 const router = express.Router();
 
@@ -68,9 +61,23 @@ router.put('/branches/:id', authenticateToken, updateBranch);
 router.patch('/branches/:id/status', authenticateToken, toggleBranchStatus);
 router.delete('/branches/:id', authenticateToken, deleteBranch);
 
-// -------------------- Salon Service Catalog Routes --------------------
+// -------------------- Dynamic Category Routes (Module 4) --------------------
+router.get('/categories', authenticateToken, getCategories);
+router.post('/categories/create', authenticateToken, createCategory);
+router.put('/categories/:id', authenticateToken, updateCategory);
+router.delete('/categories/:id', authenticateToken, deleteCategory);
+
+// -------------------- Salon Service Catalog Routes (Module 4) --------------------
 router.get('/services', authenticateToken, getServices);
 router.post('/services/create', authenticateToken, createService);
+router.put('/services/:id', authenticateToken, updateService);
+router.delete('/services/:id', authenticateToken, deleteService);
+
+// -------------------- Bundled Combo Packages Routes (Module 4) --------------------
+router.get('/packages', authenticateToken, getPackages);
+router.post('/packages/create', authenticateToken, createPackage);
+router.put('/packages/:id', authenticateToken, updatePackage);
+router.delete('/packages/:id', authenticateToken, deletePackage);
 
 // -------------------- Stylist / Staff Routes --------------------
 router.get('/stylists', authenticateToken, getStylists);

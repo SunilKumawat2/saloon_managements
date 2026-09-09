@@ -59,9 +59,19 @@ class ServiceModel {
   }
 
   static async deleteService(id) {
-    const query = `DELETE FROM services WHERE id = $1 RETURNING *;`;
-    const res = await pool.query(query, [id]);
-    return res.rows[0];
+    try {
+      const query = `DELETE FROM services WHERE id = $1 RETURNING *;`;
+      const res = await pool.query(query, [id]);
+      return res.rows[0];
+    } catch (err) {
+      if (err.code === '23503') {
+        // Soft delete: mark as inactive if linked to historical appointments/bills
+        const softQuery = `UPDATE services SET is_active = false WHERE id = $1 RETURNING *;`;
+        const res = await pool.query(softQuery, [id]);
+        return res.rows[0];
+      }
+      throw err;
+    }
   }
 
   // ─── BUNDLED COMBO PACKAGES ───
@@ -123,9 +133,18 @@ class ServiceModel {
   }
 
   static async deletePackage(id) {
-    const query = `DELETE FROM packages WHERE id = $1 RETURNING *;`;
-    const res = await pool.query(query, [id]);
-    return res.rows[0];
+    try {
+      const query = `DELETE FROM packages WHERE id = $1 RETURNING *;`;
+      const res = await pool.query(query, [id]);
+      return res.rows[0];
+    } catch (err) {
+      if (err.code === '23503') {
+        const softQuery = `UPDATE packages SET is_active = false WHERE id = $1 RETURNING *;`;
+        const res = await pool.query(softQuery, [id]);
+        return res.rows[0];
+      }
+      throw err;
+    }
   }
 }
 

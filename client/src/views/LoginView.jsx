@@ -29,7 +29,7 @@ function LoginView({ onLoginSuccess, theme = 'dark', onToggleTheme }) {
         // Fallback demo authentication login data
         const role = userEmail.includes('manager') ? 'Manager' : userEmail.includes('reception') ? 'Receptionist' : userEmail.includes('stylist') ? 'Staff' : 'Admin';
         const name = userEmail.includes('manager') ? 'Rohan Verma (Manager)' : userEmail.includes('reception') ? 'Priya Sharma (Receptionist)' : userEmail.includes('stylist') ? 'Amit Singh (Staff)' : 'Sunil Kumar (Admin)';
-        
+
         onLoginSuccess({
           token: `demo_jwt_token_${Date.now()}`,
           user: {
@@ -72,28 +72,28 @@ function LoginView({ onLoginSuccess, theme = 'dark', onToggleTheme }) {
           <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
         </button>
       )}
-      <div 
+      <div
 
-        className="glass-panel" 
-        style={{ 
-          maxWidth: '920px', 
-          width: '100%', 
-          display: 'grid', 
-          gridTemplateColumns: '1fr 1.15fr', 
-          borderRadius: 'var(--radius-lg)', 
+        className="glass-panel"
+        style={{
+          maxWidth: '920px',
+          width: '100%',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1.15fr',
+          borderRadius: 'var(--radius-lg)',
           overflow: 'hidden',
           boxShadow: '0 30px 70px -15px rgba(0, 0, 0, 0.8), 0 0 40px rgba(245, 158, 11, 0.15)',
           border: '1px solid rgba(255, 255, 255, 0.12)'
         }}
       >
-        
+
         {/* Left Column: Premium Branding & Feature Highlights */}
-        <div 
-          style={{ 
-            background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(11, 17, 32, 0.95))', 
-            padding: '44px 36px', 
-            display: 'flex', 
-            flexDirection: 'column', 
+        <div
+          style={{
+            background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(11, 17, 32, 0.95))',
+            padding: '44px 36px',
+            display: 'flex',
+            flexDirection: 'column',
             justify: 'space-between',
             borderRight: '1px solid var(--border)',
             position: 'relative',
@@ -151,7 +151,7 @@ function LoginView({ onLoginSuccess, theme = 'dark', onToggleTheme }) {
 
         {/* Right Column: Sign In Form & Role Switcher */}
         <div style={{ padding: '44px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          
+
           <div style={{ marginBottom: '28px' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(245, 158, 11, 0.15)', color: 'var(--accent-gold)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '800', marginBottom: '10px' }}>
               <Sparkles size={12} /> EXECUTIVE LOGIN
@@ -183,30 +183,30 @@ function LoginView({ onLoginSuccess, theme = 'dark', onToggleTheme }) {
           <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label><Mail size={14} style={{ display: 'inline', marginRight: '6px' }} /> Email Address</label>
-              <input 
-                type="email" 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)} 
-                required 
-                placeholder="admin@saloon.com" 
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                placeholder="admin@saloon.com"
               />
             </div>
 
             <div className="form-group">
               <label><Lock size={14} style={{ display: 'inline', marginRight: '6px' }} /> Password</label>
-              <input 
-                type="password" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                required 
-                placeholder="••••••••" 
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder="••••••••"
               />
             </div>
 
-            <button 
-              type="submit" 
-              disabled={loading} 
-              className="btn-primary" 
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary"
               style={{ width: '100%', justifyContent: 'center', marginTop: '22px', padding: '14px', fontSize: '0.95rem' }}
             >
               {loading ? 'Authenticating...' : 'Sign In to Portal'} <ArrowRight size={18} />

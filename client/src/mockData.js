@@ -28,6 +28,15 @@ export const MOCK_ROLES = [
   { id: 5, name: 'Customer', description: 'Client Portal User', permissions: ["book_appointments", "view_history"] }
 ];
 
+export const MOCK_CATEGORIES = [
+  { id: 1, name: 'Hair', description: 'Haircuts, styling, and hair treatments' },
+  { id: 2, name: 'Beard', description: 'Beard shaping, trimming, and grooming' },
+  { id: 3, name: 'Facial', description: 'Skin care, facials, and clean-up treatments' },
+  { id: 4, name: 'Hair Spa', description: 'Deep conditioning hair spa and treatments' },
+  { id: 5, name: 'Color', description: 'Hair coloring, highlights, and touch-ups' },
+  { id: 6, name: 'Packages & Combos', description: 'Bundled special discount combos' }
+];
+
 export const MOCK_SERVICES = [
   { id: 1, name: 'Classic Haircut & Styling', category: 'Hair', description: 'Professional haircut, wash & blow dry styling', price: 350.00, duration_minutes: 30, buffer_time_minutes: 15, commission_rate: 12.00, is_active: true },
   { id: 2, name: 'Beard Shaping & Hot Towel Spa', category: 'Beard', description: 'Precision beard shaping and hot towel steam treatment', price: 200.00, duration_minutes: 20, buffer_time_minutes: 10, commission_rate: 10.00, is_active: true },
