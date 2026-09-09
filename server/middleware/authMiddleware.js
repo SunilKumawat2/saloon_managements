@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import { pool } from '../config/db.js';
 
 dotenv.config();
 
@@ -24,6 +25,8 @@ export const authenticateToken = (req, res, next) => {
         name: 'Sunil Kumar (Admin)',
         email: 'admin@saloon.com',
         role: 'Admin',
+        role_id: 1,
+        permissions: ['all', 'manage_permissions', 'manage_users', 'manage_branches', 'manage_services', 'manage_appointments', 'manage_billing'],
         branch_name: 'Connaught Place Main Salon'
       };
       return next();
@@ -40,3 +43,38 @@ export const authenticateToken = (req, res, next) => {
     });
   }
 };
+
+export const requirePermission = (permKey) => {
+  return async (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ status: 'error', message: 'Authentication required' });
+    }
+
+    const roleName = req.user.role || req.user.role_name;
+    if (roleName === 'Admin') return next();
+
+    let userPerms = req.user.permissions || [];
+
+    // Query live role permissions from DB if role_id is present
+    if (req.user.role_id) {
+      try {
+        const { rows } = await pool.query('SELECT permissions FROM roles WHERE id = $1', [req.user.role_id]);
+        if (rows.length > 0 && Array.isArray(rows[0].permissions)) {
+          userPerms = rows[0].permissions;
+        }
+      } catch (e) {
+        // Fallback to token payload permissions
+      }
+    }
+
+    if (userPerms.includes('all') || userPerms.includes(permKey)) {
+      return next();
+    }
+
+    return res.status(403).json({
+      status: 'error',
+      message: `Access denied. Requiring '${permKey}' permission.`
+    });
+  };
+};
+

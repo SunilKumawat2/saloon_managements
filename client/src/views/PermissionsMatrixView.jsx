@@ -6,6 +6,7 @@ import { Admin_Update_Role_Permissions } from '../services/apiService';
 const ALL_PERMISSIONS = [
   // System
   { key: 'all',                        label: 'Full System Control',       emoji: '🔐', desc: 'Complete unrestricted access to the entire system', category: 'System' },
+  { key: 'manage_permissions',          label: 'Role & Permission Matrix',  emoji: '🛡️', desc: 'Can view and modify role permissions for system users', category: 'System' },
   { key: 'manage_users',               label: 'Staff & User Management',   emoji: '👥', desc: 'Add, edit and delete staff members and assign roles', category: 'System' },
   { key: 'manage_branches',            label: 'Branch Management',         emoji: '🏢', desc: 'Create and manage salon branches', category: 'System' },
   { key: 'manage_branch_users',        label: 'Branch Staff Control',      emoji: '👤', desc: 'Manage staff within own branch only', category: 'System' },

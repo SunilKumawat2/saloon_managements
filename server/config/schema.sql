@@ -163,7 +163,7 @@ CREATE TABLE IF NOT EXISTS bill_items (
 
 -- Seed Data: Roles
 INSERT INTO roles (id, name, description, permissions) VALUES
-(1, 'Admin', 'Super Administrator with full system control', '["all", "manage_users", "manage_branches", "manage_finances", "manage_services", "manage_inventory"]'),
+(1, 'Admin', 'Super Administrator with full system control', '["all", "manage_permissions", "manage_users", "manage_branches", "manage_finances", "manage_services", "manage_inventory"]'),
 (2, 'Manager', 'Branch Operational Manager', '["manage_branch_users", "manage_appointments", "manage_services", "manage_inventory", "view_reports"]'),
 (3, 'Receptionist', 'Front Desk & Billing Handler', '["manage_appointments", "manage_billing", "view_customers"]'),
 (4, 'Staff', 'Stylist / Hair Artist', '["view_assigned_appointments", "view_schedule"]'),

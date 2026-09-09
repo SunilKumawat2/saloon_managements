@@ -94,6 +94,23 @@ import {
   MOCK_BILLS 
 } from './mockData';
 
+function AccessDeniedView({ role, onGoHome }) {
+  return (
+    <div className="glass-panel" style={{ padding: '60px 30px', textAlign: 'center', margin: '30px auto', maxWidth: '640px', borderRadius: '20px', border: '1.5px solid rgba(239,68,68,0.25)' }}>
+      <div style={{ fontSize: '3.8rem', marginBottom: '16px' }}>🔒</div>
+      <h2 style={{ fontSize: '1.4rem', fontWeight: '900', color: '#ef4444', marginBottom: '12px' }}>
+        Access Restricted — Permission Required
+      </h2>
+      <p style={{ color: 'var(--text-sub)', fontSize: '0.92rem', lineHeight: '1.75', maxWidth: '480px', margin: '0 auto 24px' }}>
+        Your assigned role <span className="role-tag staff" style={{ display: 'inline-block', margin: '0 4px', textTransform: 'uppercase' }}>{role || 'User'}</span> does not have permission to access this module. Contact your Salon Admin to request access in the Permission Matrix.
+      </p>
+      <button onClick={onGoHome} className="btn-primary" style={{ padding: '12px 28px', fontSize: '0.95rem', fontWeight: '800' }}>
+        Return to Executive Dashboard
+      </button>
+    </div>
+  );
+}
+
 function App() {
   const [theme, setTheme] = useState(localStorage.getItem('saloon_theme') || 'dark');
   const [currentUser, setCurrentUser] = useState(null);
@@ -127,6 +144,24 @@ function App() {
   // Receptionist POS state — which customer is being billed
   const [posCustomer, setPosCustomer] = useState(null);
   const [posStylistId, setPosStylistId] = useState(null);
+
+  // Dynamic Permission Checker based on logged-in user and live role permissions
+  const canAccess = (permKeys) => {
+    if (!currentUser) return false;
+    const userRoleName = currentUser.role || currentUser.role_name;
+    if (userRoleName === 'Admin') return true;
+
+    // Find live role permissions in roles state so updates apply in real time
+    const matchedRole = roles.find(r => r.id === currentUser.role_id || r.name === userRoleName);
+    const userPerms = matchedRole?.permissions || currentUser.permissions || [];
+
+    if (userPerms.includes('all')) return true;
+
+    if (Array.isArray(permKeys)) {
+      return permKeys.some(k => userPerms.includes(k));
+    }
+    return userPerms.includes(permKeys);
+  };
 
   // Helper function to restore state from localStorage with fallback
   const getStoredData = (key, fallback) => {
@@ -602,126 +637,146 @@ function App() {
             </button>
 
             {/* Dropdown 1: User Roles & RBAC (Module 1) */}
-            <div style={{ marginTop: '4px' }}>
-              <button 
-                className={`nav-dropdown-toggle ${isRbacOpen ? 'open' : ''} ${['users', 'branches', 'matrix'].includes(activeTab) ? 'active' : ''}`}
-                onClick={() => setIsRbacOpen(!isRbacOpen)}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <ShieldCheck size={17} style={{ color: ['users', 'branches', 'matrix'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
-                  <span>User Roles & RBAC</span>
-                </div>
-                {isRbacOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-              </button>
+            {canAccess(['manage_users', 'manage_branches', 'manage_permissions']) && (
+              <div style={{ marginTop: '4px' }}>
+                <button 
+                  className={`nav-dropdown-toggle ${isRbacOpen ? 'open' : ''} ${['users', 'branches', 'matrix'].includes(activeTab) ? 'active' : ''}`}
+                  onClick={() => setIsRbacOpen(!isRbacOpen)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <ShieldCheck size={17} style={{ color: ['users', 'branches', 'matrix'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
+                    <span>User Roles & RBAC</span>
+                  </div>
+                  {isRbacOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                </button>
 
-              {isRbacOpen && (
-                <div className="nav-dropdown-menu">
-                  <button className={`sub-nav-btn ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
-                    <Users size={14} /> User & Staff RBAC ({users.length})
-                  </button>
-                  <button className={`sub-nav-btn ${activeTab === 'branches' ? 'active' : ''}`} onClick={() => setActiveTab('branches')}>
-                    <Building size={14} /> Multi-Branch Control ({branches.length})
-                  </button>
-                  <button className={`sub-nav-btn ${activeTab === 'matrix' ? 'active' : ''}`} onClick={() => setActiveTab('matrix')}>
-                    <ShieldCheck size={14} /> Permission Matrix
-                  </button>
-                </div>
-              )}
-            </div>
+                {isRbacOpen && (
+                  <div className="nav-dropdown-menu">
+                    {canAccess('manage_users') && (
+                      <button className={`sub-nav-btn ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
+                        <Users size={14} /> User & Staff RBAC ({users.length})
+                      </button>
+                    )}
+                    {canAccess('manage_branches') && (
+                      <button className={`sub-nav-btn ${activeTab === 'branches' ? 'active' : ''}`} onClick={() => setActiveTab('branches')}>
+                        <Building size={14} /> Multi-Branch Control ({branches.length})
+                      </button>
+                    )}
+                    {canAccess('manage_permissions') && (
+                      <button className={`sub-nav-btn ${activeTab === 'matrix' ? 'active' : ''}`} onClick={() => setActiveTab('matrix')}>
+                        <ShieldCheck size={14} /> Permission Matrix
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Dropdown 2: CRM & Lead System (Module 2) */}
-            <div style={{ marginTop: '4px' }}>
-              <button 
-                className={`nav-dropdown-toggle ${isCrmOpen ? 'open' : ''} ${['customers', 'leads'].includes(activeTab) ? 'active' : ''}`}
-                onClick={() => setIsCrmOpen(!isCrmOpen)}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Contact size={17} style={{ color: ['customers', 'leads'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
-                  <span>CRM & Lead System</span>
-                </div>
-                {isCrmOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-              </button>
+            {canAccess('view_customers') && (
+              <div style={{ marginTop: '4px' }}>
+                <button 
+                  className={`nav-dropdown-toggle ${isCrmOpen ? 'open' : ''} ${['customers', 'leads'].includes(activeTab) ? 'active' : ''}`}
+                  onClick={() => setIsCrmOpen(!isCrmOpen)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Contact size={17} style={{ color: ['customers', 'leads'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
+                    <span>CRM & Lead System</span>
+                  </div>
+                  {isCrmOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                </button>
 
-              {isCrmOpen && (
-                <div className="nav-dropdown-menu">
-                  <button className={`sub-nav-btn ${activeTab === 'customers' ? 'active' : ''}`} onClick={() => setActiveTab('customers')}>
-                    <Users size={14} /> Customer Profiles ({customers.length})
-                  </button>
-                  <button className={`sub-nav-btn ${activeTab === 'leads' ? 'active' : ''}`} onClick={() => setActiveTab('leads')}>
-                    <Target size={14} /> Lead Pipeline ({leads.length})
-                  </button>
-                </div>
-              )}
-            </div>
+                {isCrmOpen && (
+                  <div className="nav-dropdown-menu">
+                    <button className={`sub-nav-btn ${activeTab === 'customers' ? 'active' : ''}`} onClick={() => setActiveTab('customers')}>
+                      <Users size={14} /> Customer Profiles ({customers.length})
+                    </button>
+                    <button className={`sub-nav-btn ${activeTab === 'leads' ? 'active' : ''}`} onClick={() => setActiveTab('leads')}>
+                      <Target size={14} /> Lead Pipeline ({leads.length})
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Dropdown 3: Service & Package Catalog (Module 4) */}
-            <div style={{ marginTop: '4px' }}>
-              <button 
-                className={`nav-dropdown-toggle ${isServicesOpen ? 'open' : ''} ${['services_packages'].includes(activeTab) ? 'active' : ''}`}
-                onClick={() => setIsServicesOpen(!isServicesOpen)}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Scissors size={17} style={{ color: ['services_packages'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
-                  <span>Services & Packages</span>
-                </div>
-                {isServicesOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-              </button>
+            {canAccess('manage_services') && (
+              <div style={{ marginTop: '4px' }}>
+                <button 
+                  className={`nav-dropdown-toggle ${isServicesOpen ? 'open' : ''} ${['services_packages'].includes(activeTab) ? 'active' : ''}`}
+                  onClick={() => setIsServicesOpen(!isServicesOpen)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Scissors size={17} style={{ color: ['services_packages'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
+                    <span>Services & Packages</span>
+                  </div>
+                  {isServicesOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                </button>
 
-              {isServicesOpen && (
-                <div className="nav-dropdown-menu">
-                  <button className={`sub-nav-btn ${activeTab === 'services_packages' ? 'active' : ''}`} onClick={() => setActiveTab('services_packages')}>
-                    <Scissors size={14} /> Catalog & Combos ({services.length + packages.length})
-                  </button>
-                </div>
-              )}
-            </div>
+                {isServicesOpen && (
+                  <div className="nav-dropdown-menu">
+                    <button className={`sub-nav-btn ${activeTab === 'services_packages' ? 'active' : ''}`} onClick={() => setActiveTab('services_packages')}>
+                      <Scissors size={14} /> Catalog & Combos ({services.length + packages.length})
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
-            {/* Dropdown 3: Appointments & Booking (Module 3) */}
-            <div style={{ marginTop: '4px' }}>
-              <button 
-                className={`nav-dropdown-toggle ${isBookingOpen ? 'open' : ''} ${['appointments'].includes(activeTab) ? 'active' : ''}`}
-                onClick={() => setIsBookingOpen(!isBookingOpen)}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Calendar size={17} style={{ color: ['appointments'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
-                  <span>Booking & Calendar</span>
-                </div>
-                {isBookingOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-              </button>
+            {/* Dropdown 4: Appointments & Booking (Module 3) */}
+            {canAccess('manage_appointments') && (
+              <div style={{ marginTop: '4px' }}>
+                <button 
+                  className={`nav-dropdown-toggle ${isBookingOpen ? 'open' : ''} ${['appointments'].includes(activeTab) ? 'active' : ''}`}
+                  onClick={() => setIsBookingOpen(!isBookingOpen)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Calendar size={17} style={{ color: ['appointments'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
+                    <span>Booking & Calendar</span>
+                  </div>
+                  {isBookingOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                </button>
 
-              {isBookingOpen && (
-                <div className="nav-dropdown-menu">
-                  <button className={`sub-nav-btn ${activeTab === 'appointments' ? 'active' : ''}`} onClick={() => setActiveTab('appointments')}>
-                    <Calendar size={14} /> Booking Calendar ({appointments.length})
-                  </button>
-                </div>
-              )}
-            </div>
+                {isBookingOpen && (
+                  <div className="nav-dropdown-menu">
+                    <button className={`sub-nav-btn ${activeTab === 'appointments' ? 'active' : ''}`} onClick={() => setActiveTab('appointments')}>
+                      <Calendar size={14} /> Booking Calendar ({appointments.length})
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
-            {/* Dropdown 4: Receptionist Console */}
-            <div style={{ marginTop: '4px' }}>
-              <button 
-                className={`nav-dropdown-toggle ${isReceptionOpen ? 'open' : ''} ${['reception_checkin', 'pos_billing', 'billing_history'].includes(activeTab) ? 'active' : ''}`}
-                onClick={() => setIsReceptionOpen(!isReceptionOpen)}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <MonitorSmartphone size={17} style={{ color: ['reception_checkin', 'pos_billing', 'billing_history'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
-                  <span>Receptionist Console</span>
-                </div>
-                {isReceptionOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-              </button>
+            {/* Dropdown 5: Receptionist Console */}
+            {canAccess(['manage_appointments', 'manage_billing', 'view_reports', 'manage_finances']) && (
+              <div style={{ marginTop: '4px' }}>
+                <button 
+                  className={`nav-dropdown-toggle ${isReceptionOpen ? 'open' : ''} ${['reception_checkin', 'pos_billing', 'billing_history'].includes(activeTab) ? 'active' : ''}`}
+                  onClick={() => setIsReceptionOpen(!isReceptionOpen)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <MonitorSmartphone size={17} style={{ color: ['reception_checkin', 'pos_billing', 'billing_history'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
+                    <span>Receptionist Console</span>
+                  </div>
+                  {isReceptionOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                </button>
 
-              {isReceptionOpen && (
-                <div className="nav-dropdown-menu">
-                  <button className={`sub-nav-btn ${activeTab === 'reception_checkin' || activeTab === 'pos_billing' ? 'active' : ''}`} onClick={() => { setPosCustomer(null); setPosStylistId(null); setActiveTab('reception_checkin'); }}>
-                    <UserCheck size={14} /> Walk-in Check-in
-                  </button>
-                  <button className={`sub-nav-btn ${activeTab === 'billing_history' ? 'active' : ''}`} onClick={() => setActiveTab('billing_history')}>
-                    <Receipt size={14} /> Billing History ({bills.length})
-                  </button>
-                </div>
-              )}
-            </div>
+                {isReceptionOpen && (
+                  <div className="nav-dropdown-menu">
+                    {canAccess(['manage_appointments', 'manage_billing']) && (
+                      <button className={`sub-nav-btn ${activeTab === 'reception_checkin' || activeTab === 'pos_billing' ? 'active' : ''}`} onClick={() => { setPosCustomer(null); setPosStylistId(null); setActiveTab('reception_checkin'); }}>
+                        <UserCheck size={14} /> Walk-in Check-in
+                      </button>
+                    )}
+                    {canAccess(['manage_billing', 'view_reports', 'manage_finances']) && (
+                      <button className={`sub-nav-btn ${activeTab === 'billing_history' ? 'active' : ''}`} onClick={() => setActiveTab('billing_history')}>
+                        <Receipt size={14} /> Billing History ({bills.length})
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </nav>
         </div>
 
@@ -885,106 +940,153 @@ function App() {
         )}
 
         {/* Module 1 Views */}
-        {activeTab === 'users' && <UsersManagementView users={users} branches={branches} roles={roles} onAddUser={handleAddUser} />}
-        {activeTab === 'branches' && (
-          <BranchesManagementView 
-            branches={branches} 
-            onAddBranch={handleAddBranch} 
-            onUpdateBranch={handleUpdateBranch}
-            onToggleBranchStatus={handleToggleBranchStatus}
-            onDeleteBranch={handleDeleteBranch}
-          />
+        {activeTab === 'users' && (
+          canAccess('manage_users') ? (
+            <UsersManagementView users={users} branches={branches} roles={roles} onAddUser={handleAddUser} />
+          ) : (
+            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+          )
         )}
+
+        {activeTab === 'branches' && (
+          canAccess('manage_branches') ? (
+            <BranchesManagementView 
+              branches={branches} 
+              onAddBranch={handleAddBranch} 
+              onUpdateBranch={handleUpdateBranch}
+              onToggleBranchStatus={handleToggleBranchStatus}
+              onDeleteBranch={handleDeleteBranch}
+            />
+          ) : (
+            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+          )
+        )}
+
         {activeTab === 'matrix' && (
-          <PermissionsMatrixView 
-            roles={roles} 
-            onUpdateRoles={(updatedRole) => setRoles(prev => prev.map(r => r.id === updatedRole.id ? updatedRole : r))}
-          />
+          canAccess('manage_permissions') ? (
+            <PermissionsMatrixView 
+              roles={roles} 
+              onUpdateRoles={(updatedRole) => setRoles(prev => prev.map(r => r.id === updatedRole.id ? updatedRole : r))}
+            />
+          ) : (
+            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+          )
         )}
 
         {/* Module 2 Views */}
         {activeTab === 'customers' && (
-          <CustomersCRMView
-            customers={customers}
-            onAddCustomer={handleAddCustomer}
-            onUpdateCustomer={handleUpdateCustomer}
-            onDeleteCustomer={handleDeleteCustomer}
-          />
+          canAccess('view_customers') ? (
+            <CustomersCRMView
+              customers={customers}
+              onAddCustomer={handleAddCustomer}
+              onUpdateCustomer={handleUpdateCustomer}
+              onDeleteCustomer={handleDeleteCustomer}
+            />
+          ) : (
+            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+          )
         )}
+
         {activeTab === 'leads' && (
-          <LeadsManagementView
-            leads={leads}
-            onAddLead={handleAddLead}
-            onUpdateLead={handleUpdateLead}
-            onDeleteLead={handleDeleteLead}
-            onUpdateLeadStatus={handleUpdateLeadStatus}
-          />
+          canAccess('view_customers') ? (
+            <LeadsManagementView
+              leads={leads}
+              onAddLead={handleAddLead}
+              onUpdateLead={handleUpdateLead}
+              onDeleteLead={handleDeleteLead}
+              onUpdateLeadStatus={handleUpdateLeadStatus}
+            />
+          ) : (
+            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+          )
         )}
 
         {/* Module 4 Views: Salon Service & Package Catalog */}
         {activeTab === 'services_packages' && (
-          <ServicesPackagesView
-            services={services}
-            packages={packages}
-            categories={categories}
-            onAddService={handleAddService}
-            onUpdateService={handleUpdateService}
-            onDeleteService={handleDeleteService}
-            onAddPackage={handleAddPackage}
-            onUpdatePackage={handleUpdatePackage}
-            onDeletePackage={handleDeletePackage}
-            onAddCategory={handleAddCategory}
-            onUpdateCategory={handleUpdateCategory}
-            onDeleteCategory={handleDeleteCategory}
-          />
+          canAccess('manage_services') ? (
+            <ServicesPackagesView
+              services={services}
+              packages={packages}
+              categories={categories}
+              onAddService={handleAddService}
+              onUpdateService={handleUpdateService}
+              onDeleteService={handleDeleteService}
+              onAddPackage={handleAddPackage}
+              onUpdatePackage={handleUpdatePackage}
+              onDeletePackage={handleDeletePackage}
+              onAddCategory={handleAddCategory}
+              onUpdateCategory={handleUpdateCategory}
+              onDeleteCategory={handleDeleteCategory}
+            />
+          ) : (
+            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+          )
         )}
 
         {/* Module 3 Views */}
         {activeTab === 'appointments' && (
-          <AppointmentsCalendarView 
-            appointments={appointments} 
-            customers={customers} 
-            stylists={stylists} 
-            services={services} 
-            onAddAppointment={handleAddAppointment} 
-            onUpdateAppointment={handleUpdateAppointment}
-            onDeleteAppointment={handleDeleteAppointment}
-            onUpdateAppointmentStatus={handleUpdateAppointmentStatus} 
-          />
+          canAccess('manage_appointments') ? (
+            <AppointmentsCalendarView 
+              appointments={appointments} 
+              customers={customers} 
+              stylists={stylists} 
+              services={services} 
+              onAddAppointment={handleAddAppointment} 
+              onUpdateAppointment={handleUpdateAppointment}
+              onDeleteAppointment={handleDeleteAppointment}
+              onUpdateAppointmentStatus={handleUpdateAppointmentStatus} 
+            />
+          ) : (
+            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+          )
         )}
 
         {/* Receptionist Module Views */}
         {activeTab === 'reception_checkin' && (
-          <ReceptionistView
-            customers={customers}
-            stylists={stylists}
-            services={services}
-            appointments={appointments}
-            onCheckIn={handleCheckIn}
-            onAddAppointment={handleAddAppointment}
-            onUpdateAppointment={handleUpdateAppointment}
-            onDeleteAppointment={handleDeleteAppointment}
-            onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
-            onAddCustomer={handleAddCustomer}
-          />
+          canAccess(['manage_appointments', 'manage_billing']) ? (
+            <ReceptionistView
+              customers={customers}
+              stylists={stylists}
+              services={services}
+              appointments={appointments}
+              onCheckIn={handleCheckIn}
+              onAddAppointment={handleAddAppointment}
+              onUpdateAppointment={handleUpdateAppointment}
+              onDeleteAppointment={handleDeleteAppointment}
+              onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
+              onAddCustomer={handleAddCustomer}
+            />
+          ) : (
+            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+          )
         )}
+
         {activeTab === 'pos_billing' && posCustomer && (
-          <POSBillingView
-            customer={posCustomer}
-            stylistId={posStylistId}
-            stylists={stylists}
-            services={services}
-            bills={bills}
-            onCreateBill={handleCreateBill}
-            onBack={handlePOSBack}
-          />
+          canAccess('manage_billing') ? (
+            <POSBillingView
+              customer={posCustomer}
+              stylistId={posStylistId}
+              stylists={stylists}
+              services={services}
+              bills={bills}
+              onCreateBill={handleCreateBill}
+              onBack={handlePOSBack}
+            />
+          ) : (
+            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+          )
         )}
+
         {activeTab === 'billing_history' && (
-          <BillingHistoryView
-            bills={bills}
-            customers={customers}
-            stylists={stylists}
-          />
+          canAccess(['manage_billing', 'view_reports', 'manage_finances']) ? (
+            <BillingHistoryView
+              bills={bills}
+              customers={customers}
+              stylists={stylists}
+            />
+          ) : (
+            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+          )
         )}
       </main>
     </div>
