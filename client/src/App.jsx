@@ -263,19 +263,49 @@ function App() {
     const savedToken = localStorage.getItem('saloon_jwt_token');
     if (savedToken && !currentUser) {
       setAuthLoading(true);
+
+      // Decode token locally as immediate fallback (so user is never logged out on API error)
+      let tokenPayload = null;
+      try {
+        const base64Payload = savedToken.split('.')[1];
+        tokenPayload = JSON.parse(atob(base64Payload));
+      } catch (e) {
+        // token corrupted
+      }
+
+      // Check token expiry
+      const now = Math.floor(Date.now() / 1000);
+      if (tokenPayload && tokenPayload.exp && tokenPayload.exp < now) {
+        // Token genuinely expired — clear and logout
+        localStorage.removeItem('saloon_jwt_token');
+        setAuthToken(null);
+        setAuthLoading(false);
+        return;
+      }
+
+      // Try fetching fresh user from server (gets updated permissions from DB)
       Get_Admin_Profile()
         .then(res => {
           if (res?.data?.data) {
+            // Fresh data from DB (includes latest permissions)
             setCurrentUser(res.data.data);
+          } else if (tokenPayload) {
+            // API returned nothing but token is valid — use token data as fallback
+            setCurrentUser(tokenPayload);
           } else {
-            // Token invalid/expired — clear it
             localStorage.removeItem('saloon_jwt_token');
             setAuthToken(null);
           }
         })
         .catch(() => {
-          localStorage.removeItem('saloon_jwt_token');
-          setAuthToken(null);
+          // Network/API error — DO NOT logout. Use JWT decoded payload as fallback.
+          if (tokenPayload) {
+            console.warn('API unavailable on refresh — using cached token session as fallback');
+            setCurrentUser(tokenPayload);
+          } else {
+            localStorage.removeItem('saloon_jwt_token');
+            setAuthToken(null);
+          }
         })
         .finally(() => setAuthLoading(false));
     } else {
@@ -966,7 +996,14 @@ function App() {
           canAccess('manage_permissions') ? (
             <PermissionsMatrixView 
               roles={roles} 
-              onUpdateRoles={(updatedRole) => setRoles(prev => prev.map(r => r.id === updatedRole.id ? updatedRole : r))}
+              onUpdateRoles={(updatedRole) => {
+                // Update roles state immediately
+                setRoles(prev => prev.map(r => r.id === updatedRole.id ? updatedRole : r));
+                // If the updated role is the current user's role, update their live permissions too
+                if (currentUser && currentUser.role_id === updatedRole.id) {
+                  setCurrentUser(prev => ({ ...prev, permissions: updatedRole.permissions || [] }));
+                }
+              }}
             />
           ) : (
             <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
