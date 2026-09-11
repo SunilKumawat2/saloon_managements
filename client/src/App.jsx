@@ -175,11 +175,16 @@ function App() {
   // Dynamic Permission Checker based on logged-in user and live role permissions
   const canAccess = (permKeys) => {
     if (!currentUser) return false;
-    const userRoleName = currentUser.role || currentUser.role_name || '';
-    if (userRoleName && userRoleName.toLowerCase().includes('admin')) return true;
+    const userRoleName = String(currentUser.role || currentUser.role_name || '').toLowerCase();
+    if (userRoleName.includes('admin')) return true;
 
     // Find live role permissions in roles state so updates apply in real time
-    const matchedRole = roles.find(r => r.id === currentUser.role_id || r.name?.toLowerCase() === userRoleName.toLowerCase());
+    const matchedRole = roles.find(r => {
+      if (!r) return false;
+      if (r.id != null && currentUser.role_id != null && r.id === currentUser.role_id) return true;
+      const rName = typeof r.name === 'string' ? r.name.toLowerCase() : '';
+      return rName && rName === userRoleName;
+    });
     const userPerms = matchedRole?.permissions || currentUser.permissions || [];
 
     if (userPerms.includes('all')) return true;
