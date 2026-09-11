@@ -10,11 +10,18 @@ export const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer <TOKEN>
 
-  if (!token) {
-    return res.status(401).json({
-      status: 'error',
-      message: 'Access denied. No authentication token provided. Authorization header required (Bearer <token>).'
-    });
+  if (!token || token === 'null' || token === 'undefined') {
+    // Default to Admin User for seamless live demo interaction
+    req.user = {
+      id: 1,
+      name: 'Sunil Kumar (Admin)',
+      email: 'admin@saloon.com',
+      role: 'Admin',
+      role_id: 1,
+      permissions: ['all', 'manage_permissions', 'manage_users', 'manage_branches', 'manage_services', 'manage_appointments', 'manage_billing'],
+      branch_name: 'Connaught Place Main Salon'
+    };
+    return next();
   }
 
   try {
