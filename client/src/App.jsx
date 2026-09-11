@@ -287,31 +287,33 @@ function App() {
       const rolesRes = await Admin_Get_Roles().catch(() => null);
       if (rolesRes?.data?.data && rolesRes.data.data.length > 0) setRoles(rolesRes.data.data);
 
-      // 3. Fetch Module 2 CRM & Lead Data — DB always wins
+      // 3. Fetch Module 2 CRM & Lead Data
       const custRes = await Admin_Get_Customers().catch(() => null);
       if (custRes?.data?.data && Array.isArray(custRes.data.data)) {
-        setCustomers(custRes.data.data); // DB data replaces localStorage
+        // Clean out any corrupted customer entries where name was set to number 1
+        const cleanedApiData = custRes.data.data.map(c => typeof c.name === 'number' || !c.name ? { ...c, name: c.category || c.phone || 'Customer' } : c);
+        setCustomers(prev => mergeLists(cleanedApiData, prev));
       }
 
       const leadsRes = await Admin_Get_Leads().catch(() => null);
       if (leadsRes?.data?.data && Array.isArray(leadsRes.data.data)) {
-        setLeads(leadsRes.data.data); // DB data replaces localStorage
+        setLeads(prev => mergeLists(leadsRes.data.data, prev));
       }
 
-      // 4. Fetch Module 4 Services, Packages & Categories Data — DB always wins
+      // 4. Fetch Module 4 Services, Packages & Categories Data
       const catRes = await Admin_Get_Categories().catch(() => null);
       if (catRes?.data?.data && Array.isArray(catRes.data.data)) {
-        setCategories(catRes.data.data);
+        setCategories(prev => mergeLists(catRes.data.data, prev));
       }
 
       const servRes = await Admin_Get_Services().catch(() => null);
       if (servRes?.data?.data && Array.isArray(servRes.data.data)) {
-        setServices(servRes.data.data);
+        setServices(prev => mergeLists(servRes.data.data, prev));
       }
 
       const pkgRes = await Admin_Get_Packages().catch(() => null);
       if (pkgRes?.data?.data && Array.isArray(pkgRes.data.data)) {
-        setPackages(pkgRes.data.data);
+        setPackages(prev => mergeLists(pkgRes.data.data, prev));
       }
 
       const stRes = await Admin_Get_Stylists().catch(() => null);
@@ -480,16 +482,18 @@ function App() {
     } catch (e) { console.error(e); }
   };
 
-  // Handlers for Module 2 CRM & Leads
   const handleAddCustomer = async (newCust, avatarFile) => {
     try {
       const res = await Admin_Create_Customer(newCust).catch(() => null);
-      let customer = res?.data?.data || res?.data || { id: Date.now(), ...newCust };
+      let customer = res?.data?.data || res?.data;
+      if (!customer || typeof customer.name === 'number' || !customer.name) {
+        customer = { id: Date.now(), ...newCust };
+      }
       if (avatarFile && customer.id) {
         const avatarRes = await Admin_Upload_Customer_Avatar(customer.id, avatarFile).catch(() => null);
         if (avatarRes?.data?.data) customer = avatarRes.data.data;
       }
-      setCustomers(prev => [customer, ...prev]);
+      setCustomers(prev => [customer, ...prev.filter(c => String(c.id) !== String(customer.id))]);
       return customer;
     } catch (e) {
       console.error(e);
