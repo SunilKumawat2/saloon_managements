@@ -486,8 +486,10 @@ function App() {
     try {
       const res = await Admin_Create_Customer(newCust).catch(() => null);
       let customer = res?.data?.data || res?.data;
-      if (!customer || typeof customer.name === 'number' || !customer.name) {
+      if (!customer || typeof customer.name === 'number' || customer.name === 1 || customer.name === '1' || !customer.name) {
         customer = { id: Date.now(), ...newCust };
+      } else {
+        customer = { ...newCust, ...customer, name: (typeof customer.name === 'string' && customer.name !== '1') ? customer.name : newCust.name };
       }
       if (avatarFile && customer.id) {
         const avatarRes = await Admin_Upload_Customer_Avatar(customer.id, avatarFile).catch(() => null);
