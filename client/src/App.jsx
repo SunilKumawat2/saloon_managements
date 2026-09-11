@@ -511,10 +511,10 @@ function App() {
         const avatarRes = await Admin_Upload_Customer_Avatar(id, avatarFile).catch(() => null);
         if (avatarRes?.data?.data) customer = avatarRes.data.data;
       }
-      setCustomers(prev => prev.map(c => Number(c.id) === Number(id) ? { ...c, ...customer } : c));
+      setCustomers(prev => prev.map(c => String(c.id) === String(id) ? { ...c, ...customer } : c));
     } catch (e) {
       console.error(e);
-      setCustomers(prev => prev.map(c => Number(c.id) === Number(id) ? { ...c, ...custData } : c));
+      setCustomers(prev => prev.map(c => String(c.id) === String(id) ? { ...c, ...custData } : c));
     }
   };
 
@@ -522,7 +522,7 @@ function App() {
     try {
       await Admin_Delete_Customer(id).catch(() => null);
     } catch (e) { console.error(e); }
-    setCustomers(prev => prev.filter(c => Number(c.id) !== Number(id)));
+    setCustomers(prev => prev.filter(c => String(c.id) !== String(id)));
   };
 
   const handleAddLead = async (leadData, avatarFile) => {
@@ -549,7 +549,7 @@ function App() {
     try {
       await Admin_Update_Lead_Status(id, status).catch(() => null);
     } catch (e) { console.error("Update Status Error:", e); }
-    setLeads(prev => prev.map(l => Number(l.id) === Number(id) ? { ...l, status } : l));
+    setLeads(prev => prev.map(l => String(l.id) === String(id) ? { ...l, status } : l));
   };
 
   const handleUpdateLead = async (id, leadData, avatarFile) => {
@@ -562,10 +562,10 @@ function App() {
           updated = { ...updated, avatar_url: upRes.data.avatarUrl };
         }
       }
-      setLeads(prev => prev.map(l => Number(l.id) === Number(id) ? { ...l, ...updated } : l));
+      setLeads(prev => prev.map(l => String(l.id) === String(id) ? { ...l, ...updated } : l));
     } catch (e) {
       console.error("Update Lead Error:", e);
-      setLeads(prev => prev.map(l => Number(l.id) === Number(id) ? { ...l, ...leadData } : l));
+      setLeads(prev => prev.map(l => String(l.id) === String(id) ? { ...l, ...leadData } : l));
     }
   };
 
@@ -573,7 +573,7 @@ function App() {
     try {
       await Admin_Delete_Lead(id).catch(() => null);
     } catch (e) { console.error("Delete Lead Error:", e); }
-    setLeads(prev => prev.filter(l => Number(l.id) !== Number(id)));
+    setLeads(prev => prev.filter(l => String(l.id) !== String(id)));
   };
 
   // Handlers for Module 4 Service & Package Management
@@ -599,14 +599,14 @@ function App() {
       const res = await Admin_Update_Service(id, serviceData).catch(() => null);
       const updatedItem = res?.data?.data || res?.data || serviceData;
       setServices(prev => {
-        const updated = prev.map(s => Number(s.id) === Number(id) ? { ...s, ...updatedItem } : s);
+        const updated = prev.map(s => String(s.id) === String(id) ? { ...s, ...updatedItem } : s);
         localStorage.setItem('saloon_services_custom', JSON.stringify(updated));
         return updated;
       });
     } catch (e) {
       console.error("Update Service Error:", e);
       setServices(prev => {
-        const updated = prev.map(s => Number(s.id) === Number(id) ? { ...s, ...serviceData } : s);
+        const updated = prev.map(s => String(s.id) === String(id) ? { ...s, ...serviceData } : s);
         localStorage.setItem('saloon_services_custom', JSON.stringify(updated));
         return updated;
       });
@@ -620,7 +620,7 @@ function App() {
       console.error("Delete Service Error:", e);
     }
     setServices(prev => {
-      const updated = prev.filter(s => Number(s.id) !== Number(id));
+      const updated = prev.filter(s => String(s.id) !== String(id));
       localStorage.setItem('saloon_services_custom', JSON.stringify(updated));
       return updated;
     });
@@ -648,14 +648,14 @@ function App() {
       const res = await Admin_Update_Package(id, packageData).catch(() => null);
       const updatedItem = res?.data?.data || res?.data || packageData;
       setPackages(prev => {
-        const updated = prev.map(p => Number(p.id) === Number(id) ? { ...p, ...updatedItem } : p);
+        const updated = prev.map(p => String(p.id) === String(id) ? { ...p, ...updatedItem } : p);
         localStorage.setItem('saloon_packages_custom', JSON.stringify(updated));
         return updated;
       });
     } catch (e) {
       console.error("Update Package Error:", e);
       setPackages(prev => {
-        const updated = prev.map(p => Number(p.id) === Number(id) ? { ...p, ...packageData } : p);
+        const updated = prev.map(p => String(p.id) === String(id) ? { ...p, ...packageData } : p);
         localStorage.setItem('saloon_packages_custom', JSON.stringify(updated));
         return updated;
       });
@@ -669,7 +669,7 @@ function App() {
       console.error("Delete Package Error:", e);
     }
     setPackages(prev => {
-      const updated = prev.filter(p => Number(p.id) !== Number(id));
+      const updated = prev.filter(p => String(p.id) !== String(id));
       localStorage.setItem('saloon_packages_custom', JSON.stringify(updated));
       return updated;
     });
@@ -693,10 +693,10 @@ function App() {
     try {
       const res = await Admin_Update_Category(id, categoryData).catch(() => null);
       const updatedItem = res?.data?.data || res?.data || categoryData;
-      setCategories(prev => prev.map(c => Number(c.id) === Number(id) ? { ...c, ...updatedItem } : c));
+      setCategories(prev => prev.map(c => String(c.id) === String(id) ? { ...c, ...updatedItem } : c));
     } catch (e) {
       console.error("Update Category Error:", e);
-      setCategories(prev => prev.map(c => Number(c.id) === Number(id) ? { ...c, ...categoryData } : c));
+      setCategories(prev => prev.map(c => String(c.id) === String(id) ? { ...c, ...categoryData } : c));
     }
   };
 
@@ -706,7 +706,7 @@ function App() {
     } catch (e) {
       console.error("Delete Category Error:", e);
     }
-    setCategories(prev => prev.filter(c => Number(c.id) !== Number(id)));
+    setCategories(prev => prev.filter(c => String(c.id) !== String(id)));
   };
 
   // Handlers for Module 3 Booking & Receptionist Queue
@@ -727,10 +727,10 @@ function App() {
     try {
       const res = await Admin_Update_Appointment(id, appData).catch(() => null);
       const updatedItem = res?.data?.data || res?.data || appData;
-      setAppointments(prev => prev.map(a => Number(a.id) === Number(id) ? { ...a, ...updatedItem } : a));
+      setAppointments(prev => prev.map(a => String(a.id) === String(id) ? { ...a, ...updatedItem } : a));
     } catch (e) {
       console.error(e);
-      setAppointments(prev => prev.map(a => Number(a.id) === Number(id) ? { ...a, ...appData } : a));
+      setAppointments(prev => prev.map(a => String(a.id) === String(id) ? { ...a, ...appData } : a));
     }
   };
 
@@ -738,7 +738,7 @@ function App() {
     try {
       await Admin_Delete_Appointment(id).catch(() => null);
     } catch (e) { console.error(e); }
-    setAppointments(prev => prev.filter(a => Number(a.id) !== Number(id)));
+    setAppointments(prev => prev.filter(a => String(a.id) !== String(id)));
   };
 
   // Handlers for Receptionist POS Billing
