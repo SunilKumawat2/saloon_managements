@@ -149,7 +149,7 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
 
   // ─── Filtering ───
   const filtered = customers.filter(c => {
-    const matchSearch = (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || (c.phone || '').includes(searchTerm);
+    const matchSearch = String(c.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) || String(c.phone ?? '').includes(searchTerm);
     if (!matchSearch) return false;
     if (segmentFilter === 'All') return true;
     return getSegment(c).label === segmentFilter;

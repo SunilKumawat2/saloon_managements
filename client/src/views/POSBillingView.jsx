@@ -165,7 +165,7 @@ function POSBillingView({
 
   // Filter CRM Customers by search
   const filteredCustomers = customerSearch.trim()
-    ? customers.filter(c => (c.name || '').toLowerCase().includes(customerSearch.toLowerCase()) || (c.phone || '').includes(customerSearch))
+    ? customers.filter(c => String(c.name ?? '').toLowerCase().includes(customerSearch.toLowerCase()) || String(c.phone ?? '').includes(customerSearch))
     : customers.slice(0, 6);
 
   // ─── Cart Handlers ───
@@ -313,13 +313,13 @@ function POSBillingView({
   // ─── Menu Filtering ───
   const filteredServices = services.filter(s => {
     const matchesCat = activeCategory === 'All' || s.category === activeCategory;
-    const matchesSearch = !menuSearch.trim() || (s.name || '').toLowerCase().includes(menuSearch.toLowerCase());
+    const matchesSearch = !menuSearch.trim() || String(s.name ?? '').toLowerCase().includes(menuSearch.toLowerCase());
     return matchesCat && matchesSearch;
   });
 
   const filteredPackages = packages.filter(p => {
     const matchesCat = activeCategory === 'All' || activeCategory === 'Packages & Combos';
-    const matchesSearch = !menuSearch.trim() || (p.name || '').toLowerCase().includes(menuSearch.toLowerCase());
+    const matchesSearch = !menuSearch.trim() || String(p.name ?? '').toLowerCase().includes(menuSearch.toLowerCase());
     return matchesCat && matchesSearch;
   });
 

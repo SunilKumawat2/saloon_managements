@@ -73,8 +73,8 @@ function ReceptionistView({
   // Search customer results
   const searchResults = searchTerm.length >= 2
     ? customers.filter(c =>
-        (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (c.phone || '').includes(searchTerm)
+        String(c.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(c.phone ?? '').includes(searchTerm)
       ).slice(0, 6)
     : [];
 

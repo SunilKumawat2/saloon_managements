@@ -287,31 +287,31 @@ function App() {
       const rolesRes = await Admin_Get_Roles().catch(() => null);
       if (rolesRes?.data?.data && rolesRes.data.data.length > 0) setRoles(rolesRes.data.data);
 
-      // 3. Fetch Module 2 CRM & Lead Data (Merged with localStorage)
+      // 3. Fetch Module 2 CRM & Lead Data — DB always wins
       const custRes = await Admin_Get_Customers().catch(() => null);
       if (custRes?.data?.data && Array.isArray(custRes.data.data)) {
-        setCustomers(prev => mergeLists(custRes.data.data, prev));
+        setCustomers(custRes.data.data); // DB data replaces localStorage
       }
 
       const leadsRes = await Admin_Get_Leads().catch(() => null);
       if (leadsRes?.data?.data && Array.isArray(leadsRes.data.data)) {
-        setLeads(prev => mergeLists(leadsRes.data.data, prev));
+        setLeads(leadsRes.data.data); // DB data replaces localStorage
       }
 
-      // 4. Fetch Module 4 Services, Packages & Categories Data (Merged with localStorage)
+      // 4. Fetch Module 4 Services, Packages & Categories Data — DB always wins
       const catRes = await Admin_Get_Categories().catch(() => null);
       if (catRes?.data?.data && Array.isArray(catRes.data.data)) {
-        setCategories(prev => mergeLists(catRes.data.data, prev));
+        setCategories(catRes.data.data);
       }
 
       const servRes = await Admin_Get_Services().catch(() => null);
       if (servRes?.data?.data && Array.isArray(servRes.data.data)) {
-        setServices(prev => mergeLists(servRes.data.data, prev));
+        setServices(servRes.data.data);
       }
 
       const pkgRes = await Admin_Get_Packages().catch(() => null);
       if (pkgRes?.data?.data && Array.isArray(pkgRes.data.data)) {
-        setPackages(prev => mergeLists(pkgRes.data.data, prev));
+        setPackages(pkgRes.data.data);
       }
 
       const stRes = await Admin_Get_Stylists().catch(() => null);
@@ -319,12 +319,12 @@ function App() {
 
       const appRes = await Admin_Get_Appointments().catch(() => null);
       if (appRes?.data?.data && Array.isArray(appRes.data.data)) {
-        setAppointments(prev => mergeLists(appRes.data.data, prev));
+        setAppointments(appRes.data.data);
       }
 
       const billsRes = await Admin_Get_Bills().catch(() => null);
       if (billsRes?.data?.data && Array.isArray(billsRes.data.data)) {
-        setBills(prev => mergeLists(billsRes.data.data, prev));
+        setBills(billsRes.data.data);
       }
 
       // 5. Fetch Module 6 Inventory, Suppliers, POs & Consumption Data
