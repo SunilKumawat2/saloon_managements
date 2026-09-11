@@ -19,6 +19,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Single Central API Router Mounting
 app.use('/api/v1', apiRoutes);
 app.use('/api', apiRoutes);
+app.use('/', apiRoutes);
 
 app.get('/', (req, res) => {
   res.json({
