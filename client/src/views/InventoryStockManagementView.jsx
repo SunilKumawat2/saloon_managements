@@ -92,9 +92,9 @@ function InventoryStockManagementView({
     const matchesType = typeFilter === 'All' || p.type === typeFilter;
     const searchLower = productSearch.toLowerCase();
     const matchesSearch = !productSearch.trim() ||
-      p.name.toLowerCase().includes(searchLower) ||
-      p.sku.toLowerCase().includes(searchLower) ||
-      p.category.toLowerCase().includes(searchLower);
+      (p.name || '').toLowerCase().includes(searchLower) ||
+      (p.sku || '').toLowerCase().includes(searchLower) ||
+      (p.category || '').toLowerCase().includes(searchLower);
     return matchesCat && matchesType && matchesSearch;
   });
 
@@ -102,9 +102,9 @@ function InventoryStockManagementView({
   const filteredSuppliers = suppliers.filter(s => {
     const searchLower = supplierSearch.toLowerCase();
     return !supplierSearch.trim() ||
-      s.name.toLowerCase().includes(searchLower) ||
+      (s.name || '').toLowerCase().includes(searchLower) ||
       (s.company_name && s.company_name.toLowerCase().includes(searchLower)) ||
-      s.phone.includes(supplierSearch);
+      (s.phone || '').includes(supplierSearch);
   });
 
   // ─── Handlers: Product ───

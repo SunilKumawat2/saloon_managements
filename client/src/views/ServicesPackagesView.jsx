@@ -288,13 +288,13 @@ function ServicesPackagesView({
   // Filtered Services & Packages
   const filteredServices = services.filter(s => {
     const matchesCat = activeCategory === 'All' || activeCategory === 'Packages & Combos' ? (activeCategory !== 'Packages & Combos') : s.category === activeCategory;
-    const matchesSearch = !searchQuery.trim() || s.name.toLowerCase().includes(searchQuery.toLowerCase()) || (s.category && s.category.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesSearch = !searchQuery.trim() || (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (s.category && s.category.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesCat && matchesSearch;
   });
 
   const filteredPackages = packages.filter(p => {
     const matchesCat = activeCategory === 'All' || activeCategory === 'Packages & Combos';
-    const matchesSearch = !searchQuery.trim() || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || (p.category && p.category.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesSearch = !searchQuery.trim() || (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (p.category && p.category.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesCat && matchesSearch;
   });
 

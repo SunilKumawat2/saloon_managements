@@ -231,7 +231,10 @@ function UsersManagementView({ users: initialUsers, branches, roles, onAddUser }
   };
 
   const filteredUsers = users.filter(user => {
-    const matchSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) || user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const uName = (user.name || '').toLowerCase();
+    const uEmail = (user.email || '').toLowerCase();
+    const term = searchTerm.toLowerCase();
+    const matchSearch = uName.includes(term) || uEmail.includes(term);
     const matchRole = roleFilter === 'All' || user.role_name === roleFilter;
     return matchSearch && matchRole;
   });
