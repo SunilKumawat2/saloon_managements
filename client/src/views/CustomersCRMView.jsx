@@ -48,11 +48,12 @@ const InfoRow = ({ icon, label, value }) => (
 
 // ─── Avatar component (shows photo or initials) ───
 const CustomerAvatar = ({ customer, size = 40, style = {} }) => {
-  const avatarUrl = customer.avatar_url ? `${API_BASE}${customer.avatar_url}` : null;
+  const avatarUrl = customer?.avatar_url ? `${API_BASE}${customer.avatar_url}` : null;
+  const initial = String(customer?.name || 'C').charAt(0).toUpperCase();
   return avatarUrl ? (
     <img
       src={avatarUrl}
-      alt={customer.name}
+      alt={String(customer?.name || 'Customer')}
       style={{
         width: size, height: size, borderRadius: '50%',
         objectFit: 'cover', flexShrink: 0, ...style
@@ -62,13 +63,13 @@ const CustomerAvatar = ({ customer, size = 40, style = {} }) => {
   ) : (
     <div style={{
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
-      background: customer.gender === 'Female'
+      background: customer?.gender === 'Female'
         ? 'linear-gradient(135deg,#ec4899,#8b5cf6)'
         : 'linear-gradient(135deg,#6366f1,#3b82f6)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: size * 0.38, fontWeight: '800', color: '#fff', ...style
     }}>
-      {customer.name?.charAt(0)?.toUpperCase()}
+      {initial}
     </div>
   );
 };
