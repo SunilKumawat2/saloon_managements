@@ -156,17 +156,17 @@ function App() {
   };
 
 
-  // Accordion Dropdown States (Default Closed)
-  const [isRbacOpen, setIsRbacOpen] = useState(false);
-  const [isCrmOpen, setIsCrmOpen] = useState(false);
-  const [isServicesOpen, setIsServicesOpen] = useState(false);
-  const [isBookingOpen, setIsBookingOpen] = useState(false);
-  const [isReceptionOpen, setIsReceptionOpen] = useState(false);
-  const [isInventoryOpen, setIsInventoryOpen] = useState(false);
-  const [isLoyaltyOpen, setIsLoyaltyOpen] = useState(false);
-  const [isMarketingOpen, setIsMarketingOpen] = useState(false);
-  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  // Accordion Dropdown States (Default Open for quick navigation)
+  const [isRbacOpen, setIsRbacOpen] = useState(true);
+  const [isCrmOpen, setIsCrmOpen] = useState(true);
+  const [isServicesOpen, setIsServicesOpen] = useState(true);
+  const [isBookingOpen, setIsBookingOpen] = useState(true);
+  const [isReceptionOpen, setIsReceptionOpen] = useState(true);
+  const [isInventoryOpen, setIsInventoryOpen] = useState(true);
+  const [isLoyaltyOpen, setIsLoyaltyOpen] = useState(true);
+  const [isMarketingOpen, setIsMarketingOpen] = useState(true);
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(true);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(true);
 
   // Receptionist POS state — which customer is being billed
   const [posCustomer, setPosCustomer] = useState(null);
@@ -175,11 +175,11 @@ function App() {
   // Dynamic Permission Checker based on logged-in user and live role permissions
   const canAccess = (permKeys) => {
     if (!currentUser) return false;
-    const userRoleName = currentUser.role || currentUser.role_name;
-    if (userRoleName === 'Admin') return true;
+    const userRoleName = currentUser.role || currentUser.role_name || '';
+    if (userRoleName && userRoleName.toLowerCase().includes('admin')) return true;
 
     // Find live role permissions in roles state so updates apply in real time
-    const matchedRole = roles.find(r => r.id === currentUser.role_id || r.name === userRoleName);
+    const matchedRole = roles.find(r => r.id === currentUser.role_id || r.name?.toLowerCase() === userRoleName.toLowerCase());
     const userPerms = matchedRole?.permissions || currentUser.permissions || [];
 
     if (userPerms.includes('all')) return true;
@@ -266,7 +266,7 @@ function App() {
     try {
       // 1. Check PostgreSQL DB Health
       const healthRes = await Admin_Get_Health().catch(() => null);
-      if (healthRes?.data?.status === 'online') {
+      if (healthRes?.data?.status === 'ok' || healthRes?.data?.status === 'online' || healthRes?.status === 200) {
         setDbStatus({ connected: true, checking: false });
       } else {
         setDbStatus({ connected: false, checking: false });
