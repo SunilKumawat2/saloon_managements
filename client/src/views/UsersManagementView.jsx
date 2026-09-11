@@ -50,7 +50,7 @@ function UserAvatar({ user, size = 34, onUpload }) {
         />
       ) : (
         <div className="user-avatar" style={{ width: size, height: size, fontSize: size * 0.42 + 'px' }}>
-          {user.name.charAt(0)}
+          {String(user.name || '').charAt(0)}
         </div>
       )}
       {hover && onUpload && (

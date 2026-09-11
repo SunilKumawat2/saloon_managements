@@ -1216,7 +1216,7 @@ function App() {
               />
             ) : (
               <div className="user-avatar">
-                {currentUser.name.charAt(0)}
+                {String(currentUser.name || '').charAt(0)}
               </div>
             )}
             <div className="user-info" style={{ flex: 1 }}>

@@ -10,7 +10,7 @@ const API_BASE = typeof window !== 'undefined' && window.location.hostname !== '
 // Avatar component
 const CustomerAvatar = ({ name, avatarUrl, size = 42 }) => {
   const fullUrl = avatarUrl ? `${API_BASE}${avatarUrl}` : null;
-  const initial = name ? name.charAt(0).toUpperCase() : 'C';
+  const initial = name ? String(name).charAt(0).toUpperCase() : 'C';
 
   return fullUrl ? (
     <img

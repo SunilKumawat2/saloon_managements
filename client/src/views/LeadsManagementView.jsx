@@ -25,7 +25,7 @@ const getReminderStatus = (followupDate) => {
 const LeadAvatar = ({ lead, previewUrl, size = 44, style = {} }) => {
   const avatarUrl = previewUrl || (lead?.avatar_url ? `${API_BASE}${lead.avatar_url}` : null);
   const initials = lead?.name
-    ? lead.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    ? String(lead.name).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : 'LP';
 
   return avatarUrl ? (
