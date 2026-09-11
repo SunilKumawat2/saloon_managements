@@ -199,36 +199,67 @@ function App() {
     return fallback;
   };
 
+  // Merge API items and LocalStorage custom items without duplicates
+  const mergeLists = (apiItems = [], localItems = []) => {
+    const listA = Array.isArray(apiItems) ? apiItems : [];
+    const listB = Array.isArray(localItems) ? localItems : [];
+    const map = new Map();
+    // Add local items first, then overlay API items (or keep unique IDs)
+    listB.forEach(item => { if (item && item.id != null) map.set(String(item.id), item); });
+    listA.forEach(item => { if (item && item.id != null) map.set(String(item.id), item); });
+    return Array.from(map.values());
+  };
+
   // Data States — initialized from localStorage for guaranteed refresh persistence
   const [users, setUsers] = useState(MOCK_USERS);
   const [branches, setBranches] = useState(MOCK_BRANCHES);
   const [roles, setRoles] = useState(MOCK_ROLES);
-  const [customers, setCustomers] = useState(MOCK_CUSTOMERS);
-  const [leads, setLeads] = useState(MOCK_LEADS);
-  const [categories, setCategories] = useState(MOCK_CATEGORIES);
+  const [customers, setCustomers] = useState(() => getStoredData('saloon_customers_custom', MOCK_CUSTOMERS));
+  const [leads, setLeads] = useState(() => getStoredData('saloon_leads_custom', MOCK_LEADS));
+  const [categories, setCategories] = useState(() => getStoredData('saloon_categories_custom', MOCK_CATEGORIES));
   const [services, setServices] = useState(() => getStoredData('saloon_services_custom', MOCK_SERVICES));
   const [packages, setPackages] = useState(() => getStoredData('saloon_packages_custom', MOCK_PACKAGES));
   const [stylists, setStylists] = useState(MOCK_STYLISTS);
-  const [appointments, setAppointments] = useState(MOCK_APPOINTMENTS);
-  const [bills, setBills] = useState(MOCK_BILLS);
-  const [products, setProducts] = useState([]);
+  const [appointments, setAppointments] = useState(() => getStoredData('saloon_appointments_custom', MOCK_APPOINTMENTS));
+  const [bills, setBills] = useState(() => getStoredData('saloon_bills_custom', MOCK_BILLS));
+  const [products, setProducts] = useState(() => getStoredData('saloon_products_custom', []));
   const [suppliers, setSuppliers] = useState([]);
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [consumptions, setConsumptions] = useState([]);
   const [dbStatus, setDbStatus] = useState({ connected: false, checking: true });
 
-  // Sync state to localStorage whenever services or packages change
+  // Sync states to localStorage whenever lists update
   useEffect(() => {
-    try {
-      localStorage.setItem('saloon_services_custom', JSON.stringify(services));
-    } catch (e) { console.error(e); }
+    try { localStorage.setItem('saloon_services_custom', JSON.stringify(services)); } catch (e) {}
   }, [services]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('saloon_packages_custom', JSON.stringify(packages));
-    } catch (e) { console.error(e); }
+    try { localStorage.setItem('saloon_packages_custom', JSON.stringify(packages)); } catch (e) {}
   }, [packages]);
+
+  useEffect(() => {
+    try { localStorage.setItem('saloon_customers_custom', JSON.stringify(customers)); } catch (e) {}
+  }, [customers]);
+
+  useEffect(() => {
+    try { localStorage.setItem('saloon_leads_custom', JSON.stringify(leads)); } catch (e) {}
+  }, [leads]);
+
+  useEffect(() => {
+    try { localStorage.setItem('saloon_appointments_custom', JSON.stringify(appointments)); } catch (e) {}
+  }, [appointments]);
+
+  useEffect(() => {
+    try { localStorage.setItem('saloon_bills_custom', JSON.stringify(bills)); } catch (e) {}
+  }, [bills]);
+
+  useEffect(() => {
+    try { localStorage.setItem('saloon_categories_custom', JSON.stringify(categories)); } catch (e) {}
+  }, [categories]);
+
+  useEffect(() => {
+    try { localStorage.setItem('saloon_products_custom', JSON.stringify(products)); } catch (e) {}
+  }, [products]);
 
   const fetchModuleData = async () => {
     setDbStatus(prev => ({ ...prev, checking: true }));
@@ -251,37 +282,45 @@ function App() {
       const rolesRes = await Admin_Get_Roles().catch(() => null);
       if (rolesRes?.data?.data && rolesRes.data.data.length > 0) setRoles(rolesRes.data.data);
 
-      // 3. Fetch Module 2 CRM & Lead Data
+      // 3. Fetch Module 2 CRM & Lead Data (Merged with localStorage)
       const custRes = await Admin_Get_Customers().catch(() => null);
-      if (custRes?.data?.data && custRes.data.data.length > 0) setCustomers(custRes.data.data);
+      if (custRes?.data?.data && Array.isArray(custRes.data.data)) {
+        setCustomers(prev => mergeLists(custRes.data.data, prev));
+      }
 
       const leadsRes = await Admin_Get_Leads().catch(() => null);
-      if (leadsRes?.data?.data && leadsRes.data.data.length > 0) setLeads(leadsRes.data.data);
+      if (leadsRes?.data?.data && Array.isArray(leadsRes.data.data)) {
+        setLeads(prev => mergeLists(leadsRes.data.data, prev));
+      }
 
-      // 4. Fetch Module 4 Services, Packages & Categories Data (Sync with DB if API live)
+      // 4. Fetch Module 4 Services, Packages & Categories Data (Merged with localStorage)
       const catRes = await Admin_Get_Categories().catch(() => null);
       if (catRes?.data?.data && Array.isArray(catRes.data.data)) {
-        setCategories(catRes.data.data);
+        setCategories(prev => mergeLists(catRes.data.data, prev));
       }
 
       const servRes = await Admin_Get_Services().catch(() => null);
       if (servRes?.data?.data && Array.isArray(servRes.data.data)) {
-        setServices(servRes.data.data);
+        setServices(prev => mergeLists(servRes.data.data, prev));
       }
 
       const pkgRes = await Admin_Get_Packages().catch(() => null);
       if (pkgRes?.data?.data && Array.isArray(pkgRes.data.data)) {
-        setPackages(pkgRes.data.data);
+        setPackages(prev => mergeLists(pkgRes.data.data, prev));
       }
 
       const stRes = await Admin_Get_Stylists().catch(() => null);
       if (stRes?.data?.data && stRes.data.data.length > 0) setStylists(stRes.data.data);
 
       const appRes = await Admin_Get_Appointments().catch(() => null);
-      if (appRes?.data?.data && appRes.data.data.length > 0) setAppointments(appRes.data.data);
+      if (appRes?.data?.data && Array.isArray(appRes.data.data)) {
+        setAppointments(prev => mergeLists(appRes.data.data, prev));
+      }
 
       const billsRes = await Admin_Get_Bills().catch(() => null);
-      if (billsRes?.data?.data && billsRes.data.data.length > 0) setBills(billsRes.data.data);
+      if (billsRes?.data?.data && Array.isArray(billsRes.data.data)) {
+        setBills(prev => mergeLists(billsRes.data.data, prev));
+      }
 
       // 5. Fetch Module 6 Inventory, Suppliers, POs & Consumption Data
       const prodRes = await Admin_Get_Products().catch(() => null);
