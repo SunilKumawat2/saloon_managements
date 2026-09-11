@@ -243,10 +243,25 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
 
         {/* Search & Add */}
         <div className="controls-bar">
-          <div style={{ position: 'relative' }}>
-            <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
-            <input type="text" className="search-input" style={{ paddingLeft: '36px' }}
-              placeholder="Search by name or phone..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+          <div className="search-input-wrapper" style={{ width: '280px' }}>
+            <Search size={16} className="search-icon" />
+            <input 
+              type="text" 
+              className="search-input-field search-input-compact" 
+              placeholder="Search by name or phone..." 
+              value={searchTerm} 
+              onChange={e => setSearchTerm(e.target.value)} 
+            />
+            {searchTerm && (
+              <button 
+                type="button" 
+                className="search-input-clear-btn" 
+                onClick={() => setSearchTerm('')}
+                title="Clear search"
+              >
+                ✕
+              </button>
+            )}
           </div>
           <button className="btn-primary" onClick={openAdd}><Plus size={16} /> Add New Client</button>
         </div>

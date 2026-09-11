@@ -147,9 +147,22 @@ CREATE TABLE IF NOT EXISTS bills (
     total DECIMAL(10,2) NOT NULL DEFAULT 0,
     payment_mode VARCHAR(20) DEFAULT 'Cash',
     status VARCHAR(20) DEFAULT 'Paid',
+    discount_code VARCHAR(50),
+    discount_amount DECIMAL(10,2) DEFAULT 0,
+    tax_rate DECIMAL(5,2) DEFAULT 18.00,
+    tip_amount DECIMAL(10,2) DEFAULT 0,
+    commission_amount DECIMAL(10,2) DEFAULT 0,
+    split_details JSONB DEFAULT '{}'::jsonb,
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE bills ADD COLUMN IF NOT EXISTS discount_code VARCHAR(50);
+ALTER TABLE bills ADD COLUMN IF NOT EXISTS discount_amount DECIMAL(10,2) DEFAULT 0;
+ALTER TABLE bills ADD COLUMN IF NOT EXISTS tax_rate DECIMAL(5,2) DEFAULT 18.00;
+ALTER TABLE bills ADD COLUMN IF NOT EXISTS tip_amount DECIMAL(10,2) DEFAULT 0;
+ALTER TABLE bills ADD COLUMN IF NOT EXISTS commission_amount DECIMAL(10,2) DEFAULT 0;
+ALTER TABLE bills ADD COLUMN IF NOT EXISTS split_details JSONB DEFAULT '{}'::jsonb;
 
 -- Table: bill_items (Line items per bill)
 CREATE TABLE IF NOT EXISTS bill_items (
@@ -160,6 +173,25 @@ CREATE TABLE IF NOT EXISTS bill_items (
     price DECIMAL(10,2) NOT NULL,
     qty INT NOT NULL DEFAULT 1
 );
+
+-- Table: coupons (Module 5 Discount Coupons)
+CREATE TABLE IF NOT EXISTS coupons (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(50) UNIQUE NOT NULL,
+    discount_type VARCHAR(20) NOT NULL DEFAULT 'percentage',
+    discount_value DECIMAL(10, 2) NOT NULL,
+    min_bill_amount DECIMAL(10, 2) DEFAULT 0,
+    max_discount_amount DECIMAL(10, 2) DEFAULT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO coupons (code, discount_type, discount_value, min_bill_amount, max_discount_amount) VALUES
+('WELCOME10', 'percentage', 10.00, 0, 500.00),
+('FESTIVE200', 'fixed', 200.00, 1000.00, NULL),
+('BEAUTY15', 'percentage', 15.00, 500.00, 1000.00),
+('VIP500', 'fixed', 500.00, 2000.00, NULL)
+ON CONFLICT (code) DO NOTHING;
 
 -- Seed Data: Roles
 INSERT INTO roles (id, name, description, permissions) VALUES

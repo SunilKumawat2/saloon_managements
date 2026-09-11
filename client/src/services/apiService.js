@@ -666,3 +666,376 @@ export const Admin_Remove_User_Avatar = async (userId) => {
     throw error.response || error;
   }
 };
+
+// <----------------  Admin Get Coupons (Module 5) ---------------->
+export const Admin_Get_Coupons = async () => {
+  try {
+    const token = getToken();
+    const response = await axios.get(`${API_BASE_URL}/coupons`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Admin Validate Coupon (Module 5) ---------------->
+export const Admin_Validate_Coupon = async (code, subtotal) => {
+  try {
+    const token = getToken();
+    const response = await axios.post(`${API_BASE_URL}/coupons/validate`, { code, subtotal }, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Module 6 Inventory & Stock Management APIs ---------------->
+export const Admin_Get_Products = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/products`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Create_Product = async (productData) => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/products/create`, productData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Update_Product = async (id, productData) => {
+  try {
+    const token = getToken();
+    return await axios.put(`${API_BASE_URL}/products/${id}`, productData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Adjust_Stock = async (id, changeData) => {
+  try {
+    const token = getToken();
+    return await axios.patch(`${API_BASE_URL}/products/${id}/adjust`, changeData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Delete_Product = async (id) => {
+  try {
+    const token = getToken();
+    return await axios.delete(`${API_BASE_URL}/products/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Get_Suppliers = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/suppliers`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Create_Supplier = async (supplierData) => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/suppliers/create`, supplierData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Update_Supplier = async (id, supplierData) => {
+  try {
+    const token = getToken();
+    return await axios.put(`${API_BASE_URL}/suppliers/${id}`, supplierData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Delete_Supplier = async (id) => {
+  try {
+    const token = getToken();
+    return await axios.delete(`${API_BASE_URL}/suppliers/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Get_Purchase_Orders = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/purchase-orders`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Create_Purchase_Order = async (poData) => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/purchase-orders/create`, poData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Update_Purchase_Order_Status = async (id, status) => {
+  try {
+    const token = getToken();
+    return await axios.patch(`${API_BASE_URL}/purchase-orders/${id}/status`, { status }, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Get_Consumptions = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/consumption`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Create_Consumption = async (consumptionData) => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/consumption/create`, consumptionData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Delete_Consumption = async (id) => {
+  try {
+    const token = getToken();
+    return await axios.delete(`${API_BASE_URL}/consumption/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+// <----------------  Module 7 Loyalty & Membership Program APIs ---------------->
+export const Admin_Get_Membership_Tiers = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/loyalty/memberships`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Create_Membership_Tier = async (tierData) => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/loyalty/memberships`, tierData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Update_Membership_Tier = async (id, tierData) => {
+  try {
+    const token = getToken();
+    return await axios.put(`${API_BASE_URL}/loyalty/memberships/${id}`, tierData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Get_Enrolled_Members = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/loyalty/members`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Enroll_Customer = async (enrollData) => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/loyalty/enroll`, enrollData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Get_Customer_Loyalty_Profile = async (customerId) => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/loyalty/customer/${customerId}`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Get_Loyalty_Ledger = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/loyalty/ledger`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Get_Referrals = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/loyalty/referrals`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Apply_Referral_Code = async (refData) => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/loyalty/referrals/apply`, refData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+// <----------------  Module 8 Marketing Automation & Communication APIs ---------------->
+export const Admin_Get_Marketing_Templates = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/marketing/templates`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Create_Marketing_Template = async (templateData) => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/marketing/templates`, templateData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Update_Marketing_Template = async (id, templateData) => {
+  try {
+    const token = getToken();
+    return await axios.put(`${API_BASE_URL}/marketing/templates/${id}`, templateData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Get_Marketing_Campaigns = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/marketing/campaigns`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Create_Marketing_Campaign = async (campaignData) => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/marketing/campaigns`, campaignData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Send_Marketing_Campaign = async (id) => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/marketing/campaigns/${id}/send`, {}, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Get_Marketing_Triggers = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/marketing/triggers`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Toggle_Marketing_Trigger = async (id) => {
+  try {
+    const token = getToken();
+    return await axios.put(`${API_BASE_URL}/marketing/triggers/${id}/toggle`, {}, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Get_Today_Occasions = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/marketing/occasions`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Get_Marketing_Logs = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/marketing/logs`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+// <----------------  Module 9 Reports & Executive Analytics APIs ---------------->
+export const Admin_Get_Revenue_Analytics = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/analytics/revenue`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Get_Staff_Performance_Analytics = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/analytics/staff`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Get_Inventory_Margins_Analytics = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/analytics/inventory`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Get_Customer_Retention_Analytics = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/analytics/retention`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Get_Popularity_Peak_Hours_Analytics = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/analytics/popularity`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+// <----------------  Module 10 Admin Panel & Security Settings APIs ---------------->
+export const Admin_Get_System_Settings = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/settings`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Update_System_Settings = async (settingsData) => {
+  try {
+    const token = getToken();
+    return await axios.put(`${API_BASE_URL}/settings`, settingsData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Get_Audit_Logs = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/settings/audit-logs`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Get_Database_Backups = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/settings/backups`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Create_Database_Backup = async () => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/settings/backups/create`, {}, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+// <----------------  Razorpay Payment Gateway Integration APIs ---------------->
+export const Admin_Get_Gateway_Config = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/payment/gateway-config`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Update_Gateway_Config = async (configData) => {
+  try {
+    const token = getToken();
+    return await axios.put(`${API_BASE_URL}/payment/gateway-config`, configData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Create_Razorpay_Order = async (orderData) => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/payment/create-order`, orderData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Verify_Razorpay_Payment = async (paymentData) => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/payment/verify-signature`, paymentData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+
+
+
+

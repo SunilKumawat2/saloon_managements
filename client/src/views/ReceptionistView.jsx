@@ -223,18 +223,36 @@ function ReceptionistView({
           {!selectedCustomer && (
             <>
               <div className="form-group">
-                <label>Search Customer (Name or Phone)</label>
-                <div style={{ position: 'relative' }}>
-                  <Search size={16} style={{ position: 'absolute', left: '12px', top: '13px', color: 'var(--text-muted)' }} />
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span>Search Customer (Name or Phone)</span>
+                  {searchTerm && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--accent-gold)', fontWeight: '700' }}>
+                      {searchResults.length} customer(s) found
+                    </span>
+                  )}
+                </label>
+                <div className="search-input-wrapper">
+                  <Search size={18} className="search-icon" />
                   <input
                     type="text"
-                    style={{ paddingLeft: '36px' }}
-                    placeholder="Type customer name or mobile number..."
+                    className="search-input-field"
+                    placeholder="Search by customer name or mobile number..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                   />
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      className="search-input-clear-btn"
+                      onClick={() => setSearchTerm('')}
+                      title="Clear search"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
               </div>
+
 
               {/* Search Results Dropdown */}
               {searchResults.length > 0 && (
@@ -413,15 +431,25 @@ function ReceptionistView({
 
           {/* Search & Filter Bar */}
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <div style={{ position: 'relative' }}>
-              <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <div className="search-input-wrapper" style={{ width: '220px' }}>
+              <Search size={15} className="search-icon" />
               <input
                 type="text"
+                className="search-input-field search-input-compact"
                 placeholder="Search queue..."
                 value={queueSearch}
                 onChange={e => setQueueSearch(e.target.value)}
-                style={{ paddingLeft: '32px', paddingRight: '10px', paddingTop: '6px', paddingBottom: '6px', fontSize: '0.82rem', width: '180px' }}
               />
+              {queueSearch && (
+                <button
+                  type="button"
+                  className="search-input-clear-btn"
+                  onClick={() => setQueueSearch('')}
+                  title="Clear search"
+                >
+                  ✕
+                </button>
+              )}
             </div>
 
             <select

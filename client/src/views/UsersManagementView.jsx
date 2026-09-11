@@ -241,9 +241,25 @@ function UsersManagementView({ users: initialUsers, branches, roles, onAddUser }
       {/* ─── Top Action Bar ─── */}
       <div className="controls-bar">
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <div style={{ position: 'relative' }}>
-            <Search size={14} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-muted)' }} />
-            <input type="text" className="search-input" style={{ paddingLeft: '32px' }} placeholder="Search by name or email..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+          <div className="search-input-wrapper" style={{ width: '260px' }}>
+            <Search size={15} className="search-icon" />
+            <input 
+              type="text" 
+              className="search-input-field search-input-compact" 
+              placeholder="Search by name or email..." 
+              value={searchTerm} 
+              onChange={e => setSearchTerm(e.target.value)} 
+            />
+            {searchTerm && (
+              <button 
+                type="button" 
+                className="search-input-clear-btn" 
+                onClick={() => setSearchTerm('')}
+                title="Clear search"
+              >
+                ✕
+              </button>
+            )}
           </div>
           <select className="select-filter" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
             <option value="All">All Roles</option>

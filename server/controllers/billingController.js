@@ -26,11 +26,20 @@ export const getBillById = async (req, res) => {
 // POST /api/v1/billing/create — Create new bill
 export const createBill = async (req, res) => {
   try {
-    const { branch_id, customer_id, stylist_id, items, payment_mode, notes } = req.body;
+    const {
+      branch_id, customer_id, stylist_id, items, payment_mode,
+      discount_code, discount_amount, tax_rate, tip_amount,
+      commission_amount, split_details, notes
+    } = req.body;
+
     if (!items || items.length === 0) {
       return res.status(400).json({ success: false, message: 'At least one service item is required.' });
     }
-    const bill = await Bill.create({ branch_id, customer_id, stylist_id, items, payment_mode, notes });
+    const bill = await Bill.create({
+      branch_id, customer_id, stylist_id, items, payment_mode,
+      discount_code, discount_amount, tax_rate, tip_amount,
+      commission_amount, split_details, notes
+    });
     res.status(201).json({ success: true, data: bill, message: 'Bill created successfully!' });
   } catch (err) {
     console.error('createBill error:', err);

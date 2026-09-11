@@ -18,7 +18,9 @@ import {
   MonitorSmartphone,
   Receipt,
   Sun,
-  Moon
+  Moon,
+  Send,
+  BarChart3
 } from 'lucide-react';
 
 
@@ -33,6 +35,11 @@ import ReceptionistView from './views/ReceptionistView';
 import POSBillingView from './views/POSBillingView';
 import BillingHistoryView from './views/BillingHistoryView';
 import ServicesPackagesView from './views/ServicesPackagesView';
+import InventoryStockManagementView from './views/InventoryStockManagementView';
+import LoyaltyMembershipView from './views/LoyaltyMembershipView';
+import MarketingAutomationView from './views/MarketingAutomationView';
+import ReportsAnalyticsView from './views/ReportsAnalyticsView';
+import AdminSecuritySettingsView from './views/AdminSecuritySettingsView';
 
 import { 
   Admin_Get_Users, 
@@ -75,6 +82,21 @@ import {
   Admin_Delete_Appointment,
   Admin_Get_Bills,
   Admin_Create_Bill,
+  Admin_Get_Products,
+  Admin_Create_Product,
+  Admin_Update_Product,
+  Admin_Adjust_Stock,
+  Admin_Delete_Product,
+  Admin_Get_Suppliers,
+  Admin_Create_Supplier,
+  Admin_Update_Supplier,
+  Admin_Delete_Supplier,
+  Admin_Get_Purchase_Orders,
+  Admin_Create_Purchase_Order,
+  Admin_Update_Purchase_Order_Status,
+  Admin_Get_Consumptions,
+  Admin_Create_Consumption,
+  Admin_Delete_Consumption,
   Get_Admin_Profile
 } from './services/apiService';
 import { BACKEND_URL } from './config/Config';
@@ -134,12 +156,17 @@ function App() {
   };
 
 
-  // Accordion Dropdown States
-  const [isRbacOpen, setIsRbacOpen] = useState(true);
-  const [isCrmOpen, setIsCrmOpen] = useState(true);
-  const [isServicesOpen, setIsServicesOpen] = useState(true);
-  const [isBookingOpen, setIsBookingOpen] = useState(true);
-  const [isReceptionOpen, setIsReceptionOpen] = useState(true);
+  // Accordion Dropdown States (Default Closed)
+  const [isRbacOpen, setIsRbacOpen] = useState(false);
+  const [isCrmOpen, setIsCrmOpen] = useState(false);
+  const [isServicesOpen, setIsServicesOpen] = useState(false);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [isReceptionOpen, setIsReceptionOpen] = useState(false);
+  const [isInventoryOpen, setIsInventoryOpen] = useState(false);
+  const [isLoyaltyOpen, setIsLoyaltyOpen] = useState(false);
+  const [isMarketingOpen, setIsMarketingOpen] = useState(false);
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Receptionist POS state — which customer is being billed
   const [posCustomer, setPosCustomer] = useState(null);
@@ -184,6 +211,10 @@ function App() {
   const [stylists, setStylists] = useState(MOCK_STYLISTS);
   const [appointments, setAppointments] = useState(MOCK_APPOINTMENTS);
   const [bills, setBills] = useState(MOCK_BILLS);
+  const [products, setProducts] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [purchaseOrders, setPurchaseOrders] = useState([]);
+  const [consumptions, setConsumptions] = useState([]);
   const [dbStatus, setDbStatus] = useState({ connected: false, checking: true });
 
   // Sync state to localStorage whenever services or packages change
@@ -202,15 +233,15 @@ function App() {
   const fetchModuleData = async () => {
     setDbStatus(prev => ({ ...prev, checking: true }));
     try {
-      // 1. Health check
+      // 1. Check PostgreSQL DB Health
       const healthRes = await Admin_Get_Health().catch(() => null);
-      if (healthRes && healthRes.data) {
+      if (healthRes?.data?.status === 'online') {
         setDbStatus({ connected: true, checking: false });
       } else {
         setDbStatus({ connected: false, checking: false });
       }
 
-      // 2. Fetch Module 1 Data
+      // 2. Fetch Module 1 Users, Roles, Branches Data
       const usersRes = await Admin_Get_Users().catch(() => null);
       if (usersRes?.data?.data && usersRes.data.data.length > 0) setUsers(usersRes.data.data);
 
@@ -251,6 +282,19 @@ function App() {
 
       const billsRes = await Admin_Get_Bills().catch(() => null);
       if (billsRes?.data?.data && billsRes.data.data.length > 0) setBills(billsRes.data.data);
+
+      // 5. Fetch Module 6 Inventory, Suppliers, POs & Consumption Data
+      const prodRes = await Admin_Get_Products().catch(() => null);
+      if (prodRes?.data?.data && Array.isArray(prodRes.data.data)) setProducts(prodRes.data.data);
+
+      const suppRes = await Admin_Get_Suppliers().catch(() => null);
+      if (suppRes?.data?.data && Array.isArray(suppRes.data.data)) setSuppliers(suppRes.data.data);
+
+      const poRes = await Admin_Get_Purchase_Orders().catch(() => null);
+      if (poRes?.data?.data && Array.isArray(poRes.data.data)) setPurchaseOrders(poRes.data.data);
+
+      const consRes = await Admin_Get_Consumptions().catch(() => null);
+      if (consRes?.data?.data && Array.isArray(consRes.data.data)) setConsumptions(consRes.data.data);
 
     } catch (err) {
       console.error('API Fetch Error:', err);
@@ -627,6 +671,99 @@ function App() {
     } catch (e) { console.error(e); }
   };
 
+  // Handlers for Module 6 Inventory & Stock Management
+  const handleAddProduct = async (productData) => {
+    try {
+      const res = await Admin_Create_Product(productData);
+      if (res?.data?.data) {
+        setProducts(prev => [res.data.data, ...prev]);
+      }
+    } catch (e) { console.error('Add Product Error:', e); }
+  };
+
+  const handleUpdateProduct = async (id, productData) => {
+    try {
+      const res = await Admin_Update_Product(id, productData);
+      if (res?.data?.data) {
+        setProducts(prev => prev.map(p => p.id === id ? res.data.data : p));
+      }
+    } catch (e) { console.error('Update Product Error:', e); }
+  };
+
+  const handleAdjustStock = async (id, changeQty, reason, notes) => {
+    try {
+      const res = await Admin_Adjust_Stock(id, { change_qty: changeQty, reason, notes });
+      if (res?.data?.data) {
+        setProducts(prev => prev.map(p => p.id === id ? res.data.data : p));
+      }
+    } catch (e) { console.error('Adjust Stock Error:', e); }
+  };
+
+  const handleDeleteProduct = async (id) => {
+    try {
+      await Admin_Delete_Product(id);
+      setProducts(prev => prev.filter(p => p.id !== id));
+    } catch (e) { console.error('Delete Product Error:', e); }
+  };
+
+  const handleAddSupplier = async (supplierData) => {
+    try {
+      const res = await Admin_Create_Supplier(supplierData);
+      if (res?.data?.data) setSuppliers(prev => [res.data.data, ...prev]);
+    } catch (e) { console.error('Add Supplier Error:', e); }
+  };
+
+  const handleUpdateSupplier = async (id, supplierData) => {
+    try {
+      const res = await Admin_Update_Supplier(id, supplierData);
+      if (res?.data?.data) setSuppliers(prev => prev.map(s => s.id === id ? res.data.data : s));
+    } catch (e) { console.error('Update Supplier Error:', e); }
+  };
+
+  const handleDeleteSupplier = async (id) => {
+    try {
+      await Admin_Delete_Supplier(id);
+      setSuppliers(prev => prev.filter(s => s.id !== id));
+    } catch (e) { console.error('Delete Supplier Error:', e); }
+  };
+
+  const handleCreatePO = async (poData) => {
+    try {
+      const res = await Admin_Create_Purchase_Order(poData);
+      if (res?.data?.data) {
+        setPurchaseOrders(prev => [res.data.data, ...prev]);
+      }
+    } catch (e) { console.error('Create PO Error:', e); }
+  };
+
+  const handleUpdatePOStatus = async (id, status) => {
+    try {
+      const res = await Admin_Update_Purchase_Order_Status(id, status);
+      if (res?.data?.data) {
+        setPurchaseOrders(prev => prev.map(po => po.id === id ? res.data.data : po));
+        const prodRes = await Admin_Get_Products().catch(() => null);
+        if (prodRes?.data?.data) setProducts(prodRes.data.data);
+      }
+    } catch (e) { console.error('Update PO Status Error:', e); }
+  };
+
+  const handleAddConsumption = async (data) => {
+    try {
+      const res = await Admin_Create_Consumption(data);
+      if (res?.data?.data) {
+        const fullConsRes = await Admin_Get_Consumptions().catch(() => null);
+        if (fullConsRes?.data?.data) setConsumptions(fullConsRes.data.data);
+      }
+    } catch (e) { console.error('Add Consumption Error:', e); }
+  };
+
+  const handleDeleteConsumption = async (id) => {
+    try {
+      await Admin_Delete_Consumption(id);
+      setConsumptions(prev => prev.filter(c => c.id !== id));
+    } catch (e) { console.error('Delete Consumption Error:', e); }
+  };
+
   // Session restore ho raha hai — loading spinner dikhao
   if (authLoading) {
     return (
@@ -812,8 +949,13 @@ function App() {
                 {isReceptionOpen && (
                   <div className="nav-dropdown-menu">
                     {canAccess(['manage_appointments', 'manage_billing']) && (
-                      <button className={`sub-nav-btn ${activeTab === 'reception_checkin' || activeTab === 'pos_billing' ? 'active' : ''}`} onClick={() => { setPosCustomer(null); setPosStylistId(null); setActiveTab('reception_checkin'); }}>
+                      <button className={`sub-nav-btn ${activeTab === 'reception_checkin' ? 'active' : ''}`} onClick={() => { setPosCustomer(null); setPosStylistId(null); setActiveTab('reception_checkin'); }}>
                         <UserCheck size={14} /> Walk-in Check-in
+                      </button>
+                    )}
+                    {canAccess('manage_billing') && (
+                      <button className={`sub-nav-btn ${activeTab === 'pos_billing' ? 'active' : ''}`} onClick={() => { setPosCustomer(null); setPosStylistId(null); setActiveTab('pos_billing'); }}>
+                        <Receipt size={14} /> POS Terminal Billing
                       </button>
                     )}
                     {canAccess(['manage_billing', 'view_reports', 'manage_finances']) && (
@@ -825,6 +967,127 @@ function App() {
                 )}
               </div>
             )}
+
+            {/* Dropdown 6: Inventory & Product Stock (Module 6) */}
+            {canAccess(['manage_inventory', 'all']) && (
+              <div style={{ marginTop: '4px' }}>
+                <button 
+                  className={`nav-dropdown-toggle ${isInventoryOpen ? 'open' : ''} ${['inventory'].includes(activeTab) ? 'active' : ''}`}
+                  onClick={() => setIsInventoryOpen(!isInventoryOpen)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Database size={17} style={{ color: ['inventory'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
+                    <span>Inventory & Stock</span>
+                  </div>
+                  {isInventoryOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                </button>
+
+                {isInventoryOpen && (
+                  <div className="nav-dropdown-menu">
+                    <button className={`sub-nav-btn ${activeTab === 'inventory' ? 'active' : ''}`} onClick={() => setActiveTab('inventory')}>
+                      <Database size={14} /> Stock & Suppliers ({products.length})
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Dropdown 7: Loyalty & Membership Program (Module 7) */}
+            {canAccess(['view_customers', 'all']) && (
+              <div style={{ marginTop: '4px' }}>
+                <button 
+                  className={`nav-dropdown-toggle ${isLoyaltyOpen ? 'open' : ''} ${['loyalty'].includes(activeTab) ? 'active' : ''}`}
+                  onClick={() => setIsLoyaltyOpen(!isLoyaltyOpen)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Award size={17} style={{ color: ['loyalty'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
+                    <span>Loyalty & Membership</span>
+                  </div>
+                  {isLoyaltyOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                </button>
+
+                {isLoyaltyOpen && (
+                  <div className="nav-dropdown-menu">
+                    <button className={`sub-nav-btn ${activeTab === 'loyalty' ? 'active' : ''}`} onClick={() => setActiveTab('loyalty')}>
+                      <Award size={14} /> Tiers & Points Program
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Dropdown 8: Marketing Automation & Communication (Module 8) */}
+            {canAccess(['view_customers', 'all']) && (
+              <div style={{ marginTop: '4px' }}>
+                <button 
+                  className={`nav-dropdown-toggle ${isMarketingOpen ? 'open' : ''} ${['marketing'].includes(activeTab) ? 'active' : ''}`}
+                  onClick={() => setIsMarketingOpen(!isMarketingOpen)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Send size={17} style={{ color: ['marketing'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
+                    <span>Marketing Automation</span>
+                  </div>
+                  {isMarketingOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                </button>
+
+                {isMarketingOpen && (
+                  <div className="nav-dropdown-menu">
+                    <button className={`sub-nav-btn ${activeTab === 'marketing' ? 'active' : ''}`} onClick={() => setActiveTab('marketing')}>
+                      <Send size={14} /> Campaigns & SMS/WhatsApp
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Dropdown 9: Reports & Executive Analytics (Module 9) */}
+            {canAccess(['view_reports', 'manage_finances', 'all']) && (
+              <div style={{ marginTop: '4px' }}>
+                <button 
+                  className={`nav-dropdown-toggle ${isAnalyticsOpen ? 'open' : ''} ${['analytics'].includes(activeTab) ? 'active' : ''}`}
+                  onClick={() => setIsAnalyticsOpen(!isAnalyticsOpen)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <BarChart3 size={17} style={{ color: ['analytics'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
+                    <span>Reports & Analytics</span>
+                  </div>
+                  {isAnalyticsOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                </button>
+
+                {isAnalyticsOpen && (
+                  <div className="nav-dropdown-menu">
+                    <button className={`sub-nav-btn ${activeTab === 'analytics' ? 'active' : ''}`} onClick={() => setActiveTab('analytics')}>
+                      <BarChart3 size={14} /> Executive Reports Console
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Dropdown 10: Admin Panel & Security Settings (Module 10) */}
+            {canAccess(['manage_permissions', 'all']) && (
+              <div style={{ marginTop: '4px' }}>
+                <button 
+                  className={`nav-dropdown-toggle ${isSettingsOpen ? 'open' : ''} ${['settings'].includes(activeTab) ? 'active' : ''}`}
+                  onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <ShieldCheck size={17} style={{ color: ['settings'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
+                    <span>Admin & Security Settings</span>
+                  </div>
+                  {isSettingsOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                </button>
+
+                {isSettingsOpen && (
+                  <div className="nav-dropdown-menu">
+                    <button className={`sub-nav-btn ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
+                      <ShieldCheck size={14} /> System Control & Backups
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
           </nav>
         </div>
 
@@ -859,7 +1122,7 @@ function App() {
           </div>
 
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-            Modules 1, 2, 3 & Receptionist Active
+            Modules 1 to 10 Active & Live
           </div>
         </div>
       </aside>
@@ -880,6 +1143,11 @@ function App() {
               {activeTab === 'reception_checkin' && 'Receptionist — Walk-in Check-in Counter'}
               {activeTab === 'pos_billing' && `POS Billing — ${posCustomer?.name || 'Customer'}`}
               {activeTab === 'billing_history' && 'POS Billing History & Invoices'}
+              {activeTab === 'inventory' && 'Inventory & Product Stock Management'}
+              {activeTab === 'loyalty' && 'Loyalty & Membership Program'}
+              {activeTab === 'marketing' && 'Marketing Automation & Communication'}
+              {activeTab === 'analytics' && 'Reports & Executive Analytics'}
+              {activeTab === 'settings' && 'Admin Panel & Security Settings'}
             </h1>
             <p>Welcome back, <strong>{currentUser.name}</strong>! Multi-tenant salon ERP system.</p>
           </div>
@@ -1116,13 +1384,16 @@ function App() {
           )
         )}
 
-        {activeTab === 'pos_billing' && posCustomer && (
+        {activeTab === 'pos_billing' && (
           canAccess('manage_billing') ? (
             <POSBillingView
               customer={posCustomer}
               stylistId={posStylistId}
               stylists={stylists}
               services={services}
+              packages={packages}
+              categories={categories}
+              customers={customers}
               bills={bills}
               onCreateBill={handleCreateBill}
               onBack={handlePOSBack}
@@ -1143,6 +1414,64 @@ function App() {
             <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
           )
         )}
+
+        {activeTab === 'inventory' && (
+          canAccess(['manage_inventory', 'all']) ? (
+            <InventoryStockManagementView
+              products={products}
+              suppliers={suppliers}
+              purchaseOrders={purchaseOrders}
+              consumptions={consumptions}
+              services={services}
+              onAddProduct={handleAddProduct}
+              onUpdateProduct={handleUpdateProduct}
+              onAdjustStock={handleAdjustStock}
+              onDeleteProduct={handleDeleteProduct}
+              onAddSupplier={handleAddSupplier}
+              onUpdateSupplier={handleUpdateSupplier}
+              onDeleteSupplier={handleDeleteSupplier}
+              onCreatePO={handleCreatePO}
+              onUpdatePOStatus={handleUpdatePOStatus}
+              onAddConsumption={handleAddConsumption}
+              onDeleteConsumption={handleDeleteConsumption}
+            />
+          ) : (
+            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+          )
+        )}
+
+        {activeTab === 'loyalty' && (
+          canAccess(['view_customers', 'all']) ? (
+            <LoyaltyMembershipView />
+          ) : (
+            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+          )
+        )}
+
+        {activeTab === 'marketing' && (
+          canAccess(['view_customers', 'all']) ? (
+            <MarketingAutomationView />
+          ) : (
+            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+          )
+        )}
+
+        {activeTab === 'analytics' && (
+          canAccess(['view_reports', 'manage_finances', 'all']) ? (
+            <ReportsAnalyticsView />
+          ) : (
+            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+          )
+        )}
+
+        {activeTab === 'settings' && (
+          canAccess(['manage_permissions', 'all']) ? (
+            <AdminSecuritySettingsView onNavigateToMatrix={() => setActiveTab('matrix')} />
+          ) : (
+            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+          )
+        )}
+
       </main>
     </div>
   );
