@@ -133,10 +133,75 @@ const Bill = {
             [validCustomerId, bill.id, earnedPoints, `Earned ${earnedPoints} loyalty points on bill #${bill.id}${multiplier > 1 ? ` (${multiplier}x Tier Multiplier)` : ''}`]
           );
         }
+
+        // Auto-deduct Membership Service Credit if active membership with remaining balance exists
+        const cmRes = await client.query(`
+          SELECT * FROM customer_memberships
+          WHERE customer_id = $1 AND status = 'Active' AND end_date >= CURRENT_DATE AND remaining_service_credit > 0
+          ORDER BY created_at DESC
+          LIMIT 1
+        `, [validCustomerId]);
+
+        if (cmRes.rows.length > 0) {
+          const activeCm = cmRes.rows[0];
+          const availableCredit = parseFloat(activeCm.remaining_service_credit || 0);
+          const deductAmt = Math.min(total, availableCredit);
+          if (deductAmt > 0) {
+            const newUsed = parseFloat(activeCm.used_service_credit || 0) + deductAmt;
+            const newRemaining = availableCredit - deductAmt;
+
+            await client.query(`
+              UPDATE customer_memberships
+              SET used_service_credit = $1,
+                  remaining_service_credit = $2
+              WHERE id = $3
+            `, [newUsed, newRemaining, activeCm.id]);
+
+            const itemNames = items.map(i => i.service_name).filter(Boolean).join(', ') || 'POS Billing Service';
+            await client.query(`
+              INSERT INTO membership_credit_logs (customer_membership_id, customer_id, service_name, amount, notes)
+              VALUES ($1, $2, $3, $4, $5)
+            `, [activeCm.id, validCustomerId, itemNames, deductAmt, `Auto-deducted ₹${deductAmt} on Bill #${bill.id}`]);
+          }
+        }
       }
 
       await client.query('COMMIT');
       return bill;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
+  // Delete single bill + bill_items
+  delete: async (id) => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(`DELETE FROM bill_items WHERE bill_id = $1`, [id]);
+      const res = await client.query(`DELETE FROM bills WHERE id = $1 RETURNING *`, [id]);
+      await client.query('COMMIT');
+      return res.rows[0];
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
+  // Clear all bills + bill_items from DB
+  clearAll: async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(`DELETE FROM bill_items`);
+      await client.query(`DELETE FROM bills`);
+      await client.query('COMMIT');
+      return true;
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;

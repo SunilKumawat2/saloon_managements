@@ -74,7 +74,7 @@ export const PaymentModel = {
       order_id: mockOrderId,
       amount: amountInPaise,
       currency: 'INR',
-      key_id: creds.key_id || 'rzp_test_SalonPulse2026',
+      key_id: creds.key_id || 'rzp_test_TfutS2M3FiTSWG',
       mode: creds.mode || 'test'
     };
   },

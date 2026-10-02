@@ -29,16 +29,19 @@ export const loginUser = async (req, res) => {
       permissions = [];
     }
 
+    const isSuperAdmin = user.id === 1 || user.email === 'admin@saloon.com' || String(user.role_name || '').toLowerCase().includes('super');
+
     // Generate real JWT token
     const payload = {
       id: user.id,
       name: user.name,
       email: user.email,
-      role: user.role_name || 'Staff',
+      role: isSuperAdmin ? 'Super Admin' : (user.role_name || 'Staff'),
       role_id: user.role_id,
-      branch_id: user.branch_id,
-      branch_name: user.branch_name || 'Main Salon',
-      permissions
+      is_super_admin: isSuperAdmin,
+      branch_id: isSuperAdmin ? null : user.branch_id,
+      branch_name: isSuperAdmin ? '🌐 Global SaaS System Master' : (user.branch_name || 'Main Salon'),
+      permissions: isSuperAdmin ? ['all', 'manage_permissions', 'manage_users', 'manage_branches', 'manage_services', 'manage_appointments', 'manage_billing'] : permissions
     };
 
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
@@ -84,6 +87,7 @@ export const getMe = async (req, res) => {
     }
 
     const freshUser = rows[0];
+    const isSuperAdmin = freshUser.id === 1 || freshUser.email === 'admin@saloon.com' || String(freshUser.role || '').toLowerCase().includes('super');
     return res.json({
       status: 'success',
       data: {
@@ -93,17 +97,39 @@ export const getMe = async (req, res) => {
         phone: freshUser.phone,
         avatar_url: freshUser.avatar_url,
         is_active: freshUser.is_active,
-        role: freshUser.role,
+        role: isSuperAdmin ? 'Super Admin' : freshUser.role,
         role_id: freshUser.role_id,
-        branch_id: freshUser.branch_id,
-        branch_name: freshUser.branch_name,
-        permissions: Array.isArray(freshUser.permissions) ? freshUser.permissions : []
+        is_super_admin: isSuperAdmin,
+        branch_id: isSuperAdmin ? null : freshUser.branch_id,
+        branch_name: isSuperAdmin ? '🌐 Global SaaS System Master' : (freshUser.branch_name || 'Main Salon'),
+        permissions: isSuperAdmin ? ['all', 'manage_permissions', 'manage_users', 'manage_branches', 'manage_services', 'manage_appointments', 'manage_billing'] : (Array.isArray(freshUser.permissions) ? freshUser.permissions : [])
       }
     });
   } catch (error) {
     // DB error — fallback to JWT payload so user is NOT logged out
     console.error('getMe DB error (using JWT fallback):', error.message);
     return res.json({ status: 'success', data: req.user });
+  }
+};
+
+export const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ status: 'error', message: 'Unauthorized' });
+    }
+    const { name, email, phone, password } = req.body;
+    if (!name || !email) {
+      return res.status(400).json({ status: 'error', message: 'Name and email are required' });
+    }
+    const updated = await UserModel.updateProfile(userId, { name, email, phone, password });
+    return res.json({
+      status: 'success',
+      message: 'Profile updated successfully',
+      data: updated
+    });
+  } catch (error) {
+    return res.status(500).json({ status: 'error', message: error.message });
   }
 };
 

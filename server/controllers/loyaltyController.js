@@ -93,3 +93,47 @@ export const applyReferralCode = async (req, res) => {
     res.status(400).json({ success: false, message: err.message });
   }
 };
+
+export const redeemCustomerCredit = async (req, res) => {
+  try {
+    const updatedEnrollment = await Membership.redeemMemberCredit(req.body);
+    res.json({
+      success: true,
+      enrollment: updatedEnrollment,
+      message: `Successfully redeemed ₹${req.body.amount} subscription credit!`
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+export const updateCustomerEnrollment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updated = await Membership.updateEnrollment(id, req.body);
+    res.json({ success: true, enrollment: updated, message: 'Enrolled subscription updated successfully' });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+export const deleteCustomerEnrollment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await Membership.deleteEnrollment(id);
+    res.json({ success: true, message: 'Enrolled subscription deleted successfully' });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+export const reactivateCustomerEnrollment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const reactivated = await Membership.reactivateEnrollment(id);
+    res.json({ success: true, enrollment: reactivated, message: 'Subscription reactivated & wallet credit restored successfully!' });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+

@@ -4,7 +4,7 @@ import express from 'express';
 import { authenticateToken, requirePermission } from '../middleware/authMiddleware.js';
 
 // Controllers Import
-import { loginUser, getMe } from '../controllers/authController.js';
+import { loginUser, getMe, updateProfile } from '../controllers/authController.js';
 import { getUsers, getRoles, createUser, updateUser, deleteUser, toggleUserStatus } from '../controllers/userController.js';
 import { updateRolePermissions } from '../controllers/roleController.js';
 import { getBranches, createBranch, updateBranch, toggleBranchStatus, deleteBranch } from '../controllers/branchController.js';
@@ -29,7 +29,8 @@ import { getCoupons, validateCoupon } from '../controllers/couponController.js';
 import {
   getMembershipTiers, createMembershipTier, updateMembershipTier,
   getEnrolledMembers, enrollCustomer, getCustomerLoyaltyProfile,
-  getLoyaltyLedger, getReferralList, applyReferralCode
+  getLoyaltyLedger, getReferralList, applyReferralCode, redeemCustomerCredit,
+  updateCustomerEnrollment, deleteCustomerEnrollment, reactivateCustomerEnrollment
 } from '../controllers/loyaltyController.js';
 import {
   getTemplates, createTemplate, updateTemplate,
@@ -51,16 +52,17 @@ import {
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '../controllers/customerController.js';
 import { getLeads, createLead, updateLeadStatus, updateLead, deleteLead } from '../controllers/leadController.js';
 import { getAppointments, createAppointment, updateAppointmentStatus, updateAppointment, deleteAppointment } from '../controllers/appointmentController.js';
-import { getBills, getBillById, createBill } from '../controllers/billingController.js';
+import { getBills, getBillById, createBill, deleteBill, clearBills } from '../controllers/billingController.js';
 import {
   getProducts, createProduct, updateProduct, adjustStock, deleteProduct,
   getSuppliers, createSupplier, updateSupplier, deleteSupplier,
   getPurchaseOrders, createPurchaseOrder, updatePurchaseOrderStatus,
-  getConsumptions, createConsumption, deleteConsumption
+  getConsumptions, createConsumption, updateConsumption, deleteConsumption
 } from '../controllers/inventoryController.js';
 import { uploadUserAvatar, removeUserAvatar, uploadCustomerAvatar, removeCustomerAvatar, uploadLeadAvatar, removeLeadAvatar } from '../controllers/uploadController.js';
 import uploadAvatar, { handleUploadAvatar } from '../middleware/uploadMiddleware.js';
 import { getHealth, checkDatabaseStatus } from '../controllers/healthController.js';
+import { getStaffTracking, getCustomerTracking } from '../controllers/trackingController.js';
 
 const router = express.Router();
 
@@ -71,6 +73,7 @@ router.post('/auth/login', loginUser);
 
 // ==================== 🔒 PROTECTED ROUTES (Requires JWT Token) ====================
 router.get('/auth/me', authenticateToken, getMe);
+router.put('/auth/profile', authenticateToken, updateProfile);
 
 // -------------------- User & Role Routes (Module 1) --------------------
 router.get('/users', authenticateToken, getUsers);
@@ -134,8 +137,10 @@ router.delete('/appointments/:id', authenticateToken, requirePermission('manage_
 
 // -------------------- POS Billing Routes (Receptionist Module) --------------------
 router.get('/billing', authenticateToken, getBills);
+router.delete('/billing/clear/all', authenticateToken, requirePermission('manage_billing'), clearBills);
 router.get('/billing/:id', authenticateToken, getBillById);
 router.post('/billing/create', authenticateToken, requirePermission('manage_billing'), createBill);
+router.delete('/billing/:id', authenticateToken, requirePermission('manage_billing'), deleteBill);
 
 // -------------------- Coupon Routes (Module 5) --------------------
 router.get('/coupons', authenticateToken, getCoupons);
@@ -159,7 +164,12 @@ router.patch('/purchase-orders/:id/status', authenticateToken, requirePermission
 
 router.get('/consumption', authenticateToken, getConsumptions);
 router.post('/consumption/create', authenticateToken, requirePermission('manage_inventory'), createConsumption);
+router.put('/consumption/:id', authenticateToken, requirePermission('manage_inventory'), updateConsumption);
 router.delete('/consumption/:id', authenticateToken, requirePermission('manage_inventory'), deleteConsumption);
+
+// -------------------- Staff & Customer Tracking Routes --------------------
+router.get('/tracking/staff', authenticateToken, getStaffTracking);
+router.get('/tracking/customer', authenticateToken, getCustomerTracking);
 
 // -------------------- User Avatar Upload Routes (Multer) --------------------
 router.post('/users/:id/avatar', authenticateToken, handleUploadAvatar, uploadUserAvatar);
@@ -169,6 +179,10 @@ router.delete('/users/:id/avatar', authenticateToken, removeUserAvatar);
 router.post('/customers/:id/avatar', authenticateToken, handleUploadAvatar, uploadCustomerAvatar);
 router.delete('/customers/:id/avatar', authenticateToken, removeCustomerAvatar);
 
+// -------------------- Lead Photo Upload Routes (Multer) --------------------
+router.post('/leads/:id/avatar', authenticateToken, handleUploadAvatar, uploadLeadAvatar);
+router.delete('/leads/:id/avatar', authenticateToken, removeLeadAvatar);
+
 // -------------------- Loyalty & Membership Program Routes (Module 7) --------------------
 router.get('/loyalty/memberships', authenticateToken, getMembershipTiers);
 router.post('/loyalty/memberships', authenticateToken, createMembershipTier);
@@ -176,11 +190,15 @@ router.put('/loyalty/memberships/:id', authenticateToken, updateMembershipTier);
 
 router.get('/loyalty/members', authenticateToken, getEnrolledMembers);
 router.post('/loyalty/enroll', authenticateToken, enrollCustomer);
+router.put('/loyalty/members/:id', authenticateToken, updateCustomerEnrollment);
+router.delete('/loyalty/members/:id', authenticateToken, deleteCustomerEnrollment);
+router.post('/loyalty/members/:id/reactivate', authenticateToken, reactivateCustomerEnrollment);
 router.get('/loyalty/customer/:customerId', authenticateToken, getCustomerLoyaltyProfile);
 
 router.get('/loyalty/ledger', authenticateToken, getLoyaltyLedger);
 router.get('/loyalty/referrals', authenticateToken, getReferralList);
 router.post('/loyalty/referrals/apply', authenticateToken, applyReferralCode);
+router.post('/loyalty/memberships/redeem-credit', authenticateToken, redeemCustomerCredit);
 
 // -------------------- Marketing Automation & Communication Routes (Module 8) --------------------
 router.get('/marketing/templates', authenticateToken, getTemplates);

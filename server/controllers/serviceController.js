@@ -1,12 +1,21 @@
 import ServiceModel from '../models/ServiceModel.js';
+import { pool } from '../config/db.js';
 
 // ─── SERVICES CRUD ───
 export const getServices = async (req, res) => {
   try {
-    const services = await ServiceModel.findAllServices();
+    const { page, limit, search, category, branch_id } = req.query;
+    const result = await ServiceModel.findAllServices({ page, limit, search, category, branch_id, currentUser: req.user });
+    if (result && typeof result === 'object' && !Array.isArray(result) && result.data && result.pagination) {
+      return res.json({
+        status: 'success',
+        data: result.data,
+        pagination: result.pagination
+      });
+    }
     return res.json({
       status: 'success',
-      data: services
+      data: result
     });
   } catch (err) {
     console.error('Error fetching services:', err.message);
@@ -16,9 +25,20 @@ export const getServices = async (req, res) => {
 
 export const createService = async (req, res) => {
   try {
-    const { name, category, description, price, duration_minutes, buffer_time_minutes, commission_rate, is_active } = req.body;
+    let { name, category, description, price, duration_minutes, buffer_time_minutes, commission_rate, is_active, branch_id } = req.body;
     if (!name || !price) {
       return res.status(400).json({ status: 'error', message: 'Service name and price are required' });
+    }
+
+    // Auto-resolve branch_id if missing
+    let resolvedBranchId = branch_id ? parseInt(branch_id) : null;
+    if (!resolvedBranchId && req.user) {
+      if (req.user.branch_id) {
+        resolvedBranchId = req.user.branch_id;
+      } else {
+        const { rows } = await pool.query('SELECT id FROM branches WHERE admin_id = $1 OR created_by_user_id = $1 ORDER BY id ASC LIMIT 1', [req.user.id]);
+        if (rows.length > 0) resolvedBranchId = rows[0].id;
+      }
     }
 
     const newService = await ServiceModel.createService({
@@ -29,7 +49,8 @@ export const createService = async (req, res) => {
       duration_minutes: parseInt(duration_minutes || 30),
       buffer_time_minutes: parseInt(buffer_time_minutes || 15),
       commission_rate: parseFloat(commission_rate || 10.00),
-      is_active
+      is_active,
+      branch_id: resolvedBranchId
     });
 
     return res.status(201).json({
@@ -82,10 +103,18 @@ export const deleteService = async (req, res) => {
 // ─── PACKAGES CRUD ───
 export const getPackages = async (req, res) => {
   try {
-    const packages = await ServiceModel.findAllPackages();
+    const { page, limit, search, branch_id } = req.query;
+    const result = await ServiceModel.findAllPackages({ page, limit, search, branch_id, currentUser: req.user });
+    if (result && typeof result === 'object' && !Array.isArray(result) && result.data && result.pagination) {
+      return res.json({
+        status: 'success',
+        data: result.data,
+        pagination: result.pagination
+      });
+    }
     return res.json({
       status: 'success',
-      data: packages
+      data: result
     });
   } catch (err) {
     console.error('Error fetching packages:', err.message);
@@ -95,9 +124,20 @@ export const getPackages = async (req, res) => {
 
 export const createPackage = async (req, res) => {
   try {
-    const { name, category, description, package_price, standalone_price, discount_percentage, validity_days, is_active, service_ids } = req.body;
+    let { name, category, description, package_price, standalone_price, discount_percentage, validity_days, is_active, service_ids, branch_id } = req.body;
     if (!name || !package_price) {
       return res.status(400).json({ status: 'error', message: 'Package name and price are required' });
+    }
+
+    // Auto-resolve branch_id if missing
+    let resolvedBranchId = branch_id ? parseInt(branch_id) : null;
+    if (!resolvedBranchId && req.user) {
+      if (req.user.branch_id) {
+        resolvedBranchId = req.user.branch_id;
+      } else {
+        const { rows } = await pool.query('SELECT id FROM branches WHERE admin_id = $1 OR created_by_user_id = $1 ORDER BY id ASC LIMIT 1', [req.user.id]);
+        if (rows.length > 0) resolvedBranchId = rows[0].id;
+      }
     }
 
     const newPackage = await ServiceModel.createPackage({
@@ -109,7 +149,8 @@ export const createPackage = async (req, res) => {
       discount_percentage: parseFloat(discount_percentage || 0),
       validity_days: parseInt(validity_days || 30),
       is_active,
-      service_ids
+      service_ids,
+      branch_id: resolvedBranchId
     });
 
     return res.status(201).json({

@@ -25,6 +25,29 @@ const Consumption = {
   delete: async (id) => {
     const res = await pool.query(`DELETE FROM service_product_consumption WHERE id = $1 RETURNING *`, [id]);
     return res.rows[0];
+  },
+
+  update: async (id, { service_id, product_id, quantity_consumed, unit, notes }) => {
+    const res = await pool.query(`
+      UPDATE service_product_consumption
+      SET service_id = COALESCE($1, service_id),
+          product_id = COALESCE($2, product_id),
+          quantity_consumed = COALESCE($3, quantity_consumed),
+          unit = COALESCE($4, unit),
+          notes = COALESCE($5, notes)
+      WHERE id = $6
+      RETURNING *
+    `, [service_id, product_id, quantity_consumed, unit, notes, id]);
+    const updated = res.rows[0];
+    const enriched = await pool.query(`
+      SELECT spc.*, s.name as service_name, s.category as service_category,
+             p.name as product_name, p.sku as product_sku
+      FROM service_product_consumption spc
+      JOIN services s ON spc.service_id = s.id
+      JOIN products p ON spc.product_id = p.id
+      WHERE spc.id = $1
+    `, [id]);
+    return enriched.rows[0] || updated;
   }
 };
 

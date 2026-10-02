@@ -27,11 +27,27 @@ export const Get_Admin_Profile = async () => {
   }
 };
 
+// <----------------  Admin Update Profile ----------------->
+export const Admin_Update_Profile = async (profileData) => {
+  try {
+    const token = getToken();
+    const response = await axios.put(`${API_BASE_URL}/auth/profile`, profileData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+
+
 // <----------------  Admin Get Users ----------------->
-export const Admin_Get_Users = async () => {
+export const Admin_Get_Users = async (params = {}) => {
   try {
     const token = getToken();
     const response = await axios.get(`${API_BASE_URL}/users`, {
+      params,
       headers: { Authorization: `Bearer ${token}` },
     });
     return response;
@@ -119,10 +135,11 @@ export const Admin_Update_Role_Permissions = async (roleId, permissions) => {
 };
 
 // <----------------  Admin Get Branches ----------------->
-export const Admin_Get_Branches = async () => {
+export const Admin_Get_Branches = async (params = {}) => {
   try {
     const token = getToken();
     const response = await axios.get(`${API_BASE_URL}/branches`, {
+      params,
       headers: { Authorization: `Bearer ${token}` },
     });
     return response;
@@ -184,10 +201,11 @@ export const Admin_Delete_Branch = async (branchId) => {
 };
 
 // <----------------  Admin Get Customers (Module 2 CRM) ----------------->
-export const Admin_Get_Customers = async () => {
+export const Admin_Get_Customers = async (params = {}) => {
   try {
     const token = getToken();
     const response = await axios.get(`${API_BASE_URL}/customers`, {
+      params,
       headers: { Authorization: `Bearer ${token}` },
     });
     return response;
@@ -264,10 +282,11 @@ export const Admin_Remove_Customer_Avatar = async (customerId) => {
 };
 
 // <----------------  Admin Get Leads (Module 2 CRM) ----------------->
-export const Admin_Get_Leads = async () => {
+export const Admin_Get_Leads = async (params = {}) => {
   try {
     const token = getToken();
     const response = await axios.get(`${API_BASE_URL}/leads`, {
+      params,
       headers: { Authorization: `Bearer ${token}` },
     });
     return response;
@@ -357,10 +376,11 @@ export const Admin_Remove_Lead_Avatar = async (leadId) => {
 };
 
 // <----------------  Admin Get Salon Services ----------------->
-export const Admin_Get_Services = async () => {
+export const Admin_Get_Services = async (params = {}) => {
   try {
     const token = getToken();
     const response = await axios.get(`${API_BASE_URL}/services`, {
+      params,
       headers: { Authorization: `Bearer ${token}` },
     });
     return response;
@@ -409,10 +429,11 @@ export const Admin_Delete_Service = async (serviceId) => {
 };
 
 // <----------------  Admin Get Bundled Combo Packages (Module 4) ----------------->
-export const Admin_Get_Packages = async () => {
+export const Admin_Get_Packages = async (params = {}) => {
   try {
     const token = getToken();
     const response = await axios.get(`${API_BASE_URL}/packages`, {
+      params,
       headers: { Authorization: `Bearer ${token}` },
     });
     return response;
@@ -636,6 +657,32 @@ export const Admin_Create_Bill = async (billData) => {
   }
 };
 
+// <----------------  Admin Delete Single Bill ----------------->
+export const Admin_Delete_Bill = async (id) => {
+  try {
+    const token = getToken();
+    const response = await axios.delete(`${API_BASE_URL}/billing/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Admin Clear All Bills ----------------->
+export const Admin_Clear_Bills = async () => {
+  try {
+    const token = getToken();
+    const response = await axios.delete(`${API_BASE_URL}/billing/clear/all`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
 // <----------------  Admin Upload User Avatar (Multer) ---------------->
 export const Admin_Upload_User_Avatar = async (userId, imageFile) => {
   try {
@@ -792,6 +839,13 @@ export const Admin_Create_Consumption = async (consumptionData) => {
   } catch (error) { throw error.response || error; }
 };
 
+export const Admin_Update_Consumption = async (id, consumptionData) => {
+  try {
+    const token = getToken();
+    return await axios.put(`${API_BASE_URL}/consumption/${id}`, consumptionData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
 export const Admin_Delete_Consumption = async (id) => {
   try {
     const token = getToken();
@@ -835,6 +889,27 @@ export const Admin_Enroll_Customer = async (enrollData) => {
   } catch (error) { throw error.response || error; }
 };
 
+export const Admin_Update_Enrolled_Member = async (id, data) => {
+  try {
+    const token = getToken();
+    return await axios.put(`${API_BASE_URL}/loyalty/members/${id}`, data, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Delete_Enrolled_Member = async (id) => {
+  try {
+    const token = getToken();
+    return await axios.delete(`${API_BASE_URL}/loyalty/members/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Reactivate_Enrolled_Member = async (id) => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/loyalty/members/${id}/reactivate`, {}, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
 export const Admin_Get_Customer_Loyalty_Profile = async (customerId) => {
   try {
     const token = getToken();
@@ -862,6 +937,14 @@ export const Admin_Apply_Referral_Code = async (refData) => {
     return await axios.post(`${API_BASE_URL}/loyalty/referrals/apply`, refData, { headers: { Authorization: `Bearer ${token}` } });
   } catch (error) { throw error.response || error; }
 };
+
+export const Admin_Redeem_Member_Credit = async (redeemData) => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/loyalty/memberships/redeem-credit`, redeemData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
 
 // <----------------  Module 8 Marketing Automation & Communication APIs ---------------->
 export const Admin_Get_Marketing_Templates = async () => {
@@ -1034,6 +1117,25 @@ export const Admin_Verify_Razorpay_Payment = async (paymentData) => {
     return await axios.post(`${API_BASE_URL}/payment/verify-signature`, paymentData, { headers: { Authorization: `Bearer ${token}` } });
   } catch (error) { throw error.response || error; }
 };
+
+// <----------------  Staff & Customer Tracking Records APIs ---------------->
+export const Admin_Get_Staff_Tracking = async (timeframe = 'month', startDate = '', endDate = '') => {
+  try {
+    const token = getToken();
+    let url = `${API_BASE_URL}/tracking/staff?timeframe=${timeframe}`;
+    if (startDate) url += `&startDate=${startDate}`;
+    if (endDate) url += `&endDate=${endDate}`;
+    return await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Get_Customer_Tracking = async (search = '') => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/tracking/customer?search=${encodeURIComponent(search)}`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
 
 
 

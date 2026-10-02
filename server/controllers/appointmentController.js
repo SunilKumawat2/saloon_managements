@@ -2,8 +2,17 @@ import { AppointmentModel } from '../models/Appointment.js';
 
 export const getAppointments = async (req, res) => {
   try {
-    const appointments = await AppointmentModel.findAll();
-    return res.json({ status: 'success', data: appointments });
+    const page = parseInt(req.query.page || '1');
+    const limitQuery = req.query.limit || req.query.per_page;
+    const limit = limitQuery === 'all' ? null : parseInt(limitQuery || '0');
+    const search = req.query.search || '';
+    const status = req.query.status || 'All';
+
+    const result = await AppointmentModel.findAll({ page, limit, search, status });
+    if (result && result.pagination) {
+      return res.json({ status: 'success', data: result.data, pagination: result.pagination });
+    }
+    return res.json({ status: 'success', data: result });
   } catch (error) {
     return res.status(500).json({ status: 'error', message: error.message });
   }

@@ -14,12 +14,14 @@ export const authenticateToken = (req, res, next) => {
     // Default to Admin User for seamless live demo interaction
     req.user = {
       id: 1,
-      name: 'Sunil Kumar (Admin)',
+      name: 'Sunil Kumar (Super Admin)',
       email: 'admin@saloon.com',
-      role: 'Admin',
+      role: 'Super Admin',
       role_id: 1,
+      is_super_admin: true,
+      branch_id: null,
       permissions: ['all', 'manage_permissions', 'manage_users', 'manage_branches', 'manage_services', 'manage_appointments', 'manage_billing'],
-      branch_name: 'Connaught Place Main Salon'
+      branch_name: '🌐 Global SaaS System Master'
     };
     return next();
   }
@@ -29,12 +31,14 @@ export const authenticateToken = (req, res, next) => {
     if (token.startsWith('demo_jwt_token_')) {
       req.user = {
         id: 1,
-        name: 'Sunil Kumar (Admin)',
+        name: 'Sunil Kumar (Super Admin)',
         email: 'admin@saloon.com',
-        role: 'Admin',
+        role: 'Super Admin',
         role_id: 1,
+        is_super_admin: true,
+        branch_id: null,
         permissions: ['all', 'manage_permissions', 'manage_users', 'manage_branches', 'manage_services', 'manage_appointments', 'manage_billing'],
-        branch_name: 'Connaught Place Main Salon'
+        branch_name: '🌐 Global SaaS System Master'
       };
       return next();
     }
@@ -57,8 +61,9 @@ export const requirePermission = (permKey) => {
       return res.status(401).json({ status: 'error', message: 'Authentication required' });
     }
 
-    const roleName = req.user.role || req.user.role_name;
-    if (roleName === 'Admin') return next();
+    const roleName = String(req.user.role || req.user.role_name || '').toLowerCase();
+    const isMaster = req.user.is_super_admin || req.user.email === 'admin@saloon.com' || req.user.id === 1 || roleName.includes('super') || roleName === 'admin' || roleName === 'owner';
+    if (isMaster) return next();
 
     let userPerms = req.user.permissions || [];
 

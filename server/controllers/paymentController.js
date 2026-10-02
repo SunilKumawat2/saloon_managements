@@ -12,10 +12,12 @@ export const getGatewaySettings = async (req, res) => {
 export const updateGatewaySettings = async (req, res) => {
   try {
     const { key_id, key_secret, mode, is_enabled } = req.body;
-    if (!key_id || !key_secret) {
-      return res.status(400).json({ success: false, message: 'Razorpay Key ID and Secret Key are required.' });
+    if (!key_id) {
+      return res.status(400).json({ success: false, message: 'Razorpay Key ID is required.' });
     }
-    const updated = await PaymentModel.updateGatewaySettings({ key_id, key_secret, mode, is_enabled });
+    const existing = await PaymentModel.getFullCredentials('razorpay');
+    const secretToUse = key_secret || existing?.key_secret || 'secret_salonpulse_test_key';
+    const updated = await PaymentModel.updateGatewaySettings({ key_id, key_secret: secretToUse, mode, is_enabled });
     res.json({ success: true, message: 'Razorpay Payment Gateway Settings Updated!', data: updated });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

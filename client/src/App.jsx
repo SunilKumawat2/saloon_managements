@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Scissors, 
-  Users, 
-  Building, 
-  ShieldCheck, 
-  LayoutDashboard, 
-  LogOut, 
-  Database, 
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Scissors,
+  Users,
+  Building,
+  ShieldCheck,
+  LayoutDashboard,
+  LogOut,
+  Database,
   RefreshCw,
   UserCheck,
   ChevronDown,
@@ -20,7 +20,9 @@ import {
   Sun,
   Moon,
   Send,
-  BarChart3
+  BarChart3,
+  User,
+  Lock
 } from 'lucide-react';
 
 
@@ -39,17 +41,19 @@ import InventoryStockManagementView from './views/InventoryStockManagementView';
 import LoyaltyMembershipView from './views/LoyaltyMembershipView';
 import MarketingAutomationView from './views/MarketingAutomationView';
 import ReportsAnalyticsView from './views/ReportsAnalyticsView';
+import StaffCustomerTrackingView from './views/StaffCustomerTrackingView';
 import AdminSecuritySettingsView from './views/AdminSecuritySettingsView';
+import UserProfileModal from './views/UserProfileModal';
 
-import { 
-  Admin_Get_Users, 
-  Admin_Create_User, 
-  Admin_Get_Branches, 
-  Admin_Create_Branch, 
+import {
+  Admin_Get_Users,
+  Admin_Create_User,
+  Admin_Get_Branches,
+  Admin_Create_Branch,
   Admin_Update_Branch,
   Admin_Toggle_Branch_Status,
   Admin_Delete_Branch,
-  Admin_Get_Roles, 
+  Admin_Get_Roles,
   Admin_Get_Health,
   Admin_Get_Customers,
   Admin_Create_Customer,
@@ -82,6 +86,8 @@ import {
   Admin_Delete_Appointment,
   Admin_Get_Bills,
   Admin_Create_Bill,
+  Admin_Delete_Bill,
+  Admin_Clear_Bills,
   Admin_Get_Products,
   Admin_Create_Product,
   Admin_Update_Product,
@@ -96,24 +102,26 @@ import {
   Admin_Update_Purchase_Order_Status,
   Admin_Get_Consumptions,
   Admin_Create_Consumption,
+  Admin_Update_Consumption,
   Admin_Delete_Consumption,
+  Admin_Update_Enrolled_Member,
   Get_Admin_Profile
 } from './services/apiService';
 import { BACKEND_URL } from './config/Config';
 
 
-import { 
-  MOCK_USERS, 
-  MOCK_BRANCHES, 
-  MOCK_ROLES, 
+import {
+  MOCK_USERS,
+  MOCK_BRANCHES,
+  MOCK_ROLES,
   MOCK_CATEGORIES,
-  MOCK_SERVICES, 
+  MOCK_SERVICES,
   MOCK_PACKAGES,
-  MOCK_STYLISTS, 
-  MOCK_CUSTOMERS, 
-  MOCK_LEADS, 
-  MOCK_APPOINTMENTS, 
-  MOCK_BILLS 
+  MOCK_STYLISTS,
+  MOCK_CUSTOMERS,
+  MOCK_LEADS,
+  MOCK_APPOINTMENTS,
+  MOCK_BILLS
 } from './mockData';
 
 function AccessDeniedView({ role, onGoHome }) {
@@ -133,12 +141,57 @@ function AccessDeniedView({ role, onGoHome }) {
   );
 }
 
-function App() {
-  const [theme, setTheme] = useState(localStorage.getItem('saloon_theme') || 'dark');
-  const [currentUser, setCurrentUser] = useState(null);
-  const [authToken, setAuthToken] = useState(localStorage.getItem('saloon_jwt_token') || null);
-  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('saloon_active_tab') || 'dashboard');
-  const [authLoading, setAuthLoading] = useState(!!localStorage.getItem('saloon_jwt_token'));
+export const isMasterAdmin = (user) => {
+  if (!user) return false;
+  if (user.is_super_admin === true || user.email === 'admin@saloon.com' || user.id === 1) return true;
+  const role = String(user.role || user.role_name || '').toLowerCase();
+  return role === 'super admin' || role === 'superadmin';
+};
+
+export const isSalonAdmin = (user) => {
+  if (!user) return false;
+  if (isMasterAdmin(user)) return true;
+  const role = String(user.role || user.role_name || '').toLowerCase();
+  return role.includes('admin') || role.includes('owner');
+};
+
+export const isBranchScopedUser = (user) => {
+  if (!user) return false;
+  if (isMasterAdmin(user) || isSalonAdmin(user)) return false;
+  return true;
+};
+
+export const mergeLists = (apiList = [], localList = []) => {
+  if (!Array.isArray(apiList)) apiList = [];
+  if (!Array.isArray(localList)) localList = [];
+  const map = new Map();
+  localList.forEach(item => { if (item && item.id) map.set(String(item.id), item); });
+  apiList.forEach(item => { if (item && item.id) map.set(String(item.id), { ...map.get(String(item.id)), ...item }); });
+  return Array.from(map.values());
+};
+
+export default function App() {
+  const [currentUser, setCurrentUser] = useState(() => {
+    const savedUser = localStorage.getItem('saloon_user');
+    if (savedUser) {
+      try { return JSON.parse(savedUser); } catch(e) {}
+    }
+    return MOCK_USERS[0];
+  });
+
+  const [authToken, setAuthToken] = useState(() => localStorage.getItem('saloon_jwt_token') || null);
+  const [authLoading, setAuthLoading] = useState(false);
+
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem('saloon_active_tab') || 'dashboard';
+  });
+
+  const [selectedBranchId, setSelectedBranchId] = useState('all');
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('saloon_theme') || 'dark';
+  });
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -156,17 +209,17 @@ function App() {
   };
 
 
-  // Accordion Dropdown States (Default Open for quick navigation)
-  const [isRbacOpen, setIsRbacOpen] = useState(true);
-  const [isCrmOpen, setIsCrmOpen] = useState(true);
-  const [isServicesOpen, setIsServicesOpen] = useState(true);
-  const [isBookingOpen, setIsBookingOpen] = useState(true);
-  const [isReceptionOpen, setIsReceptionOpen] = useState(true);
-  const [isInventoryOpen, setIsInventoryOpen] = useState(true);
-  const [isLoyaltyOpen, setIsLoyaltyOpen] = useState(true);
-  const [isMarketingOpen, setIsMarketingOpen] = useState(true);
-  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(true);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(true);
+  // Accordion Dropdown States (Default Closed)
+  const [isRbacOpen, setIsRbacOpen] = useState(false);
+  const [isCrmOpen, setIsCrmOpen] = useState(false);
+  const [isServicesOpen, setIsServicesOpen] = useState(false);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [isReceptionOpen, setIsReceptionOpen] = useState(false);
+  const [isInventoryOpen, setIsInventoryOpen] = useState(false);
+  const [isLoyaltyOpen, setIsLoyaltyOpen] = useState(false);
+  const [isMarketingOpen, setIsMarketingOpen] = useState(false);
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Receptionist POS state — which customer is being billed
   const [posCustomer, setPosCustomer] = useState(null);
@@ -175,16 +228,11 @@ function App() {
   // Dynamic Permission Checker based on logged-in user and live role permissions
   const canAccess = (permKeys) => {
     if (!currentUser) return false;
-    const userRoleName = String(currentUser.role || currentUser.role_name || '').toLowerCase();
-    if (userRoleName.includes('admin')) return true;
+    const userRoleName = currentUser.role || currentUser.role_name;
+    if (userRoleName === 'Admin') return true;
 
     // Find live role permissions in roles state so updates apply in real time
-    const matchedRole = roles.find(r => {
-      if (!r) return false;
-      if (r.id != null && currentUser.role_id != null && r.id === currentUser.role_id) return true;
-      const rName = typeof r.name === 'string' ? r.name.toLowerCase() : '';
-      return rName && rName === userRoleName;
-    });
+    const matchedRole = roles.find(r => r.id === currentUser.role_id || r.name === userRoleName);
     const userPerms = matchedRole?.permissions || currentUser.permissions || [];
 
     if (userPerms.includes('all')) return true;
@@ -204,74 +252,107 @@ function App() {
     return fallback;
   };
 
-  // Merge API items and LocalStorage custom items without duplicates
-  const mergeLists = (apiItems = [], localItems = []) => {
-    const listA = Array.isArray(apiItems) ? apiItems : [];
-    const listB = Array.isArray(localItems) ? localItems : [];
-    const map = new Map();
-    // Add local items first, then overlay API items (or keep unique IDs)
-    listB.forEach(item => { if (item && item.id != null) map.set(String(item.id), item); });
-    listA.forEach(item => { if (item && item.id != null) map.set(String(item.id), item); });
-    return Array.from(map.values());
-  };
-
   // Data States — initialized from localStorage for guaranteed refresh persistence
   const [users, setUsers] = useState(MOCK_USERS);
   const [branches, setBranches] = useState(MOCK_BRANCHES);
   const [roles, setRoles] = useState(MOCK_ROLES);
-  const [customers, setCustomers] = useState(() => getStoredData('saloon_customers_custom', MOCK_CUSTOMERS));
-  const [leads, setLeads] = useState(() => getStoredData('saloon_leads_custom', MOCK_LEADS));
-  const [categories, setCategories] = useState(() => getStoredData('saloon_categories_custom', MOCK_CATEGORIES));
+  const [customers, setCustomers] = useState(MOCK_CUSTOMERS);
+  const [leads, setLeads] = useState(MOCK_LEADS);
+  const [categories, setCategories] = useState(MOCK_CATEGORIES);
   const [services, setServices] = useState(() => getStoredData('saloon_services_custom', MOCK_SERVICES));
   const [packages, setPackages] = useState(() => getStoredData('saloon_packages_custom', MOCK_PACKAGES));
   const [stylists, setStylists] = useState(MOCK_STYLISTS);
-  const [appointments, setAppointments] = useState(() => getStoredData('saloon_appointments_custom', MOCK_APPOINTMENTS));
-  const [bills, setBills] = useState(() => getStoredData('saloon_bills_custom', MOCK_BILLS));
-  const [products, setProducts] = useState(() => getStoredData('saloon_products_custom', []));
+  const [appointments, setAppointments] = useState(MOCK_APPOINTMENTS);
+  const [bills, setBills] = useState(MOCK_BILLS);
+  const [products, setProducts] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [consumptions, setConsumptions] = useState([]);
+  const [members, setMembers] = useState(() => getStoredData('saloon_enrolled_members', []));
   const [dbStatus, setDbStatus] = useState({ connected: false, checking: true });
 
-  // Sync states to localStorage whenever lists update
   useEffect(() => {
-    try { localStorage.setItem('saloon_services_custom', JSON.stringify(services)); } catch (e) {}
+    try {
+      localStorage.setItem('saloon_enrolled_members', JSON.stringify(members));
+    } catch (e) { console.error(e); }
+  }, [members]);
+
+  const handleDeductMemberCredit = (targetCustId, targetPhone, deductCount = 1) => {
+    let updatedNewRem = null;
+    setMembers(prevMembers => {
+      const existingMember = prevMembers.find(m => {
+        const matchesId = targetCustId && String(m.customer_id || m.id) === String(targetCustId);
+        const matchesPhone = targetPhone && m.phone && String(m.phone).replace(/\D/g, '').slice(-10) === String(targetPhone).replace(/\D/g, '').slice(-10);
+        return matchesId || matchesPhone;
+      });
+
+      if (existingMember) {
+        const curRem = Number(existingMember.remaining_service_credit) || 0;
+        const curUsed = Number(existingMember.used_service_credit) || 0;
+        const newRem = Math.max(0, curRem - deductCount);
+        const newUsed = curUsed + deductCount;
+        updatedNewRem = newRem;
+
+        const nextMembers = prevMembers.map(m => {
+          if (m === existingMember || (targetCustId && String(m.customer_id || m.id) === String(targetCustId))) {
+            if (m.id) {
+              Admin_Update_Enrolled_Member(m.id, {
+                remaining_service_credit: newRem,
+                used_service_credit: newUsed
+              }).catch(() => null);
+            }
+            return {
+              ...m,
+              remaining_service_credit: newRem,
+              used_service_credit: newUsed
+            };
+          }
+          return m;
+        });
+
+        try { localStorage.setItem('saloon_enrolled_members', JSON.stringify(nextMembers)); } catch (e) {}
+        return nextMembers;
+      }
+      return prevMembers;
+    });
+
+    setCustomers(prevCustomers => {
+      const nextCusts = prevCustomers.map(c => {
+        const matchesId = targetCustId && String(c.id) === String(targetCustId);
+        const matchesPhone = targetPhone && c.phone && String(c.phone).replace(/\D/g, '').slice(-10) === String(targetPhone).replace(/\D/g, '').slice(-10);
+        if ((matchesId || matchesPhone) && updatedNewRem !== null) {
+          return {
+            ...c,
+            remaining_service_credit: updatedNewRem
+          };
+        }
+        return c;
+      });
+
+      try { localStorage.setItem('saloon_customers_custom', JSON.stringify(nextCusts)); } catch (e) {}
+      return nextCusts;
+    });
+  };
+
+  // Sync state to localStorage whenever services or packages change
+  useEffect(() => {
+    try {
+      localStorage.setItem('saloon_services_custom', JSON.stringify(services));
+    } catch (e) { console.error(e); }
   }, [services]);
 
   useEffect(() => {
-    try { localStorage.setItem('saloon_packages_custom', JSON.stringify(packages)); } catch (e) {}
+    try {
+      localStorage.setItem('saloon_packages_custom', JSON.stringify(packages));
+    } catch (e) { console.error(e); }
   }, [packages]);
-
-  useEffect(() => {
-    try { localStorage.setItem('saloon_customers_custom', JSON.stringify(customers)); } catch (e) {}
-  }, [customers]);
-
-  useEffect(() => {
-    try { localStorage.setItem('saloon_leads_custom', JSON.stringify(leads)); } catch (e) {}
-  }, [leads]);
-
-  useEffect(() => {
-    try { localStorage.setItem('saloon_appointments_custom', JSON.stringify(appointments)); } catch (e) {}
-  }, [appointments]);
-
-  useEffect(() => {
-    try { localStorage.setItem('saloon_bills_custom', JSON.stringify(bills)); } catch (e) {}
-  }, [bills]);
-
-  useEffect(() => {
-    try { localStorage.setItem('saloon_categories_custom', JSON.stringify(categories)); } catch (e) {}
-  }, [categories]);
-
-  useEffect(() => {
-    try { localStorage.setItem('saloon_products_custom', JSON.stringify(products)); } catch (e) {}
-  }, [products]);
 
   const fetchModuleData = async () => {
     setDbStatus(prev => ({ ...prev, checking: true }));
     try {
       // 1. Check PostgreSQL DB Health
       const healthRes = await Admin_Get_Health().catch(() => null);
-      if (healthRes?.data?.status === 'ok' || healthRes?.data?.status === 'online' || healthRes?.status === 200) {
+      if (healthRes?.data?.status === 'online') {
         setDbStatus({ connected: true, checking: false });
       } else {
         setDbStatus({ connected: false, checking: false });
@@ -289,45 +370,35 @@ function App() {
 
       // 3. Fetch Module 2 CRM & Lead Data
       const custRes = await Admin_Get_Customers().catch(() => null);
-      if (custRes?.data?.data && Array.isArray(custRes.data.data)) {
-        // Clean out any corrupted customer entries where name was set to number 1
-        const cleanedApiData = custRes.data.data.map(c => typeof c.name === 'number' || !c.name ? { ...c, name: c.category || c.phone || 'Customer' } : c);
-        setCustomers(prev => mergeLists(cleanedApiData, prev));
-      }
+      if (custRes?.data?.data && custRes.data.data.length > 0) setCustomers(custRes.data.data);
 
       const leadsRes = await Admin_Get_Leads().catch(() => null);
-      if (leadsRes?.data?.data && Array.isArray(leadsRes.data.data)) {
-        setLeads(prev => mergeLists(leadsRes.data.data, prev));
-      }
+      if (leadsRes?.data?.data && leadsRes.data.data.length > 0) setLeads(leadsRes.data.data);
 
-      // 4. Fetch Module 4 Services, Packages & Categories Data
+      // 4. Fetch Module 4 Services, Packages & Categories Data (Sync with DB if API live)
       const catRes = await Admin_Get_Categories().catch(() => null);
       if (catRes?.data?.data && Array.isArray(catRes.data.data)) {
-        setCategories(prev => mergeLists(catRes.data.data, prev));
+        setCategories(catRes.data.data);
       }
 
       const servRes = await Admin_Get_Services().catch(() => null);
       if (servRes?.data?.data && Array.isArray(servRes.data.data)) {
-        setServices(prev => mergeLists(servRes.data.data, prev));
+        setServices(servRes.data.data);
       }
 
       const pkgRes = await Admin_Get_Packages().catch(() => null);
       if (pkgRes?.data?.data && Array.isArray(pkgRes.data.data)) {
-        setPackages(prev => mergeLists(pkgRes.data.data, prev));
+        setPackages(pkgRes.data.data);
       }
 
       const stRes = await Admin_Get_Stylists().catch(() => null);
       if (stRes?.data?.data && stRes.data.data.length > 0) setStylists(stRes.data.data);
 
       const appRes = await Admin_Get_Appointments().catch(() => null);
-      if (appRes?.data?.data && Array.isArray(appRes.data.data)) {
-        setAppointments(appRes.data.data);
-      }
+      if (appRes?.data?.data && appRes.data.data.length > 0) setAppointments(appRes.data.data);
 
       const billsRes = await Admin_Get_Bills().catch(() => null);
-      if (billsRes?.data?.data && Array.isArray(billsRes.data.data)) {
-        setBills(billsRes.data.data);
-      }
+      if (billsRes?.data?.data && billsRes.data.data.length > 0) setBills(billsRes.data.data);
 
       // 5. Fetch Module 6 Inventory, Suppliers, POs & Consumption Data
       const prodRes = await Admin_Get_Products().catch(() => null);
@@ -390,45 +461,95 @@ function App() {
       })();
 
       if (cachedUser) {
-        // Instantly restore session from cache — no network wait
         setCurrentUser(cachedUser);
       } else if (tokenPayload) {
         setCurrentUser(tokenPayload);
       }
 
-      // STEP 4: Then try fetching fresh user from server in background
-      // (gets latest permissions from DB — updates silently without logout)
       Get_Admin_Profile()
         .then(res => {
           if (res?.data?.data) {
-            // Fresh data from DB — update state + cache
             const freshUser = res.data.data;
             setCurrentUser(freshUser);
             localStorage.setItem('saloon_user_cache', JSON.stringify(freshUser));
           }
-          // If API returns nothing, keep whatever was set from cache/token above
         })
         .catch(() => {
-          // Network/API error — DO NOT logout. User already restored from cache above.
           console.warn('API unavailable on refresh — using cached session');
         })
         .finally(() => setAuthLoading(false));
     } else {
       setAuthLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const filterByBranch = (list) => {
+    if (!list || !Array.isArray(list)) return [];
+    if (!currentUser) return list;
+
+    const isMaster = isMasterAdmin(currentUser);
+    const isScoped = isBranchScopedUser(currentUser);
+    const isOwner = isSalonAdmin(currentUser) && !isMaster;
+
+    // Super Admin in 'all' view sees everything
+    if (isMaster && selectedBranchId === 'all') {
+      return list;
+    }
+
+    // Branch Scoped Member (Manager, Receptionist, Staff):
+    // Strictly limited to their single assigned branch_id!
+    if (isScoped) {
+      return list.filter(item => item && String(item.branch_id) === String(currentUser.branch_id));
+    }
+
+    // Salon Admin (Salon Owner):
+    if (isOwner) {
+      const myBranchIds = new Set(accessibleBranches.map(b => String(b.id)));
+      return list.filter(item => {
+        if (!item) return false;
+        // 1. Always show self
+        if (String(item.id) === String(currentUser.id) || item.email === currentUser.email) return true;
+
+        // 2. Hide Super Admin
+        if (item.is_super_admin || item.email === 'admin@saloon.com' || item.id === 1) return false;
+        if (String(item.role || item.role_name).toLowerCase().includes('super')) return false;
+
+        // 3. Hide other Salon Admins
+        const itemRole = String(item.role || item.role_name).toLowerCase();
+        if (itemRole.includes('admin') || itemRole.includes('owner')) {
+          return myBranchIds.has(String(item.branch_id));
+        }
+
+        // 4. Default: check branch
+        return myBranchIds.has(String(item.branch_id));
+      });
+    }
+
+    return list;
+  };
+
   useEffect(() => {
-    if (currentUser) fetchModuleData();
+    if (currentUser) {
+      if (isBranchScopedUser(currentUser) && currentUser.branch_id) {
+        setSelectedBranchId(currentUser.branch_id);
+      }
+      fetchModuleData();
+    }
   }, [authToken, currentUser]);
 
   const handleLoginSuccess = (loginData) => {
-    setCurrentUser(loginData.user);
+    const user = loginData.user;
+    setCurrentUser(user);
     setAuthToken(loginData.token);
     localStorage.setItem('saloon_jwt_token', loginData.token);
     // Cache user data for instant session restore on refresh
-    localStorage.setItem('saloon_user_cache', JSON.stringify(loginData.user));
+    localStorage.setItem('saloon_user_cache', JSON.stringify(user));
+
+    if (isSalonAdmin(user)) {
+      setSelectedBranchId('all');
+    } else if (user?.branch_id) {
+      setSelectedBranchId(user.branch_id);
+    }
   };
 
   const handleLogout = () => {
@@ -438,21 +559,28 @@ function App() {
     localStorage.removeItem('saloon_user_cache');
   };
 
-  // Handlers for Module 1
   const handleAddUser = async (newUser) => {
     try {
-      const res = await Admin_Create_User(newUser).catch(() => null);
-      if (res?.data?.data) {
-        setUsers(prev => [res.data.data, ...prev]);
+      const res = await Admin_Create_User(newUser);
+      const createdItem = res?.data?.data || res?.data;
+      if (createdItem && createdItem.id) {
+        setUsers(prev => [createdItem, ...prev.filter(u => String(u.id) !== String(createdItem.id))]);
+        return createdItem;
       }
-    } catch (e) { console.error(e); }
+      return null;
+    } catch (e) {
+      console.error('Failed to create user in PostgreSQL database:', e);
+      throw e;
+    }
   };
 
   const handleAddBranch = async (newBranch) => {
     try {
       const res = await Admin_Create_Branch(newBranch).catch(() => null);
       if (res?.data?.data) {
-        setBranches(prev => [...prev, res.data.data]);
+        const created = res.data.data;
+        setBranches(prev => [created, ...prev]);
+        return created;
       }
     } catch (e) { console.error(e); }
   };
@@ -461,7 +589,9 @@ function App() {
     try {
       const res = await Admin_Update_Branch(id, branchData).catch(() => null);
       if (res?.data?.data) {
-        setBranches(prev => prev.map(b => b.id === id ? res.data.data : b));
+        const updated = res.data.data;
+        setBranches(prev => prev.map(b => b.id === id ? updated : b));
+        return updated;
       }
     } catch (e) { console.error(e); }
   };
@@ -483,40 +613,54 @@ function App() {
   };
 
   const handleAddCustomer = async (newCust, avatarFile) => {
+    const localPreview = avatarFile ? URL.createObjectURL(avatarFile) : null;
     try {
       const res = await Admin_Create_Customer(newCust).catch(() => null);
       let customer = res?.data?.data || res?.data;
       if (!customer || typeof customer.name === 'number' || customer.name === 1 || customer.name === '1' || !customer.name) {
-        customer = { id: Date.now(), ...newCust };
+        customer = { id: Date.now(), ...newCust, avatar_url: localPreview };
       } else {
-        customer = { ...newCust, ...customer, name: (typeof customer.name === 'string' && customer.name !== '1') ? customer.name : newCust.name };
+        customer = { ...customer, ...newCust, name: newCust.name || customer.name, avatar_url: customer.avatar_url || localPreview };
       }
       if (avatarFile && customer.id) {
         const avatarRes = await Admin_Upload_Customer_Avatar(customer.id, avatarFile).catch(() => null);
-        if (avatarRes?.data?.data) customer = avatarRes.data.data;
+        const uploadedUrl = avatarRes?.data?.avatarUrl || avatarRes?.data?.data?.avatar_url;
+        if (uploadedUrl && typeof uploadedUrl === 'string') {
+          customer = { ...customer, avatar_url: uploadedUrl };
+        }
       }
       setCustomers(prev => [customer, ...prev.filter(c => String(c.id) !== String(customer.id))]);
       return customer;
     } catch (e) {
       console.error(e);
-      const fallback = { id: Date.now(), ...newCust };
+      const fallback = { id: Date.now(), ...newCust, avatar_url: localPreview };
       setCustomers(prev => [fallback, ...prev]);
       return fallback;
     }
   };
 
   const handleUpdateCustomer = async (id, custData, avatarFile) => {
+    const localPreview = avatarFile ? URL.createObjectURL(avatarFile) : null;
     try {
       const res = await Admin_Update_Customer(id, custData).catch(() => null);
       let customer = res?.data?.data || res?.data || { id, ...custData };
+      if (localPreview && !customer.avatar_url) {
+        customer.avatar_url = localPreview;
+      }
       if (avatarFile && id) {
         const avatarRes = await Admin_Upload_Customer_Avatar(id, avatarFile).catch(() => null);
-        if (avatarRes?.data?.data) customer = avatarRes.data.data;
+        const uploadedUrl = avatarRes?.data?.avatarUrl || avatarRes?.data?.data?.avatar_url;
+        if (uploadedUrl && typeof uploadedUrl === 'string') {
+          customer = { ...customer, avatar_url: uploadedUrl };
+        }
       }
       setCustomers(prev => prev.map(c => String(c.id) === String(id) ? { ...c, ...customer } : c));
+      return customer;
     } catch (e) {
       console.error(e);
-      setCustomers(prev => prev.map(c => String(c.id) === String(id) ? { ...c, ...custData } : c));
+      const updated = { id, ...custData, ...(localPreview ? { avatar_url: localPreview } : {}) };
+      setCustomers(prev => prev.map(c => String(c.id) === String(id) ? { ...c, ...updated } : c));
+      return updated;
     }
   };
 
@@ -528,20 +672,25 @@ function App() {
   };
 
   const handleAddLead = async (leadData, avatarFile) => {
+    const localPreview = avatarFile ? URL.createObjectURL(avatarFile) : null;
     try {
       const res = await Admin_Create_Lead(leadData).catch(() => null);
-      let created = res?.data?.data || res?.data || { id: Date.now(), ...leadData, status: leadData.status || 'New' };
+      let created = res?.data?.data || res?.data || { id: Date.now(), ...leadData, status: leadData.status || 'New', avatar_url: localPreview };
+      if (!created.avatar_url && localPreview) {
+        created.avatar_url = localPreview;
+      }
       if (avatarFile && created.id) {
         const upRes = await Admin_Upload_Lead_Avatar(created.id, avatarFile).catch(() => null);
-        if (upRes?.data?.avatarUrl) {
-          created = { ...created, avatar_url: upRes.data.avatarUrl };
+        const uploadedUrl = upRes?.data?.avatarUrl || upRes?.data?.data?.avatar_url;
+        if (uploadedUrl) {
+          created = { ...created, avatar_url: uploadedUrl };
         }
       }
-      setLeads(prev => [created, ...prev]);
+      setLeads(prev => [created, ...prev.filter(l => String(l.id) !== String(created.id))]);
       return created;
     } catch (e) {
       console.error("Create Lead Error:", e);
-      const fallback = { id: Date.now(), ...leadData, status: leadData.status || 'New' };
+      const fallback = { id: Date.now(), ...leadData, status: leadData.status || 'New', avatar_url: localPreview };
       setLeads(prev => [fallback, ...prev]);
       return fallback;
     }
@@ -555,19 +704,27 @@ function App() {
   };
 
   const handleUpdateLead = async (id, leadData, avatarFile) => {
+    const localPreview = avatarFile ? URL.createObjectURL(avatarFile) : null;
     try {
       const res = await Admin_Update_Lead(id, leadData).catch(() => null);
       let updated = res?.data?.data || res?.data || { id, ...leadData };
-      if (avatarFile) {
+      if (localPreview && !updated.avatar_url) {
+        updated.avatar_url = localPreview;
+      }
+      if (avatarFile && id) {
         const upRes = await Admin_Upload_Lead_Avatar(id, avatarFile).catch(() => null);
-        if (upRes?.data?.avatarUrl) {
-          updated = { ...updated, avatar_url: upRes.data.avatarUrl };
+        const uploadedUrl = upRes?.data?.avatarUrl || upRes?.data?.data?.avatar_url;
+        if (uploadedUrl) {
+          updated = { ...updated, avatar_url: uploadedUrl };
         }
       }
       setLeads(prev => prev.map(l => String(l.id) === String(id) ? { ...l, ...updated } : l));
+      return updated;
     } catch (e) {
       console.error("Update Lead Error:", e);
-      setLeads(prev => prev.map(l => String(l.id) === String(id) ? { ...l, ...leadData } : l));
+      const updated = { id, ...leadData, ...(localPreview ? { avatar_url: localPreview } : {}) };
+      setLeads(prev => prev.map(l => String(l.id) === String(id) ? { ...l, ...updated } : l));
+      return updated;
     }
   };
 
@@ -590,7 +747,7 @@ function App() {
     }
     setServices(prev => {
       const updated = [newItem, ...prev];
-      localStorage.setItem('saloon_services_custom', JSON.stringify(updated));
+      try { localStorage.setItem('saloon_services_custom', JSON.stringify(updated)); } catch (e) {}
       return updated;
     });
     return newItem;
@@ -602,16 +759,11 @@ function App() {
       const updatedItem = res?.data?.data || res?.data || serviceData;
       setServices(prev => {
         const updated = prev.map(s => String(s.id) === String(id) ? { ...s, ...updatedItem } : s);
-        localStorage.setItem('saloon_services_custom', JSON.stringify(updated));
+        try { localStorage.setItem('saloon_services_custom', JSON.stringify(updated)); } catch (e) {}
         return updated;
       });
     } catch (e) {
       console.error("Update Service Error:", e);
-      setServices(prev => {
-        const updated = prev.map(s => String(s.id) === String(id) ? { ...s, ...serviceData } : s);
-        localStorage.setItem('saloon_services_custom', JSON.stringify(updated));
-        return updated;
-      });
     }
   };
 
@@ -623,7 +775,7 @@ function App() {
     }
     setServices(prev => {
       const updated = prev.filter(s => String(s.id) !== String(id));
-      localStorage.setItem('saloon_services_custom', JSON.stringify(updated));
+      try { localStorage.setItem('saloon_services_custom', JSON.stringify(updated)); } catch (e) {}
       return updated;
     });
   };
@@ -639,7 +791,7 @@ function App() {
     }
     setPackages(prev => {
       const updated = [newItem, ...prev];
-      localStorage.setItem('saloon_packages_custom', JSON.stringify(updated));
+      try { localStorage.setItem('saloon_packages_custom', JSON.stringify(updated)); } catch (e) {}
       return updated;
     });
     return newItem;
@@ -651,16 +803,11 @@ function App() {
       const updatedItem = res?.data?.data || res?.data || packageData;
       setPackages(prev => {
         const updated = prev.map(p => String(p.id) === String(id) ? { ...p, ...updatedItem } : p);
-        localStorage.setItem('saloon_packages_custom', JSON.stringify(updated));
+        try { localStorage.setItem('saloon_packages_custom', JSON.stringify(updated)); } catch (e) {}
         return updated;
       });
     } catch (e) {
       console.error("Update Package Error:", e);
-      setPackages(prev => {
-        const updated = prev.map(p => String(p.id) === String(id) ? { ...p, ...packageData } : p);
-        localStorage.setItem('saloon_packages_custom', JSON.stringify(updated));
-        return updated;
-      });
     }
   };
 
@@ -672,7 +819,7 @@ function App() {
     }
     setPackages(prev => {
       const updated = prev.filter(p => String(p.id) !== String(id));
-      localStorage.setItem('saloon_packages_custom', JSON.stringify(updated));
+      try { localStorage.setItem('saloon_packages_custom', JSON.stringify(updated)); } catch (e) {}
       return updated;
     });
   };
@@ -698,7 +845,6 @@ function App() {
       setCategories(prev => prev.map(c => String(c.id) === String(id) ? { ...c, ...updatedItem } : c));
     } catch (e) {
       console.error("Update Category Error:", e);
-      setCategories(prev => prev.map(c => String(c.id) === String(id) ? { ...c, ...categoryData } : c));
     }
   };
 
@@ -730,10 +876,14 @@ function App() {
       const res = await Admin_Update_Appointment(id, appData).catch(() => null);
       const updatedItem = res?.data?.data || res?.data || appData;
       setAppointments(prev => prev.map(a => String(a.id) === String(id) ? { ...a, ...updatedItem } : a));
-    } catch (e) {
-      console.error(e);
-      setAppointments(prev => prev.map(a => String(a.id) === String(id) ? { ...a, ...appData } : a));
-    }
+    } catch (e) { console.error(e); }
+  };
+
+  const handleUpdateAppointmentStatus = async (id, status) => {
+    try {
+      await Admin_Update_Appointment_Status(id, status).catch(() => null);
+    } catch (e) { console.error(e); }
+    setAppointments(prev => prev.map(a => String(a.id) === String(id) ? { ...a, status } : a));
   };
 
   const handleDeleteAppointment = async (id) => {
@@ -743,38 +893,11 @@ function App() {
     setAppointments(prev => prev.filter(a => String(a.id) !== String(id)));
   };
 
-  // Handlers for Receptionist POS Billing
-  const handleCheckIn = (customer, stylistId) => {
+  // POS & Billing Handlers
+  const handleStartPOS = (customer, stylistId) => {
     setPosCustomer(customer);
-    setPosStylistId(stylistId);
+    setPosStylistId(stylistId || null);
     setActiveTab('pos_billing');
-  };
-
-  const handleCreateBill = async (billData) => {
-    let createdBill = null;
-    try {
-      const res = await Admin_Create_Bill(billData).catch(() => null);
-      createdBill = res?.data?.data || res?.data || {
-        id: Date.now(),
-        invoice_number: `INV-${Math.floor(100000 + Math.random() * 900000)}`,
-        created_at: new Date().toISOString(),
-        ...billData
-      };
-    } catch (e) {
-      console.error(e);
-      createdBill = {
-        id: Date.now(),
-        invoice_number: `INV-${Math.floor(100000 + Math.random() * 900000)}`,
-        created_at: new Date().toISOString(),
-        ...billData
-      };
-    }
-    setBills(prev => [createdBill, ...prev]);
-    // Refresh customers to update loyalty points
-    Admin_Get_Customers().then(custRes => {
-      if (custRes?.data?.data) setCustomers(custRes.data.data);
-    }).catch(() => null);
-    return createdBill;
   };
 
   const handlePOSBack = () => {
@@ -783,29 +906,61 @@ function App() {
     setActiveTab('reception_checkin');
   };
 
-  const handleUpdateAppointmentStatus = async (id, status) => {
+  const handleCreateBill = async (billData) => {
+    let createdBill = null;
     try {
-      await Admin_Update_Appointment_Status(id, status).catch(() => null);
-      setAppointments(prev => prev.map(a => a.id === id ? { ...a, status } : a));
-    } catch (e) { console.error(e); }
+      const res = await Admin_Create_Bill(billData).catch(() => null);
+      createdBill = res?.data?.data || res?.data || { id: Date.now(), bill_number: `INV-${Date.now()}`, ...billData, created_at: new Date().toISOString() };
+    } catch (e) {
+      console.error(e);
+      createdBill = { id: Date.now(), bill_number: `INV-${Date.now()}`, ...billData, created_at: new Date().toISOString() };
+    }
+
+    setBills(prev => {
+      const updated = [createdBill, ...prev];
+      try { localStorage.setItem('saloon_bills_custom', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+
+    Admin_Get_Appointments().then(appRes => {
+      if (appRes?.data?.data) setAppointments(appRes.data.data);
+    }).catch(() => null);
+
+    Admin_Get_Customers().then(custRes => {
+      if (custRes?.data?.data) setCustomers(custRes.data.data);
+    }).catch(() => null);
+
+    return createdBill;
   };
 
-  // Handlers for Module 6 Inventory & Stock Management
+  const handleDeleteBill = async (billId) => {
+    try {
+      await Admin_Delete_Bill(billId).catch(() => null);
+    } catch (e) { console.error(e); }
+    setBills(prev => prev.filter(b => String(b.id) !== String(billId)));
+  };
+
+  const handleClearBills = async () => {
+    try {
+      await Admin_Clear_Bills().catch(() => null);
+    } catch (e) { console.error(e); }
+    setBills([]);
+    localStorage.setItem('saloon_bills_cleared', 'true');
+    localStorage.removeItem('saloon_bills_custom');
+  };
+
+  // Module 6 Inventory Handlers
   const handleAddProduct = async (productData) => {
     try {
       const res = await Admin_Create_Product(productData);
-      if (res?.data?.data) {
-        setProducts(prev => [res.data.data, ...prev]);
-      }
-    } catch (e) { console.error('Add Product Error:', e); }
+      if (res?.data?.data) setProducts(prev => [res.data.data, ...prev]);
+    } catch (e) { console.error('Create Product Error:', e); }
   };
 
   const handleUpdateProduct = async (id, productData) => {
     try {
       const res = await Admin_Update_Product(id, productData);
-      if (res?.data?.data) {
-        setProducts(prev => prev.map(p => p.id === id ? res.data.data : p));
-      }
+      if (res?.data?.data) setProducts(prev => prev.map(p => p.id === id ? res.data.data : p));
     } catch (e) { console.error('Update Product Error:', e); }
   };
 
@@ -829,7 +984,7 @@ function App() {
     try {
       const res = await Admin_Create_Supplier(supplierData);
       if (res?.data?.data) setSuppliers(prev => [res.data.data, ...prev]);
-    } catch (e) { console.error('Add Supplier Error:', e); }
+    } catch (e) { console.error('Create Supplier Error:', e); }
   };
 
   const handleUpdateSupplier = async (id, supplierData) => {
@@ -846,34 +1001,32 @@ function App() {
     } catch (e) { console.error('Delete Supplier Error:', e); }
   };
 
-  const handleCreatePO = async (poData) => {
+  const handleAddPurchaseOrder = async (poData) => {
     try {
       const res = await Admin_Create_Purchase_Order(poData);
-      if (res?.data?.data) {
-        setPurchaseOrders(prev => [res.data.data, ...prev]);
-      }
+      if (res?.data?.data) setPurchaseOrders(prev => [res.data.data, ...prev]);
     } catch (e) { console.error('Create PO Error:', e); }
   };
 
   const handleUpdatePOStatus = async (id, status) => {
     try {
-      const res = await Admin_Update_Purchase_Order_Status(id, status);
-      if (res?.data?.data) {
-        setPurchaseOrders(prev => prev.map(po => po.id === id ? res.data.data : po));
-        const prodRes = await Admin_Get_Products().catch(() => null);
-        if (prodRes?.data?.data) setProducts(prodRes.data.data);
-      }
+      const res = await Admin_Update_Purchase_Order_Status(id, { status });
+      if (res?.data?.data) setPurchaseOrders(prev => prev.map(po => po.id === id ? res.data.data : po));
     } catch (e) { console.error('Update PO Status Error:', e); }
   };
 
-  const handleAddConsumption = async (data) => {
+  const handleAddConsumption = async (consData) => {
     try {
-      const res = await Admin_Create_Consumption(data);
-      if (res?.data?.data) {
-        const fullConsRes = await Admin_Get_Consumptions().catch(() => null);
-        if (fullConsRes?.data?.data) setConsumptions(fullConsRes.data.data);
-      }
-    } catch (e) { console.error('Add Consumption Error:', e); }
+      const res = await Admin_Create_Consumption(consData);
+      if (res?.data?.data) setConsumptions(prev => [res.data.data, ...prev]);
+    } catch (e) { console.error('Create Consumption Error:', e); }
+  };
+
+  const handleUpdateConsumption = async (id, consData) => {
+    try {
+      const res = await Admin_Update_Consumption(id, consData);
+      if (res?.data?.data) setConsumptions(prev => prev.map(c => c.id === id ? res.data.data : c));
+    } catch (e) { console.error('Update Consumption Error:', e); }
   };
 
   const handleDeleteConsumption = async (id) => {
@@ -883,28 +1036,10 @@ function App() {
     } catch (e) { console.error('Delete Consumption Error:', e); }
   };
 
-  // Session restore ho raha hai — loading spinner dikhao
   if (authLoading) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--bg-dark)',
-        gap: '20px'
-      }}>
-        <div style={{
-          width: '52px', height: '52px',
-          border: '4px solid rgba(255,255,255,0.1)',
-          borderTop: '4px solid var(--accent-gold)',
-          borderRadius: '50%',
-          animation: 'spin 0.8s linear infinite'
-        }} />
-        <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem', fontWeight: '600' }}>
-          Restoring your session...
-        </div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--bg-dark)', color: 'var(--text-main)', fontFamily: 'sans-serif' }}>
+        <div style={{ width: '40px', height: '40px', border: '3px solid rgba(255,255,255,0.1)', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: '16px' }} />
       </div>
     );
   }
@@ -931,7 +1066,7 @@ function App() {
 
           <div className="nav-section-title">Navigation Menu</div>
           <nav className="nav-links">
-            <button 
+            <button
               className={`nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
               onClick={() => setActiveTab('dashboard')}
             >
@@ -943,7 +1078,7 @@ function App() {
             {/* Dropdown 1: User Roles & RBAC (Module 1) */}
             {canAccess(['manage_users', 'manage_branches', 'manage_permissions']) && (
               <div style={{ marginTop: '4px' }}>
-                <button 
+                <button
                   className={`nav-dropdown-toggle ${isRbacOpen ? 'open' : ''} ${['users', 'branches', 'matrix'].includes(activeTab) ? 'active' : ''}`}
                   onClick={() => setIsRbacOpen(!isRbacOpen)}
                 >
@@ -979,7 +1114,7 @@ function App() {
             {/* Dropdown 2: CRM & Lead System (Module 2) */}
             {canAccess('view_customers') && (
               <div style={{ marginTop: '4px' }}>
-                <button 
+                <button
                   className={`nav-dropdown-toggle ${isCrmOpen ? 'open' : ''} ${['customers', 'leads'].includes(activeTab) ? 'active' : ''}`}
                   onClick={() => setIsCrmOpen(!isCrmOpen)}
                 >
@@ -1002,11 +1137,10 @@ function App() {
                 )}
               </div>
             )}
-
-            {/* Dropdown 3: Service & Package Catalog (Module 4) */}
-            {canAccess('manage_services') && (
+            {/* Dropdown 3: Services & Packages (Module 4) */}
+            {canAccess(['manage_services', 'manage_packages']) && (
               <div style={{ marginTop: '4px' }}>
-                <button 
+                <button
                   className={`nav-dropdown-toggle ${isServicesOpen ? 'open' : ''} ${['services_packages'].includes(activeTab) ? 'active' : ''}`}
                   onClick={() => setIsServicesOpen(!isServicesOpen)}
                 >
@@ -1030,7 +1164,7 @@ function App() {
             {/* Dropdown 4: Appointments & Booking (Module 3) */}
             {canAccess('manage_appointments') && (
               <div style={{ marginTop: '4px' }}>
-                <button 
+                <button
                   className={`nav-dropdown-toggle ${isBookingOpen ? 'open' : ''} ${['appointments'].includes(activeTab) ? 'active' : ''}`}
                   onClick={() => setIsBookingOpen(!isBookingOpen)}
                 >
@@ -1054,7 +1188,7 @@ function App() {
             {/* Dropdown 5: Receptionist Console */}
             {canAccess(['manage_appointments', 'manage_billing', 'view_reports', 'manage_finances']) && (
               <div style={{ marginTop: '4px' }}>
-                <button 
+                <button
                   className={`nav-dropdown-toggle ${isReceptionOpen ? 'open' : ''} ${['reception_checkin', 'pos_billing', 'billing_history'].includes(activeTab) ? 'active' : ''}`}
                   onClick={() => setIsReceptionOpen(!isReceptionOpen)}
                 >
@@ -1090,7 +1224,7 @@ function App() {
             {/* Dropdown 6: Inventory & Product Stock (Module 6) */}
             {canAccess(['manage_inventory', 'all']) && (
               <div style={{ marginTop: '4px' }}>
-                <button 
+                <button
                   className={`nav-dropdown-toggle ${isInventoryOpen ? 'open' : ''} ${['inventory'].includes(activeTab) ? 'active' : ''}`}
                   onClick={() => setIsInventoryOpen(!isInventoryOpen)}
                 >
@@ -1114,7 +1248,7 @@ function App() {
             {/* Dropdown 7: Loyalty & Membership Program (Module 7) */}
             {canAccess(['view_customers', 'all']) && (
               <div style={{ marginTop: '4px' }}>
-                <button 
+                <button
                   className={`nav-dropdown-toggle ${isLoyaltyOpen ? 'open' : ''} ${['loyalty'].includes(activeTab) ? 'active' : ''}`}
                   onClick={() => setIsLoyaltyOpen(!isLoyaltyOpen)}
                 >
@@ -1138,7 +1272,7 @@ function App() {
             {/* Dropdown 8: Marketing Automation & Communication (Module 8) */}
             {canAccess(['view_customers', 'all']) && (
               <div style={{ marginTop: '4px' }}>
-                <button 
+                <button
                   className={`nav-dropdown-toggle ${isMarketingOpen ? 'open' : ''} ${['marketing'].includes(activeTab) ? 'active' : ''}`}
                   onClick={() => setIsMarketingOpen(!isMarketingOpen)}
                 >
@@ -1162,12 +1296,12 @@ function App() {
             {/* Dropdown 9: Reports & Executive Analytics (Module 9) */}
             {canAccess(['view_reports', 'manage_finances', 'all']) && (
               <div style={{ marginTop: '4px' }}>
-                <button 
-                  className={`nav-dropdown-toggle ${isAnalyticsOpen ? 'open' : ''} ${['analytics'].includes(activeTab) ? 'active' : ''}`}
+                <button
+                  className={`nav-dropdown-toggle ${isAnalyticsOpen ? 'open' : ''} ${['reports', 'tracking_records'].includes(activeTab) ? 'active' : ''}`}
                   onClick={() => setIsAnalyticsOpen(!isAnalyticsOpen)}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <BarChart3 size={17} style={{ color: ['analytics'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
+                    <BarChart3 size={17} style={{ color: ['reports', 'tracking_records'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
                     <span>Reports & Analytics</span>
                   </div>
                   {isAnalyticsOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
@@ -1175,18 +1309,21 @@ function App() {
 
                 {isAnalyticsOpen && (
                   <div className="nav-dropdown-menu">
-                    <button className={`sub-nav-btn ${activeTab === 'analytics' ? 'active' : ''}`} onClick={() => setActiveTab('analytics')}>
+                    <button className={`sub-nav-btn ${activeTab === 'reports' ? 'active' : ''}`} onClick={() => setActiveTab('reports')}>
                       <BarChart3 size={14} /> Executive Reports Console
+                    </button>
+                    <button className={`sub-nav-btn ${activeTab === 'tracking_records' ? 'active' : ''}`} onClick={() => setActiveTab('tracking_records')}>
+                      <UserCheck size={14} /> Staff & Customer Tracking
                     </button>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Dropdown 10: Admin Panel & Security Settings (Module 10) */}
-            {canAccess(['manage_permissions', 'all']) && (
+            {/* Dropdown 10: Admin & Security Settings */}
+            {isMasterAdmin(currentUser) && (
               <div style={{ marginTop: '4px' }}>
-                <button 
+                <button
                   className={`nav-dropdown-toggle ${isSettingsOpen ? 'open' : ''} ${['settings'].includes(activeTab) ? 'active' : ''}`}
                   onClick={() => setIsSettingsOpen(!isSettingsOpen)}
                 >
@@ -1212,7 +1349,12 @@ function App() {
 
         {/* User Profile & Logout */}
         <div>
-          <div className="sidebar-user-card" style={{ marginBottom: '12px' }}>
+          <div
+            className="sidebar-user-card"
+            style={{ marginBottom: '12px', cursor: 'pointer', transition: 'all 0.2s' }}
+            onClick={() => setIsProfileModalOpen(true)}
+            title="Click to view & edit your Admin Profile"
+          >
             {/* Show avatar photo if exists, else initials */}
             {currentUser.avatar_url ? (
               <img
@@ -1231,10 +1373,25 @@ function App() {
                 {currentUser.role}
               </span>
             </div>
-            <button 
-              onClick={handleLogout}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsProfileModalOpen(true);
+              }}
+              title="Edit Profile"
+              style={{ background: 'transparent', border: 'none', color: 'var(--accent-gold)', cursor: 'pointer', padding: '4px' }}
+            >
+              <User size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleLogout();
+              }}
               title="Logout"
-              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}
             >
               <LogOut size={16} />
             </button>
@@ -1266,12 +1423,78 @@ function App() {
               {activeTab === 'loyalty' && 'Loyalty & Membership Program'}
               {activeTab === 'marketing' && 'Marketing Automation & Communication'}
               {activeTab === 'analytics' && 'Reports & Executive Analytics'}
+              {activeTab === 'tracking_records' && 'Staff & Customer Tracking Records'}
               {activeTab === 'settings' && 'Admin Panel & Security Settings'}
             </h1>
-            <p>Welcome back, <strong>{currentUser.name}</strong>! Multi-tenant salon ERP system.</p>
+            <p style={{ marginTop: '2px' }}>
+              Welcome back, <strong>{currentUser.name}</strong>! | Active Branch Context: <strong style={{ color: 'var(--accent-gold)' }}>{selectedBranchId === 'all' ? '🌐 All Branches (Master)' : (branches.find(b => String(b.id) === String(selectedBranchId))?.name || `Branch #${selectedBranchId}`)}</strong>
+            </p>
           </div>
 
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            {/* Global Multi-Branch Access Switcher */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border)', borderRadius: '10px', padding: '6px 12px' }}>
+              <Building size={16} style={{ color: 'var(--accent-gold)', flexShrink: 0 }} />
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  {isMasterAdmin(currentUser) ? 'SaaS Platform Control' : 'Branch Access'}
+                </span>
+                {(() => {
+                  if (isMasterAdmin(currentUser)) {
+                    return (
+                      <div style={{ fontSize: '0.84rem', fontWeight: '800', color: 'var(--accent-gold)', display: 'flex', alignItems: 'center', gap: '5px', padding: '2px 0' }}>
+                        👑 Global Super Admin (All Salons)
+                      </div>
+                    );
+                  } else if (isSalonAdmin(currentUser)) {
+                    return (
+                      <select
+                        value={selectedBranchId || 'all'}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSelectedBranchId(val === 'all' ? 'all' : (isNaN(Number(val)) ? val : Number(val)));
+                        }}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--text-main)',
+                          fontSize: '0.84rem',
+                          fontWeight: '800',
+                          cursor: 'pointer',
+                          outline: 'none',
+                          paddingRight: '4px'
+                        }}
+                      >
+                        <option value="all" style={{ background: '#1a1a1a', color: '#fff' }}>🌐 All My Branches</option>
+                        {accessibleBranches.map(b => (
+                          <option key={b.id} value={b.id} style={{ background: '#1a1a1a', color: '#fff' }}>
+                            🏢 {b.name} ({b.code || `ID:${b.id}`})
+                          </option>
+                        ))}
+                      </select>
+                    );
+                  } else {
+                    const myBranch = branches.find(b => String(b.id) === String(currentUser?.branch_id)) || { name: `Branch #${currentUser?.branch_id || 1}` };
+                    return (
+                      <div style={{ fontSize: '0.84rem', fontWeight: '800', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '5px', padding: '2px 0' }}>
+                        <Lock size={12} style={{ color: '#38bdf8' }} /> {myBranch.name}
+                      </div>
+                    );
+                  }
+                })()}
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsProfileModalOpen(true)}
+              className="theme-toggle-btn"
+              title="Edit Admin Profile & Security Password"
+              style={{ background: 'rgba(245, 158, 11, 0.12)', border: '1px solid var(--accent-gold)', color: 'var(--accent-gold)' }}
+            >
+              <User size={15} />
+              <span>My Profile</span>
+            </button>
+
             <button
               onClick={toggleTheme}
               className="theme-toggle-btn"
@@ -1280,23 +1503,11 @@ function App() {
               {theme === 'dark' ? <Sun size={15} style={{ color: '#fbbf24' }} /> : <Moon size={15} style={{ color: '#6366f1' }} />}
               <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
             </button>
-
-            <button 
-              onClick={fetchModuleData} 
-
-              className="glass-card" 
-              style={{ padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--text-sub)' }}
-            >
-              <RefreshCw size={14} className={dbStatus.checking ? 'spin' : ''} /> Sync API
-            </button>
-
-            <div className={`db-badge ${dbStatus.connected ? 'connected' : 'disconnected'}`}>
-              <div className="pulse-dot"></div>
-              <Database size={15} />
-              {dbStatus.connected ? 'PostgreSQL Live Connected' : 'API Offline'}
-            </div>
           </div>
         </header>
+
+        {/* Scrollable Main Workspace Content */}
+        <div className="workspace-body">
 
         {/* Dashboard Tab Content */}
         {activeTab === 'dashboard' && (
@@ -1307,7 +1518,7 @@ function App() {
                   <Users size={26} />
                 </div>
                 <div className="stat-info">
-                  <h3>{customers.length}</h3>
+                  <h3>{filterByBranch(customers).length}</h3>
                   <p>CRM Customer Profiles</p>
                 </div>
               </div>
@@ -1317,17 +1528,24 @@ function App() {
                   <Calendar size={26} />
                 </div>
                 <div className="stat-info">
-                  <h3>{appointments.length}</h3>
+                  <h3>{filterByBranch(appointments).length}</h3>
                   <p>Booked Appointments</p>
                 </div>
               </div>
 
               <div className="glass-card stat-box">
-                <div className="stat-icon" style={{ background: 'rgba(16, 185, 129, 0.15)', color: 'var(--success)' }}>
+                <div className="stat-icon" style={{ background: 'rgba(37, 99, 235, 0.15)', color: 'var(--success)' }}>
                   <Target size={26} />
                 </div>
                 <div className="stat-info">
-                  <h3>{leads.length}</h3>
+                  <h3>{filterByBranch(leads).length}</h3>
+                  <p>Active Prospects / Leads</p>
+                </div>
+              </div>
+
+              <div className="glass-card stat-box">
+                <div className="stat-info">
+                  <h3>{filterByBranch(leads).length}</h3>
                   <p>Active Prospects / Leads</p>
                 </div>
               </div>
@@ -1345,19 +1563,13 @@ function App() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
               <div className="glass-panel" style={{ padding: '24px' }}>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginBottom: '14px' }}>🚀 Modules 1, 2 & 3 Integrated</h3>
-                <p style={{ color: 'var(--text-sub)', fontSize: '0.9rem', lineHeight: '1.6' }}>
-                  User Roles & RBAC, Customer CRM, Lead Pipeline, aur Appointment Booking Calendar sabhi live PostgreSQL <code>saloon_db</code> se integrated hain.
+                <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginBottom: '14px' }}>🚀 Modules Active</h3>
+                <p style={{ color: 'var(--text-sub)', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '16px' }}>
+                  Manage your salon staff, branches, customers, bookings, and financial tracking all from one platform.
                 </p>
-                
-                <div style={{ marginTop: '20px', display: 'flex', gap: '12px' }}>
-                  <button onClick={() => setActiveTab('appointments')} className="btn-primary">
-                    Book Appointment <Calendar size={16} />
-                  </button>
-                  <button onClick={() => setActiveTab('customers')} className="glass-card" style={{ padding: '10px 18px', cursor: 'pointer', color: '#fff', fontWeight: '700' }}>
-                    View CRM Directory <Users size={16} />
-                  </button>
-                </div>
+                <button onClick={() => setActiveTab('customers')} className="glass-card" style={{ padding: '10px 18px', cursor: 'pointer', color: '#fff', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  View CRM Directory <Users size={16} />
+                </button>
               </div>
 
               <div className="glass-panel" style={{ padding: '24px' }}>
@@ -1367,7 +1579,9 @@ function App() {
                     <span style={{ fontWeight: '700' }}>{currentUser.name}</span>
                     <span className={`role-tag ${currentUser.role?.toLowerCase() || 'staff'}`}>{currentUser.role}</span>
                   </div>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Branch: {currentUser.branch_name}</p>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    Active Workspace: {selectedBranchId === 'all' ? 'All Branches' : (branches.find(b => String(b.id) === String(selectedBranchId))?.name || currentUser.branch_name)}
+                  </p>
                 </div>
               </div>
             </div>
@@ -1377,7 +1591,14 @@ function App() {
         {/* Module 1 Views */}
         {activeTab === 'users' && (
           canAccess('manage_users') ? (
-            <UsersManagementView users={users} branches={branches} roles={roles} onAddUser={handleAddUser} />
+            <UsersManagementView
+              users={filterByBranch(users)}
+              branches={branches}
+              roles={roles}
+              selectedBranchId={selectedBranchId}
+              currentUser={currentUser}
+              onAddUser={(u) => handleAddUser({ ...u, branch_id: u.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : 1) })}
+            />
           ) : (
             <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
           )
@@ -1385,9 +1606,12 @@ function App() {
 
         {activeTab === 'branches' && (
           canAccess('manage_branches') ? (
-            <BranchesManagementView 
-              branches={branches} 
-              onAddBranch={handleAddBranch} 
+            <BranchesManagementView
+              branches={isMasterAdmin(currentUser) ? branches : accessibleBranches}
+              selectedBranchId={selectedBranchId}
+              currentUser={currentUser}
+              onSelectBranch={(id) => setSelectedBranchId(id)}
+              onAddBranch={handleAddBranch}
               onUpdateBranch={handleUpdateBranch}
               onToggleBranchStatus={handleToggleBranchStatus}
               onDeleteBranch={handleDeleteBranch}
@@ -1399,8 +1623,8 @@ function App() {
 
         {activeTab === 'matrix' && (
           canAccess('manage_permissions') ? (
-            <PermissionsMatrixView 
-              roles={roles} 
+            <PermissionsMatrixView
+              roles={roles}
               onUpdateRoles={(updatedRole) => {
                 // Update roles state immediately
                 setRoles(prev => prev.map(r => r.id === updatedRole.id ? updatedRole : r));
@@ -1419,8 +1643,10 @@ function App() {
         {activeTab === 'customers' && (
           canAccess('view_customers') ? (
             <CustomersCRMView
-              customers={customers}
-              onAddCustomer={handleAddCustomer}
+              customers={filterByBranch(customers)}
+              selectedBranchId={selectedBranchId}
+              currentUser={currentUser}
+              onAddCustomer={(c, file) => handleAddCustomer({ ...c, branch_id: c.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : 1) }, file)}
               onUpdateCustomer={handleUpdateCustomer}
               onDeleteCustomer={handleDeleteCustomer}
             />
@@ -1432,8 +1658,10 @@ function App() {
         {activeTab === 'leads' && (
           canAccess('view_customers') ? (
             <LeadsManagementView
-              leads={leads}
-              onAddLead={handleAddLead}
+              leads={filterByBranch(leads)}
+              selectedBranchId={selectedBranchId}
+              currentUser={currentUser}
+              onAddLead={(l, file) => handleAddLead({ ...l, branch_id: l.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : 1) }, file)}
               onUpdateLead={handleUpdateLead}
               onDeleteLead={handleDeleteLead}
               onUpdateLeadStatus={handleUpdateLeadStatus}
@@ -1447,13 +1675,16 @@ function App() {
         {activeTab === 'services_packages' && (
           canAccess('manage_services') ? (
             <ServicesPackagesView
-              services={services}
-              packages={packages}
+              services={filterByBranch(services)}
+              packages={filterByBranch(packages)}
               categories={categories}
-              onAddService={handleAddService}
+              branches={branches}
+              selectedBranchId={selectedBranchId}
+              currentUser={currentUser}
+              onAddService={(s) => handleAddService({ ...s, branch_id: s.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : (branches && branches[0]?.id ? branches[0].id : null)) })}
               onUpdateService={handleUpdateService}
               onDeleteService={handleDeleteService}
-              onAddPackage={handleAddPackage}
+              onAddPackage={(p) => handleAddPackage({ ...p, branch_id: p.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : (branches && branches[0]?.id ? branches[0].id : null)) })}
               onUpdatePackage={handleUpdatePackage}
               onDeletePackage={handleDeletePackage}
               onAddCategory={handleAddCategory}
@@ -1468,15 +1699,20 @@ function App() {
         {/* Module 3 Views */}
         {activeTab === 'appointments' && (
           canAccess('manage_appointments') ? (
-            <AppointmentsCalendarView 
-              appointments={appointments} 
-              customers={customers} 
-              stylists={stylists} 
-              services={services} 
-              onAddAppointment={handleAddAppointment} 
+            <AppointmentsCalendarView
+              appointments={filterByBranch(appointments)}
+              bills={filterByBranch(bills)}
+              customers={filterByBranch(customers)}
+              stylists={filterByBranch(stylists)}
+              services={filterByBranch(services)}
+              members={members}
+              selectedBranchId={selectedBranchId}
+              onDeductMemberCredit={handleDeductMemberCredit}
+              onCreateBill={(b) => handleCreateBill({ ...b, branch_id: b.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : 1) })}
+              onAddAppointment={(a) => handleAddAppointment({ ...a, branch_id: a.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : 1) })}
               onUpdateAppointment={handleUpdateAppointment}
               onDeleteAppointment={handleDeleteAppointment}
-              onUpdateAppointmentStatus={handleUpdateAppointmentStatus} 
+              onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
             />
           ) : (
             <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
@@ -1487,16 +1723,20 @@ function App() {
         {activeTab === 'reception_checkin' && (
           canAccess(['manage_appointments', 'manage_billing']) ? (
             <ReceptionistView
-              customers={customers}
-              stylists={stylists}
-              services={services}
-              appointments={appointments}
+              customers={filterByBranch(customers)}
+              stylists={filterByBranch(stylists)}
+              services={filterByBranch(services)}
+              appointments={filterByBranch(appointments)}
+              members={members}
+              selectedBranchId={selectedBranchId}
+              onDeductMemberCredit={handleDeductMemberCredit}
+              onCreateBill={(b) => handleCreateBill({ ...b, branch_id: b.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : 1) })}
               onCheckIn={handleCheckIn}
-              onAddAppointment={handleAddAppointment}
+              onAddAppointment={(a) => handleAddAppointment({ ...a, branch_id: a.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : 1) })}
               onUpdateAppointment={handleUpdateAppointment}
               onDeleteAppointment={handleDeleteAppointment}
               onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
-              onAddCustomer={handleAddCustomer}
+              onAddCustomer={(c, file) => handleAddCustomer({ ...c, branch_id: c.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : 1) }, file)}
             />
           ) : (
             <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
@@ -1508,26 +1748,38 @@ function App() {
             <POSBillingView
               customer={posCustomer}
               stylistId={posStylistId}
-              stylists={stylists}
-              services={services}
-              packages={packages}
+              initialServices={posInitialServices}
+              stylists={filterByBranch(stylists)}
+              services={filterByBranch(services)}
+              packages={filterByBranch(packages)}
               categories={categories}
-              customers={customers}
-              bills={bills}
-              onCreateBill={handleCreateBill}
+              customers={filterByBranch(customers)}
+              bills={filterByBranch(bills)}
+              members={members}
+              selectedBranchId={selectedBranchId}
+              onDeductMemberCredit={handleDeductMemberCredit}
+              onCreateBill={(b) => handleCreateBill({ ...b, branch_id: b.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : 1) })}
               onBack={handlePOSBack}
+              onViewHistory={() => setActiveTab('billing_history')}
             />
           ) : (
             <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
           )
         )}
 
+
+
         {activeTab === 'billing_history' && (
-          canAccess(['manage_billing', 'view_reports', 'manage_finances']) ? (
+          canAccess(['manage_billing', 'all']) ? (
             <BillingHistoryView
-              bills={bills}
-              customers={customers}
-              stylists={stylists}
+              bills={filterByBranch(bills)}
+              customers={filterByBranch(customers)}
+              stylists={filterByBranch(stylists)}
+              members={members}
+              selectedBranchId={selectedBranchId}
+              onDeleteBill={handleDeleteBill}
+              onClearAllBills={handleClearAllBills}
+              onNavigateToPOS={() => setActiveTab('pos_billing')}
             />
           ) : (
             <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
@@ -1537,12 +1789,13 @@ function App() {
         {activeTab === 'inventory' && (
           canAccess(['manage_inventory', 'all']) ? (
             <InventoryStockManagementView
-              products={products}
+              products={filterByBranch(products)}
               suppliers={suppliers}
               purchaseOrders={purchaseOrders}
               consumptions={consumptions}
-              services={services}
-              onAddProduct={handleAddProduct}
+              services={filterByBranch(services)}
+              selectedBranchId={selectedBranchId}
+              onAddProduct={(p) => handleAddProduct({ ...p, branch_id: p.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : 1) })}
               onUpdateProduct={handleUpdateProduct}
               onAdjustStock={handleAdjustStock}
               onDeleteProduct={handleDeleteProduct}
@@ -1552,6 +1805,7 @@ function App() {
               onCreatePO={handleCreatePO}
               onUpdatePOStatus={handleUpdatePOStatus}
               onAddConsumption={handleAddConsumption}
+              onUpdateConsumption={handleUpdateConsumption}
               onDeleteConsumption={handleDeleteConsumption}
             />
           ) : (
@@ -1560,8 +1814,15 @@ function App() {
         )}
 
         {activeTab === 'loyalty' && (
-          canAccess(['view_customers', 'all']) ? (
-            <LoyaltyMembershipView />
+          canAccess(['manage_customers', 'all']) ? (
+            <LoyaltyMembershipView
+              customers={filterByBranch(customers)}
+              bills={filterByBranch(bills)}
+              members={members}
+              selectedBranchId={selectedBranchId}
+              onUpdateMembers={setMembers}
+              onCreateBill={(b) => handleCreateBill({ ...b, branch_id: b.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : 1) })}
+            />
           ) : (
             <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
           )
@@ -1577,7 +1838,21 @@ function App() {
 
         {activeTab === 'analytics' && (
           canAccess(['view_reports', 'manage_finances', 'all']) ? (
-            <ReportsAnalyticsView />
+            <ReportsAnalyticsView selectedBranchId={selectedBranchId} />
+          ) : (
+            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+          )
+        )}
+
+        {activeTab === 'tracking_records' && (
+          canAccess(['view_reports', 'manage_finances', 'all']) ? (
+            <StaffCustomerTrackingView
+              stylists={filterByBranch(stylists)}
+              customers={filterByBranch(customers)}
+              appointments={filterByBranch(appointments)}
+              bills={filterByBranch(bills)}
+              selectedBranchId={selectedBranchId}
+            />
           ) : (
             <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
           )
@@ -1590,10 +1865,20 @@ function App() {
             <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
           )
         )}
-
+        </div>
       </main>
+
+      {/* User Profile Edit Modal */}
+      {isProfileModalOpen && (
+        <UserProfileModal
+          user={currentUser}
+          onClose={() => setIsProfileModalOpen(false)}
+          onUpdateUser={(updatedUser) => {
+            setCurrentUser(updatedUser);
+            localStorage.setItem('saloon_user_cache', JSON.stringify(updatedUser));
+          }}
+        />
+      )}
     </div>
   );
 }
-
-export default App;

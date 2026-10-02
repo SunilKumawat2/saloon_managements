@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import {
-  Package, AlertTriangle, Truck, ShoppingCart, Activity, Plus, Search, Filter,
+  Package, AlertTriangle, Truck, ShoppingCart, Activity, Plus, Minus, Search, Filter,
   Edit3, Trash2, CheckCircle2, RefreshCw, ChevronRight, X, ArrowUpRight, ArrowDownRight,
-  TrendingUp, Tag, ShieldAlert, Sparkles, Building, Phone, Mail, FileText, Check
+  TrendingUp, Tag, ShieldAlert, Sparkles, Building, Phone, Mail, FileText, Check, Loader2
 } from 'lucide-react';
 
 function InventoryStockManagementView({
@@ -21,7 +21,9 @@ function InventoryStockManagementView({
   onCreatePO,
   onUpdatePOStatus,
   onAddConsumption,
-  onDeleteConsumption
+  onUpdateConsumption,
+  onDeleteConsumption,
+  selectedBranchId = 'all'
 }) {
   const [activeTab, setActiveTab] = useState('products'); // 'products', 'low_stock', 'suppliers', 'pos', 'consumption'
 
@@ -75,6 +77,7 @@ function InventoryStockManagementView({
 
   // ─── Consumption Mapping State ───
   const [isAddConsumptionModal, setIsAddConsumptionModal] = useState(false);
+  const [editingConsumption, setEditingConsumption] = useState(null);
   const [consumptionFormData, setConsumptionFormData] = useState({
     service_id: '',
     product_id: '',
@@ -86,17 +89,32 @@ function InventoryStockManagementView({
   // ─── Low Stock Items ───
   const lowStockProducts = products.filter(p => parseInt(p.quantity || 0) <= parseInt(p.min_threshold || 10));
 
+  // ─── Products Pagination State ───
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
   // ─── Filtered Products ───
-  const filteredProducts = products.filter(p => {
+  const allFilteredProducts = products.filter(p => {
     const matchesCat = categoryFilter === 'All' || p.category === categoryFilter;
     const matchesType = typeFilter === 'All' || p.type === typeFilter;
     const searchLower = productSearch.toLowerCase();
     const matchesSearch = !productSearch.trim() ||
       String(p.name ?? '').toLowerCase().includes(searchLower) ||
       String(p.sku ?? '').toLowerCase().includes(searchLower) ||
-      String(p.category ?? '').toLowerCase().includes(searchLower);
+      String(p.category ?? '').toLowerCase().includes(searchLower) ||
+      String(p.supplier_name ?? '').toLowerCase().includes(searchLower);
     return matchesCat && matchesType && matchesSearch;
   });
+
+  const isAll = pageSize === 'all';
+  const totalItems = allFilteredProducts.length;
+  const totalPages = isAll ? 1 : Math.ceil(totalItems / pageSize) || 1;
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const startIndex = isAll ? 0 : (safePage - 1) * pageSize;
+  const endIndex = isAll ? totalItems : Math.min(startIndex + (pageSize === 'all' ? totalItems : Number(pageSize)), totalItems);
+
+  const paginatedProducts = isAll ? allFilteredProducts : allFilteredProducts.slice(startIndex, endIndex);
 
   // ─── Filtered Suppliers ───
   const filteredSuppliers = suppliers.filter(s => {
@@ -107,18 +125,75 @@ function InventoryStockManagementView({
       String(s.phone ?? '').includes(supplierSearch);
   });
 
+  // ─── Low Stock Pagination State ───
+  const [lowStockPageSize, setLowStockPageSize] = useState(10);
+  const [lowStockCurrentPage, setLowStockCurrentPage] = useState(1);
+
+  const isLowStockAll = lowStockPageSize === 'all';
+  const totalLowStock = lowStockProducts.length;
+  const totalLowStockPages = isLowStockAll ? 1 : Math.ceil(totalLowStock / lowStockPageSize) || 1;
+  const safeLowStockPage = Math.min(Math.max(1, lowStockCurrentPage), totalLowStockPages);
+  const lowStockStartIndex = isLowStockAll ? 0 : (safeLowStockPage - 1) * lowStockPageSize;
+  const lowStockEndIndex = isLowStockAll ? totalLowStock : Math.min(lowStockStartIndex + (lowStockPageSize === 'all' ? totalLowStock : Number(lowStockPageSize)), totalLowStock);
+  const paginatedLowStock = isLowStockAll ? lowStockProducts : lowStockProducts.slice(lowStockStartIndex, lowStockEndIndex);
+
+  // ─── Suppliers Pagination State ───
+  const [supplierPageSize, setSupplierPageSize] = useState(10);
+  const [supplierCurrentPage, setSupplierCurrentPage] = useState(1);
+
+  const isSupplierAll = supplierPageSize === 'all';
+  const totalSuppliers = filteredSuppliers.length;
+  const totalSupplierPages = isSupplierAll ? 1 : Math.ceil(totalSuppliers / supplierPageSize) || 1;
+  const safeSupplierPage = Math.min(Math.max(1, supplierCurrentPage), totalSupplierPages);
+  const supplierStartIndex = isSupplierAll ? 0 : (safeSupplierPage - 1) * supplierPageSize;
+  const supplierEndIndex = isSupplierAll ? totalSuppliers : Math.min(supplierStartIndex + (supplierPageSize === 'all' ? totalSuppliers : Number(supplierPageSize)), totalSuppliers);
+  const paginatedSuppliers = isSupplierAll ? filteredSuppliers : filteredSuppliers.slice(supplierStartIndex, supplierEndIndex);
+
+  // ─── Purchase Orders Pagination State ───
+  const [poPageSize, setPOPageSize] = useState(10);
+  const [poCurrentPage, setPOCurrentPage] = useState(1);
+
+  const isPOAll = poPageSize === 'all';
+  const totalPOs = purchaseOrders.length;
+  const totalPOPages = isPOAll ? 1 : Math.ceil(totalPOs / poPageSize) || 1;
+  const safePOPage = Math.min(Math.max(1, poCurrentPage), totalPOPages);
+  const poStartIndex = isPOAll ? 0 : (safePOPage - 1) * poPageSize;
+  const poEndIndex = isPOAll ? totalPOs : Math.min(poStartIndex + (poPageSize === 'all' ? totalPOs : Number(poPageSize)), totalPOs);
+  const paginatedPOs = isPOAll ? purchaseOrders : purchaseOrders.slice(poStartIndex, poEndIndex);
+
+  // ─── Consumption Pagination State ───
+  const [consumptionPageSize, setConsumptionPageSize] = useState(10);
+  const [consumptionCurrentPage, setConsumptionCurrentPage] = useState(1);
+
+  const isConsumptionAll = consumptionPageSize === 'all';
+  const totalConsumptions = consumptions.length;
+  const totalConsumptionPages = isConsumptionAll ? 1 : Math.ceil(totalConsumptions / consumptionPageSize) || 1;
+  const safeConsumptionPage = Math.min(Math.max(1, consumptionCurrentPage), totalConsumptionPages);
+  const consumptionStartIndex = isConsumptionAll ? 0 : (safeConsumptionPage - 1) * consumptionPageSize;
+  const consumptionEndIndex = isConsumptionAll ? totalConsumptions : Math.min(consumptionStartIndex + (consumptionPageSize === 'all' ? totalConsumptions : Number(consumptionPageSize)), totalConsumptions);
+  const paginatedConsumptions = isConsumptionAll ? consumptions : consumptions.slice(consumptionStartIndex, consumptionEndIndex);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // ─── Handlers: Product ───
   const handleProductSubmit = async (e) => {
     e.preventDefault();
-    if (!prodFormData.name) return;
-    if (editingProduct) {
-      await onUpdateProduct(editingProduct.id, prodFormData);
-    } else {
-      await onAddProduct(prodFormData);
+    if (!prodFormData.name || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      if (editingProduct) {
+        await onUpdateProduct(editingProduct.id, prodFormData);
+      } else {
+        await onAddProduct(prodFormData);
+      }
+      setIsAddProductModal(false);
+      setEditingProduct(null);
+      resetProdForm();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsAddProductModal(false);
-    setEditingProduct(null);
-    resetProdForm();
   };
 
   const handleAdjustStockSubmit = async (e) => {
@@ -187,6 +262,20 @@ function InventoryStockManagementView({
     setPOItemQty(1);
   };
 
+  const removePOItemFromCart = (productId) => {
+    setPOCartItems(prev => prev.filter(i => String(i.product_id) !== String(productId)));
+  };
+
+  const updatePOItemQty = (productId, delta) => {
+    setPOCartItems(prev => prev.map(item => {
+      if (String(item.product_id) === String(productId)) {
+        const nextQty = Math.max(1, (Number(item.quantity) || 1) + delta);
+        return { ...item, quantity: nextQty };
+      }
+      return item;
+    }));
+  };
+
   const handlePOSubmit = async (e) => {
     e.preventDefault();
     if (!selectedPOSupplierId || poCartItems.length === 0) return;
@@ -202,11 +291,28 @@ function InventoryStockManagementView({
   };
 
   // ─── Handlers: Consumption ───
+  const openEditConsumption = (c) => {
+    setEditingConsumption(c);
+    setConsumptionFormData({
+      service_id: c.service_id || '',
+      product_id: c.product_id || '',
+      quantity_consumed: c.quantity_consumed || 10,
+      unit: c.unit || 'ml',
+      notes: c.notes || ''
+    });
+    setIsAddConsumptionModal(true);
+  };
+
   const handleConsumptionSubmit = async (e) => {
     e.preventDefault();
     if (!consumptionFormData.service_id || !consumptionFormData.product_id) return;
-    await onAddConsumption(consumptionFormData);
+    if (editingConsumption && onUpdateConsumption) {
+      await onUpdateConsumption(editingConsumption.id, consumptionFormData);
+    } else if (onAddConsumption) {
+      await onAddConsumption(consumptionFormData);
+    }
     setIsAddConsumptionModal(false);
+    setEditingConsumption(null);
     setConsumptionFormData({ service_id: '', product_id: '', quantity_consumed: 10, unit: 'ml', notes: '' });
   };
 
@@ -259,11 +365,11 @@ function InventoryStockManagementView({
       <div className="controls-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '24px' }}>
         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
           {[
-            { id: 'products', label: `📦 Stock Products (${products.length})`, badge: null },
-            { id: 'low_stock', label: `⚠️ Low Stock Alerts`, badge: lowStockProducts.length },
-            { id: 'suppliers', label: `🏭 Suppliers (${suppliers.length})`, badge: null },
-            { id: 'pos', label: `📝 Purchase Orders (${purchaseOrders.length})`, badge: null },
-            { id: 'consumption', label: `🧪 Service Product Usage (${consumptions.length})`, badge: null },
+            { id: 'products', label: `Stock Products (${products.length})`, badge: null },
+            { id: 'low_stock', label: `Low Stock Alerts`, badge: lowStockProducts.length },
+            { id: 'suppliers', label: `Suppliers (${suppliers.length})`, badge: null },
+            { id: 'pos', label: `Purchase Orders (${purchaseOrders.length})`, badge: null },
+            { id: 'consumption', label: `Service Product Usage (${consumptions.length})`, badge: null },
           ].map(tab => (
             <button
               key={tab.id}
@@ -303,7 +409,7 @@ function InventoryStockManagementView({
           </button>
         )}
         {activeTab === 'consumption' && (
-          <button className="btn-primary" onClick={() => setIsAddConsumptionModal(true)}>
+          <button className="btn-primary" onClick={() => { setEditingConsumption(null); setConsumptionFormData({ service_id: '', product_id: '', quantity_consumed: 10, unit: 'ml', notes: '' }); setIsAddConsumptionModal(true); }}>
             <Plus size={16} /> Map Service Consumption
           </button>
         )}
@@ -357,14 +463,14 @@ function InventoryStockManagementView({
                 </tr>
               </thead>
               <tbody>
-                {filteredProducts.length === 0 ? (
+                {paginatedProducts.length === 0 ? (
                   <tr>
                     <td colSpan="8" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
                       No inventory products found.
                     </td>
                   </tr>
                 ) : (
-                  filteredProducts.map(p => {
+                  paginatedProducts.map(p => {
                     const isLow = parseInt(p.quantity) <= parseInt(p.min_threshold);
                     return (
                       <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
@@ -414,6 +520,93 @@ function InventoryStockManagementView({
               </tbody>
             </table>
           </div>
+
+          {/* ─── Stock Products Pagination Footer ─── */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '16px',
+            marginTop: '20px',
+            paddingTop: '16px',
+            borderTop: '1px solid var(--border)',
+            fontSize: '0.85rem',
+            color: 'var(--text-sub)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
+                <span>Show products:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    const val = e.target.value === 'all' ? 'all' : Number(e.target.value);
+                    setPageSize(val);
+                    setCurrentPage(1);
+                  }}
+                  style={{
+                    background: 'var(--input-bg)',
+                    color: 'var(--text-main)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    padding: '4px 10px',
+                    fontWeight: '700',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                  <option value="all">All</option>
+                </select>
+              </label>
+            </div>
+
+            <div>
+              Showing <strong style={{ color: 'var(--text-main)' }}>{totalItems > 0 ? startIndex + 1 : 0}</strong> to{' '}
+              <strong style={{ color: 'var(--text-main)' }}>{endIndex}</strong> of{' '}
+              <strong style={{ color: 'var(--text-main)' }}>{totalItems}</strong> entries
+            </div>
+
+            {!isAll && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button
+                  disabled={safePage === 1}
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  style={{
+                    padding: '5px 12px',
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    color: safePage === 1 ? 'var(--text-muted)' : 'var(--text-main)',
+                    cursor: safePage === 1 ? 'not-allowed' : 'pointer',
+                    fontWeight: '700'
+                  }}
+                >
+                  Previous
+                </button>
+                <span style={{ fontWeight: '700', padding: '0 8px' }}>
+                  Page {safePage} of {totalPages}
+                </span>
+                <button
+                  disabled={safePage === totalPages}
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  style={{
+                    padding: '5px 12px',
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    color: safePage === totalPages ? 'var(--text-muted)' : 'var(--text-main)',
+                    cursor: safePage === totalPages ? 'not-allowed' : 'pointer',
+                    fontWeight: '700'
+                  }}
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -424,39 +617,128 @@ function InventoryStockManagementView({
             <AlertTriangle size={20} /> Low Stock & Inventory Replenishment Thresholds
           </h3>
 
-          {lowStockProducts.length === 0 ? (
+          {totalLowStock === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#34d399', fontSize: '0.95rem' }}>
               <CheckCircle2 size={36} style={{ marginBottom: '8px' }} /><br />
               All inventory products are above minimum safety thresholds! 🎉
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-              {lowStockProducts.map(p => (
-                <div key={p.id} style={{ background: 'rgba(239,68,68,0.06)', border: '1.5px solid rgba(239,68,68,0.3)', borderRadius: '14px', padding: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                    <div>
-                      <strong style={{ fontSize: '0.95rem', color: '#fff' }}>{p.name}</strong>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--accent-gold)' }}>{p.sku} · {p.category}</div>
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+                {paginatedLowStock.map(p => (
+                  <div key={p.id} style={{ background: 'rgba(239,68,68,0.06)', border: '1.5px solid rgba(239,68,68,0.3)', borderRadius: '14px', padding: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                      <div>
+                        <strong style={{ fontSize: '0.95rem', color: '#fff' }}>{p.name}</strong>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--accent-gold)' }}>{p.sku} · {p.category}</div>
+                      </div>
+                      <span style={{ background: '#ef4444', color: '#fff', padding: '2px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: '900' }}>
+                        ALERT
+                      </span>
                     </div>
-                    <span style={{ background: '#ef4444', color: '#fff', padding: '2px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: '900' }}>
-                      ALERT
-                    </span>
-                  </div>
 
-                  <div style={{ fontSize: '0.85rem', margin: '10px 0' }}>
-                    <div>Current Quantity: <strong style={{ color: '#ef4444', fontSize: '1.1rem' }}>{p.quantity} {p.unit}</strong></div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Min Safety Level: {p.min_threshold} {p.unit}</div>
-                  </div>
+                    <div style={{ fontSize: '0.85rem', margin: '10px 0' }}>
+                      <div>Current Quantity: <strong style={{ color: '#ef4444', fontSize: '1.1rem' }}>{p.quantity} {p.unit}</strong></div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Min Safety Level: {p.min_threshold} {p.unit}</div>
+                    </div>
 
-                  <button
-                    onClick={() => { setSelectedPOProduct(String(p.id)); setPOItemCost(String(p.cost_price)); setPOItemQty(20); setIsCreatePOModal(true); }}
-                    style={{ width: '100%', padding: '8px', background: '#ef4444', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                  >
-                    <ShoppingCart size={14} /> Reorder Stock via PO
-                  </button>
+                    <button
+                      onClick={() => { setSelectedPOProduct(String(p.id)); setPOItemCost(String(p.cost_price)); setPOItemQty(20); setIsCreatePOModal(true); }}
+                      style={{ width: '100%', padding: '8px', background: '#ef4444', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                      <ShoppingCart size={14} /> Reorder Stock via PO
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Low Stock Pagination Footer */}
+              <div style={{
+                display: 'flex',
+                justify: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '16px',
+                marginTop: '20px',
+                paddingTop: '16px',
+                borderTop: '1px solid var(--border)',
+                fontSize: '0.85rem',
+                color: 'var(--text-sub)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
+                    <span>Show alerts:</span>
+                    <select
+                      value={lowStockPageSize}
+                      onChange={(e) => {
+                        const val = e.target.value === 'all' ? 'all' : Number(e.target.value);
+                        setLowStockPageSize(val);
+                        setLowStockCurrentPage(1);
+                      }}
+                      style={{
+                        background: 'var(--input-bg)',
+                        color: 'var(--text-main)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        padding: '4px 10px',
+                        fontWeight: '700',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                      <option value="all">All</option>
+                    </select>
+                  </label>
                 </div>
-              ))}
-            </div>
+
+                <div>
+                  Showing <strong style={{ color: 'var(--text-main)' }}>{totalLowStock > 0 ? lowStockStartIndex + 1 : 0}</strong> to{' '}
+                  <strong style={{ color: 'var(--text-main)' }}>{lowStockEndIndex}</strong> of{' '}
+                  <strong style={{ color: 'var(--text-main)' }}>{totalLowStock}</strong> entries
+                </div>
+
+                {!isLowStockAll && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      disabled={safeLowStockPage === 1}
+                      onClick={() => setLowStockCurrentPage(p => Math.max(1, p - 1))}
+                      style={{
+                        padding: '5px 12px',
+                        background: 'var(--input-bg)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        color: safeLowStockPage === 1 ? 'var(--text-muted)' : 'var(--text-main)',
+                        cursor: safeLowStockPage === 1 ? 'not-allowed' : 'pointer',
+                        fontWeight: '700'
+                      }}
+                    >
+                      Previous
+                    </button>
+                    <span style={{ fontWeight: '700', padding: '0 8px' }}>
+                      Page {safeLowStockPage} of {totalLowStockPages}
+                    </span>
+                    <button
+                      disabled={safeLowStockPage === totalLowStockPages}
+                      onClick={() => setLowStockCurrentPage(p => Math.min(totalLowStockPages, p + 1))}
+                      style={{
+                        padding: '5px 12px',
+                        background: 'var(--input-bg)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        color: safeLowStockPage === totalLowStockPages ? 'var(--text-muted)' : 'var(--text-main)',
+                        cursor: safeLowStockPage === totalLowStockPages ? 'not-allowed' : 'pointer',
+                        fontWeight: '700'
+                      }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -471,39 +753,137 @@ function InventoryStockManagementView({
                 type="text"
                 placeholder="Search supplier name, company, phone..."
                 value={supplierSearch}
-                onChange={e => setSupplierSearch(e.target.value)}
+                onChange={e => {
+                  setSupplierSearch(e.target.value);
+                  setSupplierCurrentPage(1);
+                }}
                 style={{ width: '100%', paddingLeft: '36px', paddingRight: '12px', paddingTop: '8px', paddingBottom: '8px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '10px', color: 'var(--text-main)', fontSize: '0.85rem' }}
               />
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
-            {filteredSuppliers.map(s => (
-              <div key={s.id} className="glass-card" style={{ padding: '18px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <div>
-                    <strong style={{ fontSize: '1rem', color: 'var(--text-main)' }}>{s.name}</strong>
-                    {s.company_name && <div style={{ fontSize: '0.8rem', color: 'var(--accent-gold)', fontWeight: '700' }}>{s.company_name}</div>}
+          {totalSuppliers === 0 ? (
+            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+              No suppliers found.
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+                {paginatedSuppliers.map(s => (
+                  <div key={s.id} className="glass-card" style={{ padding: '18px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <div>
+                        <strong style={{ fontSize: '1rem', color: 'var(--text-main)' }}>{s.name}</strong>
+                        {s.company_name && <div style={{ fontSize: '0.8rem', color: 'var(--accent-gold)', fontWeight: '700' }}>{s.company_name}</div>}
+                      </div>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <button onClick={() => { setEditingSupplier(s); setSupplierFormData({ name: s.name, company_name: s.company_name || '', phone: s.phone || '', email: s.email || '', gstin: s.gstin || '', address: s.address || '' }); setIsAddSupplierModal(true); }} style={{ background: 'none', border: 'none', color: 'var(--text-sub)', cursor: 'pointer' }}>
+                          <Edit3 size={14} />
+                        </button>
+                        <button onClick={() => onDeleteSupplier(s.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-sub)', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '10px' }}>
+                      <div>📞 Mobile: <strong>{s.phone}</strong></div>
+                      {s.email && <div>✉️ Email: {s.email}</div>}
+                      {s.gstin && <div>🏢 GSTIN: <code style={{ color: 'var(--accent-gold)' }}>{s.gstin}</code></div>}
+                      {s.address && <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>📍 {s.address}</div>}
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    <button onClick={() => { setEditingSupplier(s); setSupplierFormData({ name: s.name, company_name: s.company_name || '', phone: s.phone || '', email: s.email || '', gstin: s.gstin || '', address: s.address || '' }); setIsAddSupplierModal(true); }} style={{ background: 'none', border: 'none', color: 'var(--text-sub)', cursor: 'pointer' }}>
-                      <Edit3 size={14} />
-                    </button>
-                    <button onClick={() => onDeleteSupplier(s.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
+                ))}
+              </div>
+
+              {/* Suppliers Pagination Footer */}
+              <div style={{
+                display: 'flex',
+                justify: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '16px',
+                marginTop: '20px',
+                paddingTop: '16px',
+                borderTop: '1px solid var(--border)',
+                fontSize: '0.85rem',
+                color: 'var(--text-sub)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
+                    <span>Show suppliers:</span>
+                    <select
+                      value={supplierPageSize}
+                      onChange={(e) => {
+                        const val = e.target.value === 'all' ? 'all' : Number(e.target.value);
+                        setSupplierPageSize(val);
+                        setSupplierCurrentPage(1);
+                      }}
+                      style={{
+                        background: 'var(--input-bg)',
+                        color: 'var(--text-main)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        padding: '4px 10px',
+                        fontWeight: '700',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                      <option value="all">All</option>
+                    </select>
+                  </label>
                 </div>
 
-                <div style={{ fontSize: '0.82rem', color: 'var(--text-sub)', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '10px' }}>
-                  <div>📞 Mobile: <strong>{s.phone}</strong></div>
-                  {s.email && <div>✉️ Email: {s.email}</div>}
-                  {s.gstin && <div>🏢 GSTIN: <code style={{ color: 'var(--accent-gold)' }}>{s.gstin}</code></div>}
-                  {s.address && <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>📍 {s.address}</div>}
+                <div>
+                  Showing <strong style={{ color: 'var(--text-main)' }}>{totalSuppliers > 0 ? supplierStartIndex + 1 : 0}</strong> to{' '}
+                  <strong style={{ color: 'var(--text-main)' }}>{supplierEndIndex}</strong> of{' '}
+                  <strong style={{ color: 'var(--text-main)' }}>{totalSuppliers}</strong> entries
                 </div>
+
+                {!isSupplierAll && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      disabled={safeSupplierPage === 1}
+                      onClick={() => setSupplierCurrentPage(p => Math.max(1, p - 1))}
+                      style={{
+                        padding: '5px 12px',
+                        background: 'var(--input-bg)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        color: safeSupplierPage === 1 ? 'var(--text-muted)' : 'var(--text-main)',
+                        cursor: safeSupplierPage === 1 ? 'not-allowed' : 'pointer',
+                        fontWeight: '700'
+                      }}
+                    >
+                      Previous
+                    </button>
+                    <span style={{ fontWeight: '700', padding: '0 8px' }}>
+                      Page {safeSupplierPage} of {totalSupplierPages}
+                    </span>
+                    <button
+                      disabled={safeSupplierPage === totalSupplierPages}
+                      onClick={() => setSupplierCurrentPage(p => Math.min(totalSupplierPages, p + 1))}
+                      style={{
+                        padding: '5px 12px',
+                        background: 'var(--input-bg)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        color: safeSupplierPage === totalSupplierPages ? 'var(--text-muted)' : 'var(--text-main)',
+                        cursor: safeSupplierPage === totalSupplierPages ? 'not-allowed' : 'pointer',
+                        fontWeight: '700'
+                      }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </div>
       )}
 
@@ -526,14 +906,14 @@ function InventoryStockManagementView({
               </tr>
             </thead>
             <tbody>
-              {purchaseOrders.length === 0 ? (
+              {totalPOs === 0 ? (
                 <tr>
                   <td colSpan="6" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
                     No purchase orders recorded yet.
                   </td>
                 </tr>
               ) : (
-                purchaseOrders.map(po => (
+                paginatedPOs.map(po => (
                   <tr key={po.id} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '12px 14px', fontWeight: '800', color: 'var(--accent-gold)' }}>
                       #{po.po_number}
@@ -569,6 +949,95 @@ function InventoryStockManagementView({
               )}
             </tbody>
           </table>
+
+          {/* Purchase Orders Pagination Footer */}
+          {totalPOs > 0 && (
+            <div style={{
+              display: 'flex',
+              justify: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '16px',
+              marginTop: '20px',
+              paddingTop: '16px',
+              borderTop: '1px solid var(--border)',
+              fontSize: '0.85rem',
+              color: 'var(--text-sub)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
+                  <span>Show orders:</span>
+                  <select
+                    value={poPageSize}
+                    onChange={(e) => {
+                      const val = e.target.value === 'all' ? 'all' : Number(e.target.value);
+                      setPOPageSize(val);
+                      setPOCurrentPage(1);
+                    }}
+                    style={{
+                      background: 'var(--input-bg)',
+                      color: 'var(--text-main)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      padding: '4px 10px',
+                      fontWeight: '700',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value="all">All</option>
+                  </select>
+                </label>
+              </div>
+
+              <div>
+                Showing <strong style={{ color: 'var(--text-main)' }}>{totalPOs > 0 ? poStartIndex + 1 : 0}</strong> to{' '}
+                <strong style={{ color: 'var(--text-main)' }}>{poEndIndex}</strong> of{' '}
+                <strong style={{ color: 'var(--text-main)' }}>{totalPOs}</strong> entries
+              </div>
+
+              {!isPOAll && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <button
+                    disabled={safePOPage === 1}
+                    onClick={() => setPOCurrentPage(p => Math.max(1, p - 1))}
+                    style={{
+                      padding: '5px 12px',
+                      background: 'var(--input-bg)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      color: safePOPage === 1 ? 'var(--text-muted)' : 'var(--text-main)',
+                      cursor: safePOPage === 1 ? 'not-allowed' : 'pointer',
+                      fontWeight: '700'
+                    }}
+                  >
+                    Previous
+                  </button>
+                  <span style={{ fontWeight: '700', padding: '0 8px' }}>
+                    Page {safePOPage} of {totalPOPages}
+                  </span>
+                  <button
+                    disabled={safePOPage === totalPOPages}
+                    onClick={() => setPOCurrentPage(p => Math.min(totalPOPages, p + 1))}
+                    style={{
+                      padding: '5px 12px',
+                      background: 'var(--input-bg)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      color: safePOPage === totalPOPages ? 'var(--text-muted)' : 'var(--text-main)',
+                      cursor: safePOPage === totalPOPages ? 'not-allowed' : 'pointer',
+                      fontWeight: '700'
+                    }}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -579,29 +1048,137 @@ function InventoryStockManagementView({
             <Activity size={18} style={{ color: 'var(--accent-gold)' }} /> Service-wise Internal Product Consumption Tracking
           </h3>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-            {consumptions.map(c => (
-              <div key={c.id} className="glass-card" style={{ padding: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--accent-gold)', fontWeight: '800', textTransform: 'uppercase' }}>
-                    💈 {c.service_category || 'Service'}
-                  </span>
-                  <button onClick={() => onDeleteConsumption(c.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>
-                    <Trash2 size={13} />
-                  </button>
-                </div>
+          {totalConsumptions === 0 ? (
+            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+              No service consumption mappings found.
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+                {paginatedConsumptions.map(c => (
+                  <div key={c.id} className="glass-card" style={{ padding: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--accent-gold)', fontWeight: '800', textTransform: 'uppercase' }}>
+                        💈 {c.service_category || 'Service'}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <button
+                          onClick={() => openEditConsumption(c)}
+                          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#60a5fa', borderRadius: '6px', padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                          title="Edit Mapping"
+                        >
+                          <Edit3 size={13} />
+                        </button>
+                        <button
+                          onClick={() => onDeleteConsumption(c.id)}
+                          style={{ background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#ef4444', borderRadius: '6px', padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                          title="Delete Mapping"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
 
-                <div style={{ fontWeight: '800', fontSize: '0.95rem', color: '#fff', marginBottom: '6px' }}>
-                  {c.service_name}
-                </div>
+                    <div style={{ fontWeight: '800', fontSize: '0.95rem', color: '#fff', marginBottom: '6px' }}>
+                      {c.service_name}
+                    </div>
 
-                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.82rem' }}>
-                  <div>Consumes: <strong style={{ color: '#34d399' }}>{c.product_name}</strong></div>
-                  <div>Qty Per Service: <strong style={{ color: 'var(--accent-gold)' }}>{c.quantity_consumed} {c.unit}</strong></div>
-                </div>
+                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.82rem' }}>
+                      <div>Consumes: <strong style={{ color: '#34d399' }}>{c.product_name}</strong></div>
+                      <div>Qty Per Service: <strong style={{ color: 'var(--accent-gold)' }}>{c.quantity_consumed} {c.unit}</strong></div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+
+              {/* Service Product Usage Pagination Footer */}
+              <div style={{
+                display: 'flex',
+                justify: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '16px',
+                marginTop: '20px',
+                paddingTop: '16px',
+                borderTop: '1px solid var(--border)',
+                fontSize: '0.85rem',
+                color: 'var(--text-sub)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
+                    <span>Show mappings:</span>
+                    <select
+                      value={consumptionPageSize}
+                      onChange={(e) => {
+                        const val = e.target.value === 'all' ? 'all' : Number(e.target.value);
+                        setConsumptionPageSize(val);
+                        setConsumptionCurrentPage(1);
+                      }}
+                      style={{
+                        background: 'var(--input-bg)',
+                        color: 'var(--text-main)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        padding: '4px 10px',
+                        fontWeight: '700',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                      <option value="all">All</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div>
+                  Showing <strong style={{ color: 'var(--text-main)' }}>{totalConsumptions > 0 ? consumptionStartIndex + 1 : 0}</strong> to{' '}
+                  <strong style={{ color: 'var(--text-main)' }}>{consumptionEndIndex}</strong> of{' '}
+                  <strong style={{ color: 'var(--text-main)' }}>{totalConsumptions}</strong> entries
+                </div>
+
+                {!isConsumptionAll && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      disabled={safeConsumptionPage === 1}
+                      onClick={() => setConsumptionCurrentPage(p => Math.max(1, p - 1))}
+                      style={{
+                        padding: '5px 12px',
+                        background: 'var(--input-bg)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        color: safeConsumptionPage === 1 ? 'var(--text-muted)' : 'var(--text-main)',
+                        cursor: safeConsumptionPage === 1 ? 'not-allowed' : 'pointer',
+                        fontWeight: '700'
+                      }}
+                    >
+                      Previous
+                    </button>
+                    <span style={{ fontWeight: '700', padding: '0 8px' }}>
+                      Page {safeConsumptionPage} of {totalConsumptionPages}
+                    </span>
+                    <button
+                      disabled={safeConsumptionPage === totalConsumptionPages}
+                      onClick={() => setConsumptionCurrentPage(p => Math.min(totalConsumptionPages, p + 1))}
+                      style={{
+                        padding: '5px 12px',
+                        background: 'var(--input-bg)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        color: safeConsumptionPage === totalConsumptionPages ? 'var(--text-muted)' : 'var(--text-main)',
+                        cursor: safeConsumptionPage === totalConsumptionPages ? 'not-allowed' : 'pointer',
+                        fontWeight: '700'
+                      }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -674,8 +1251,28 @@ function InventoryStockManagementView({
               </div>
 
               <div style={{ gridColumn: 'span 2', marginTop: '12px' }}>
-                <button type="submit" className="btn-primary" style={{ width: '100%', padding: '10px' }}>
-                  {editingProduct ? 'Update Inventory Item' : 'Save Product to Inventory'}
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="btn-primary"
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    opacity: isSubmitting ? 0.75 : 1,
+                    cursor: isSubmitting ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> {editingProduct ? 'Updating...' : 'Saving Product...'}
+                    </>
+                  ) : (
+                    editingProduct ? 'Update Inventory Item' : 'Save Product to Inventory'
+                  )}
                 </button>
               </div>
             </form>
@@ -773,63 +1370,240 @@ function InventoryStockManagementView({
 
       {/* ─── MODAL: CREATE PURCHASE ORDER ─── */}
       {isCreatePOModal && (
-        <div className="modal-overlay">
-          <div className="glass-panel modal-content" style={{ maxWidth: '580px', width: '90%', padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '800', margin: 0, color: 'var(--text-main)' }}>
-                Create Purchase Order (PO)
-              </h3>
-              <button onClick={() => setIsCreatePOModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+        <div className="modal-overlay" style={{ backdropFilter: 'blur(10px)', background: 'rgba(0, 0, 0, 0.78)' }}>
+          <div className="glass-panel modal-content" style={{ maxWidth: '680px', width: '94%', padding: '28px', borderRadius: '18px', border: '1px solid rgba(59, 130, 246, 0.25)', background: '#0a0a0a', boxShadow: '0 24px 60px rgba(0,0,0,0.8)' }}>
+
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', paddingBottom: '14px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <ShoppingCart size={22} style={{ color: 'var(--accent-gold)' }} />
+                  Create Purchase Order (PO)
+                </h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  Select vendor supplier & add product inventory items to build order.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsCreatePOModal(false)}
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              >
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handlePOSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <form onSubmit={handlePOSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+
+              {/* Supplier Selection */}
               <div>
-                <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Select Supplier *</label>
-                <select required value={selectedPOSupplierId} onChange={e => setSelectedPOSupplierId(e.target.value)} style={{ width: '100%', padding: '8px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: '#fff' }}>
-                  <option value="">-- Choose Supplier --</option>
+                <label style={{ fontSize: '0.82rem', fontWeight: '700', color: 'var(--text-sub)', display: 'block', marginBottom: '6px' }}>
+                  Select Supplier Vendor *
+                </label>
+                <select
+                  required
+                  value={selectedPOSupplierId}
+                  onChange={e => setSelectedPOSupplierId(e.target.value)}
+                  style={{ width: '100%', padding: '10px 14px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '10px', color: '#fff', fontSize: '0.88rem', outline: 'none' }}
+                >
+                  <option value="">-- Choose Supplier / Vendor --</option>
                   {suppliers.map(s => (
-                    <option key={s.id} value={s.id}>{s.name} ({s.company_name || 'Vendor'})</option>
+                    <option key={s.id} value={s.id}>{s.name} ({s.company_name || 'Vendor'}) — {s.phone || 'No phone'}</option>
                   ))}
                 </select>
               </div>
 
-              {/* Add Items to PO Cart */}
-              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '10px', border: '1px solid var(--border)' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: '800', color: 'var(--accent-gold)', marginBottom: '8px' }}>Add Products to PO:</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '6px' }}>
-                  <select value={selectedPOProduct} onChange={e => {
-                    setSelectedPOProduct(e.target.value);
-                    const pr = products.find(p => String(p.id) === String(e.target.value));
-                    if (pr) setPOItemCost(String(pr.cost_price));
-                  }} style={{ padding: '6px', fontSize: '0.78rem', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '6px', color: '#fff' }}>
-                    <option value="">-- Product --</option>
-                    {products.map(p => (
-                      <option key={p.id} value={p.id}>{p.name} (Stock: {p.quantity})</option>
-                    ))}
-                  </select>
-                  <input type="number" placeholder="Cost" value={poItemCost} onChange={e => setPOItemCost(e.target.value)} style={{ padding: '6px', fontSize: '0.78rem', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '6px', color: '#fff' }} />
-                  <input type="number" placeholder="Qty" value={poItemQty} onChange={e => setPOItemQty(e.target.value)} style={{ padding: '6px', fontSize: '0.78rem', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '6px', color: '#fff' }} />
-                  <button type="button" onClick={addPOItemToCart} style={{ padding: '6px 12px', background: 'var(--accent-gold)', border: 'none', borderRadius: '6px', color: '#000', fontWeight: '800', cursor: 'pointer' }}>+ Add</button>
+              {/* Add Items to PO Section Card */}
+              <div style={{ background: 'rgba(255,255,255,0.025)', padding: '16px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--accent-gold)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Plus size={16} /> Add Products to Order Cart:
+                </div>
+
+                {/* Inputs Grid with clear labels */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 2fr) minmax(100px, 1fr) minmax(80px, 1fr) auto', gap: '10px', alignItems: 'end' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: '600' }}>
+                      Select Product
+                    </label>
+                    <select
+                      value={selectedPOProduct}
+                      onChange={e => {
+                        setSelectedPOProduct(e.target.value);
+                        const pr = products.find(p => String(p.id) === String(e.target.value));
+                        if (pr) setPOItemCost(String(pr.cost_price));
+                      }}
+                      style={{ width: '100%', padding: '9px 10px', fontSize: '0.82rem', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: '#fff', outline: 'none' }}
+                    >
+                      <option value="">-- Product --</option>
+                      {products.map(p => (
+                        <option key={p.id} value={p.id}>{p.name} (Qty: {p.quantity})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: '600' }}>
+                      Unit Cost (₹)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Cost"
+                      value={poItemCost}
+                      onChange={e => setPOItemCost(e.target.value)}
+                      style={{ width: '100%', padding: '9px 10px', fontSize: '0.82rem', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: '#fff', outline: 'none' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: '600' }}>
+                      Quantity
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+                      <button
+                        type="button"
+                        onClick={() => setPOItemQty(prev => Math.max(1, (Number(prev) || 1) - 1))}
+                        style={{ background: 'rgba(255,255,255,0.06)', border: 'none', color: '#fff', padding: '9px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title="Decrease"
+                      >
+                        <Minus size={13} />
+                      </button>
+                      <input
+                        type="number"
+                        min="1"
+                        value={poItemQty}
+                        onChange={e => setPOItemQty(Math.max(1, parseInt(e.target.value) || 1))}
+                        style={{ width: '38px', padding: '9px 0', fontSize: '0.82rem', fontWeight: '800', background: 'transparent', border: 'none', color: '#fff', textAlign: 'center', outline: 'none' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setPOItemQty(prev => (Number(prev) || 1) + 1)}
+                        style={{ background: 'rgba(255,255,255,0.06)', border: 'none', color: '#fff', padding: '9px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title="Increase"
+                      >
+                        <Plus size={13} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <button
+                      type="button"
+                      onClick={addPOItemToCart}
+                      style={{
+                        padding: '9px 16px',
+                        background: '#2563eb',
+                        border: 'none',
+                        borderRadius: '8px',
+                        color: '#ffffff',
+                        fontWeight: '800',
+                        fontSize: '0.85rem',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        boxShadow: '0 4px 12px rgba(217, 119, 6, 0.3)'
+                      }}
+                    >
+                      + Add Item
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* PO Items List */}
-              {poCartItems.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '140px', overflowY: 'auto' }}>
-                  {poCartItems.map((item, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', fontSize: '0.8rem' }}>
-                      <span>{item.product_name} ({item.quantity} × ₹{item.unit_cost})</span>
-                      <strong style={{ color: 'var(--accent-gold)' }}>₹{(item.quantity * item.unit_cost).toFixed(2)}</strong>
-                    </div>
-                  ))}
+              {/* PO Items List & Order Summary */}
+              {poCartItems.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: '700', color: 'var(--text-sub)' }}>
+                    Order Items ({poCartItems.length}):
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '160px', overflowY: 'auto', paddingRight: '4px' }}>
+                    {poCartItems.map((item, idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', fontSize: '0.85rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, minWidth: 0, paddingRight: '12px' }}>
+                          <span style={{ fontWeight: '700', color: '#fff', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                            {item.product_name}
+                          </span>
+                          <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                            Unit Cost: ₹{item.unit_cost}
+                          </span>
+                        </div>
+
+                        {/* Interactive Quantity Stepper (+ / -) */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', overflow: 'hidden' }}>
+                            <button
+                              type="button"
+                              onClick={() => updatePOItemQty(item.product_id, -1)}
+                              style={{ background: 'rgba(255,255,255,0.08)', border: 'none', color: '#fff', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.15s' }}
+                              title="Decrease quantity"
+                            >
+                              <Minus size={12} />
+                            </button>
+
+                            <span style={{ padding: '0 8px', fontSize: '0.85rem', fontWeight: '800', color: 'var(--accent-gold)', minWidth: '22px', textAlign: 'center' }}>
+                              {item.quantity}
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={() => updatePOItemQty(item.product_id, 1)}
+                              style={{ background: 'rgba(255,255,255,0.08)', border: 'none', color: '#fff', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.15s' }}
+                              title="Increase quantity"
+                            >
+                              <Plus size={12} />
+                            </button>
+                          </div>
+
+                          <strong style={{ color: '#34d399', fontSize: '0.9rem', minWidth: '70px', textAlign: 'right' }}>
+                            ₹{(item.quantity * item.unit_cost).toFixed(2)}
+                          </strong>
+
+                          <button
+                            type="button"
+                            onClick={() => removePOItemFromCart(item.product_id)}
+                            style={{ background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#ef4444', width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                            title="Remove item"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Summary Bar */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'rgba(52, 211, 153, 0.08)', border: '1px solid rgba(52, 211, 153, 0.2)', borderRadius: '10px', marginTop: '4px' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-sub)' }}>
+                      Total PO Items: <strong style={{ color: '#fff' }}>{poCartItems.reduce((acc, i) => acc + i.quantity, 0)} pcs</strong>
+                    </span>
+                    <span style={{ fontSize: '0.9rem', fontWeight: '800', color: 'var(--accent-gold)' }}>
+                      Estimated Order Total: <strong style={{ fontSize: '1.1rem', color: '#34d399' }}>₹{poCartItems.reduce((acc, i) => acc + (i.quantity * i.unit_cost), 0).toFixed(2)}</strong>
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: '10px', border: '1px dashed rgba(255,255,255,0.1)', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                  No items added to Purchase Order cart yet. Choose product above and click "+ Add Item".
                 </div>
               )}
 
-              <button type="submit" className="btn-primary" disabled={poCartItems.length === 0} style={{ width: '100%', padding: '10px', marginTop: '6px', opacity: poCartItems.length === 0 ? 0.5 : 1 }}>
-                Confirm & Create Purchase Order
-              </button>
+              {/* Submit Action */}
+              <div style={{ display: 'flex', gap: '12px', marginTop: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsCreatePOModal(false)}
+                  className="btn-secondary"
+                  style={{ flex: 1, padding: '11px', borderRadius: '10px', fontSize: '0.88rem', fontWeight: '700' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={poCartItems.length === 0 || !selectedPOSupplierId}
+                  style={{ flex: 2, padding: '11px', borderRadius: '10px', fontSize: '0.88rem', fontWeight: '800', opacity: (poCartItems.length === 0 || !selectedPOSupplierId) ? 0.5 : 1 }}
+                >
+                  Confirm & Create Purchase Order
+                </button>
+              </div>
+
             </form>
           </div>
         </div>
@@ -841,9 +1615,9 @@ function InventoryStockManagementView({
           <div className="glass-panel modal-content" style={{ maxWidth: '440px', width: '90%', padding: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <h3 style={{ fontSize: '1.1rem', fontWeight: '800', margin: 0, color: 'var(--text-main)' }}>
-                Map Service Product Consumption
+                {editingConsumption ? 'Edit Service Product Consumption Mapping' : 'Map Service Product Consumption'}
               </h3>
-              <button onClick={() => setIsAddConsumptionModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+              <button onClick={() => { setIsAddConsumptionModal(false); setEditingConsumption(null); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                 <X size={18} />
               </button>
             </div>
@@ -881,7 +1655,7 @@ function InventoryStockManagementView({
               </div>
 
               <button type="submit" className="btn-primary" style={{ width: '100%', padding: '10px', marginTop: '10px' }}>
-                Save Consumption Mapping
+                {editingConsumption ? 'Update Consumption Mapping' : 'Save Consumption Mapping'}
               </button>
             </form>
           </div>

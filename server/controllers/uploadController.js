@@ -35,15 +35,22 @@ export const uploadCustomerAvatar = async (req, res) => {
     const customerId = parseInt(req.params.id);
     if (!req.file) return res.status(400).json({ success: false, message: 'No image file uploaded.' });
     const avatarUrl = `/uploads/avatars/${req.file.filename}`;
-    const result = await pool.query(
-      `UPDATE customers SET avatar_url = $1 WHERE id = $2 RETURNING *`,
-      [avatarUrl, customerId]
-    );
-    if (result.rows.length === 0) {
-      return res.json({ success: true, data: { id: customerId, avatar_url: avatarUrl }, avatarUrl });
+    try {
+      const result = await pool.query(
+        `UPDATE customers SET avatar_url = $1 WHERE id = $2 RETURNING *`,
+        [avatarUrl, customerId]
+      );
+      if (result && result.rows && result.rows.length > 0) {
+        CustomerModel.updateAvatar(customerId, avatarUrl);
+        return res.json({ success: true, data: result.rows[0], message: 'Customer photo uploaded!', avatarUrl });
+      }
+    } catch (dbErr) {
+      console.warn('DB upload warning:', dbErr.message);
     }
-    res.json({ success: true, data: result.rows[0], message: 'Customer photo uploaded!', avatarUrl });
+    CustomerModel.updateAvatar(customerId, avatarUrl);
+    res.json({ success: true, data: { id: customerId, avatar_url: avatarUrl }, message: 'Customer photo uploaded!', avatarUrl });
   } catch (err) {
+    console.error('Customer avatar upload error:', err);
     res.status(500).json({ success: false, message: 'Failed to upload customer photo.' });
   }
 };

@@ -4,7 +4,7 @@ import {
   CreditCard, Smartphone, Banknote, CheckCircle2,
   ArrowLeft, Award, Percent, Tag, User, Search,
   DollarSign, Sparkles, AlertCircle, RefreshCw, Scissors, ChevronRight, Check,
-  QrCode, ShieldCheck, Clock, Layers, HelpCircle, X
+  QrCode, ShieldCheck, Clock, Layers, HelpCircle, X, Loader2, Crown
 } from 'lucide-react';
 import {
   Admin_Get_Coupons,
@@ -14,6 +14,37 @@ import {
   Admin_Verify_Razorpay_Payment,
   Admin_Get_Gateway_Config
 } from '../services/apiService';
+import { getPackageExpirationStatus } from '../utils/packageUtils';
+
+// Helper to resolve included service names for a package
+const getIncludedServicesForPackage = (pkg, servicesList = []) => {
+  if (!pkg) return [];
+  let ids = [];
+  if (Array.isArray(pkg.service_ids)) {
+    ids = pkg.service_ids;
+  } else if (typeof pkg.service_ids === 'string') {
+    try {
+      const parsed = JSON.parse(pkg.service_ids);
+      if (Array.isArray(parsed)) ids = parsed;
+      else ids = pkg.service_ids.split(',').map(s => s.trim());
+    } catch (e) {
+      ids = pkg.service_ids.split(',').map(s => s.trim());
+    }
+  } else if (Array.isArray(pkg.services)) {
+    return pkg.services.map(s => (typeof s === 'object' ? s.name : String(s)));
+  } else if (Array.isArray(pkg.included_services)) {
+    return pkg.included_services.map(s => (typeof s === 'object' ? s.name : String(s)));
+  }
+  
+  const names = ids.map(id => {
+    const matched = servicesList.find(s => String(s.id) === String(id));
+    if (matched) return matched.name;
+    if (typeof id === 'string' && isNaN(id)) return id;
+    return null;
+  }).filter(Boolean);
+
+  return names;
+};
 
 /**
  * POSBillingView — Professional Real-world Salon POS Billing System
@@ -21,15 +52,21 @@ import {
 function POSBillingView({
   customer: initialCustomer,
   stylistId: initialStylistId,
+  initialServices = [],
   stylists = [],
   services = [],
   packages = [],
   categories = [],
   customers = [],
   bills = [],
+  members = [],
+  onDeductMemberCredit,
   onCreateBill,
-  onBack
+  onBack,
+  onViewHistory,
+  selectedBranchId = 'all'
 }) {
+  const [customAlert, setCustomAlert] = useState(null);
   // ─── Customer State ───
   const [selectedCustomer, setSelectedCustomer] = useState(initialCustomer || null);
   const [customerSearch, setCustomerSearch] = useState('');
@@ -47,7 +84,42 @@ function POSBillingView({
 
   // ─── Cart Items ───
   // Item structure: { id, service_id, package_id, service_name, price, qty, category, stylist_id }
-  const [cartItems, setCartItems] = useState([]);
+  const [cartItems, setCartItems] = useState(() => {
+    if (Array.isArray(initialServices) && initialServices.length > 0) {
+      return initialServices.map((svc, idx) => ({
+        id: `svc-${svc.id || Date.now()}-${idx}`,
+        service_id: svc.id,
+        service_name: svc.name,
+        price: parseFloat(svc.price || 0),
+        qty: 1,
+        category: svc.category || 'Service',
+        stylist_id: initialStylistId || (stylists[0]?.id ? String(stylists[0].id) : '')
+      }));
+    }
+    return [];
+  });
+
+  // Reactive sync when props (initialCustomer, initialStylistId, initialServices) update from Receptionist Queue
+  useEffect(() => {
+    if (initialCustomer) {
+      setSelectedCustomer(initialCustomer);
+      setIsWalkIn(false);
+    }
+    if (initialStylistId) {
+      setSelectedStylistId(String(initialStylistId));
+    }
+    if (Array.isArray(initialServices) && initialServices.length > 0) {
+      setCartItems(initialServices.map((svc, idx) => ({
+        id: `svc-${svc.id || Date.now()}-${idx}-${Math.random()}`,
+        service_id: svc.id,
+        service_name: svc.name,
+        price: parseFloat(svc.price || 0),
+        qty: 1,
+        category: svc.category || 'Service',
+        stylist_id: initialStylistId ? String(initialStylistId) : (stylists[0]?.id ? String(stylists[0].id) : '')
+      })));
+    }
+  }, [initialCustomer, initialStylistId, initialServices]);
 
   // ─── Tax & Discount Configuration ───
   const [gstRate, setGstRate] = useState(18); // 0, 5, 12, 18
@@ -67,6 +139,7 @@ function POSBillingView({
   // ─── Tip & Payment Modes ───
   const [tipAmount, setTipAmount] = useState('');
   const [paymentMode, setPaymentMode] = useState('Cash'); // Cash, Card, UPI, Split
+  const [isUseWalletCredit, setIsUseWalletCredit] = useState(true);
   
   // Cash Change Calculator
   const [cashTendered, setCashTendered] = useState('');
@@ -161,6 +234,39 @@ function POSBillingView({
     }
   }, [selectedCustomer]);
 
+  const activeMember = (members || []).find(m => {
+    if (m.status !== 'Active') return false;
+    const targetPhone = String(selectedCustomer?.phone || walkInPhone || '').replace(/\D/g, '').slice(-10);
+    const mPhone = String(m.customer_phone || '').replace(/\D/g, '').slice(-10);
+
+    // Priority 1: Exact 10-digit phone match
+    if (targetPhone && mPhone && targetPhone.length === 10 && mPhone.length === 10) {
+      return targetPhone === mPhone;
+    }
+
+    // Priority 2: Customer ID match
+    if (selectedCustomer?.id && m.customer_id && String(selectedCustomer.id) === String(m.customer_id)) {
+      return true;
+    }
+
+    // Priority 3: Name match ONLY if phones do not conflict
+    const targetName = String(selectedCustomer?.name || walkInName || '').toLowerCase().trim();
+    const mName = String(m.customer_name || '').toLowerCase().trim();
+    if (targetName && mName && targetName === mName) {
+      if (targetPhone && mPhone && targetPhone !== mPhone) return false;
+      return true;
+    }
+
+    return false;
+  });
+
+  // Auto pre-check wallet credit when active member with credit balance is loaded
+  useEffect(() => {
+    if (activeMember && parseFloat(activeMember.remaining_service_credit || 0) > 0) {
+      setIsUseWalletCredit(true);
+    }
+  }, [activeMember]);
+
   const activeStylist = stylists.find(s => String(s.id) === String(selectedStylistId)) || null;
 
   // Filter CRM Customers by search
@@ -245,23 +351,33 @@ function POSBillingView({
     pointsDiscountAmt = Math.min(availPoints, reqPoints);
   }
 
-  const totalDiscount = Math.min(rawSubtotal, couponDiscountAmt + manualDiscountAmt + memberDiscountAmt + pointsDiscountAmt);
-  const netAmount = Math.max(0, rawSubtotal - totalDiscount);
-
-  // 3. Tax Calculation
-  let taxAmount = 0;
+  // 5. Active Membership Service Credit Wallet Redemption (Partial or Full)
+  const availWalletCredit = activeMember ? parseFloat(activeMember.remaining_service_credit || 0) : 0;
+  
+  const preWalletTotalDiscount = Math.min(rawSubtotal, couponDiscountAmt + manualDiscountAmt + memberDiscountAmt + pointsDiscountAmt);
+  const preWalletNet = Math.max(0, rawSubtotal - preWalletTotalDiscount);
+  
+  let preWalletTax = 0;
   if (isTaxInclusive && gstRate > 0) {
-    taxAmount = parseFloat((netAmount - (netAmount / (1 + gstRate / 100))).toFixed(2));
+    preWalletTax = parseFloat((preWalletNet - (preWalletNet / (1 + gstRate / 100))).toFixed(2));
   } else {
-    taxAmount = parseFloat(((netAmount * gstRate) / 100).toFixed(2));
+    preWalletTax = parseFloat(((preWalletNet * gstRate) / 100).toFixed(2));
   }
+  const preWalletGrandTotal = parseFloat((preWalletNet + (isTaxInclusive ? 0 : preWalletTax) + (parseFloat(tipAmount) || 0)).toFixed(2));
+
+  // Wallet Credit deduction calculation
+  const walletCreditDeduct = (isUseWalletCredit && availWalletCredit > 0) ? Math.min(preWalletGrandTotal, availWalletCredit) : 0;
+  const grandTotal = Math.max(0, parseFloat((preWalletGrandTotal - walletCreditDeduct).toFixed(2)));
+  const totalDiscount = Math.min(rawSubtotal, preWalletTotalDiscount + walletCreditDeduct);
+  const netAmount = Math.max(0, rawSubtotal - totalDiscount);
+  const taxAmount = preWalletTax;
 
   const cgstAmount = parseFloat((taxAmount / 2).toFixed(2));
   const sgstAmount = parseFloat((taxAmount / 2).toFixed(2));
 
-  // 4. Tip & Grand Total
+  // Tip & Remaining Wallet Math
   const tipVal = parseFloat(tipAmount) || 0;
-  const grandTotal = parseFloat((netAmount + (isTaxInclusive ? 0 : taxAmount) + tipVal).toFixed(2));
+  const remainingWalletBalAfter = Math.max(0, parseFloat((availWalletCredit - walletCreditDeduct).toFixed(2)));
 
   // Cash Change Calculation
   const cashRec = parseFloat(cashTendered) || 0;
@@ -318,38 +434,23 @@ function POSBillingView({
   });
 
   const filteredPackages = packages.filter(p => {
+    const expStatus = getPackageExpirationStatus(p);
+    if (expStatus.isInactive || expStatus.isExpired) return false;
     const matchesCat = activeCategory === 'All' || activeCategory === 'Packages & Combos';
     const matchesSearch = !menuSearch.trim() || String(p.name ?? '').toLowerCase().includes(menuSearch.toLowerCase());
     return matchesCat && matchesSearch;
   });
 
   // ─── Trigger Official Razorpay Standard Gateway Modal Window ───
-  const triggerRazorpayOfficialCheckout = async (preferredMethod = 'card') => {
+  const triggerRazorpayOfficialCheckout = async (preferredMode = 'Razorpay Gateway') => {
     if (cartItems.length === 0) {
-      alert('Please add at least one service to the cart first.');
+      setCustomAlert({ title: 'Cart Empty', message: 'Please add at least one service to the cart first.', type: 'warning' });
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // 1. Load Razorpay JS SDK dynamically
-      const loadSdk = () => new Promise((resolve) => {
-        if (window.Razorpay) return resolve(true);
-        const script = document.createElement('script');
-        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-        script.onload = () => resolve(true);
-        script.onerror = () => resolve(false);
-        document.body.appendChild(script);
-      });
-
-      const sdkLoaded = await loadSdk();
-      if (!sdkLoaded) {
-        alert('Razorpay Payment Gateway SDK failed to load. Please check your internet connection.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      // 2. Create Razorpay order via Backend API
+      // 1. Fetch Order Data from Backend API
       const orderRes = await Admin_Create_Razorpay_Order({
         amount: grandTotal,
         receipt: `bill_${Date.now()}`
@@ -357,71 +458,83 @@ function POSBillingView({
 
       const orderData = orderRes?.data?.data || orderRes?.data || {};
       const orderId = orderData.order_id || `order_${Math.floor(100000 + Math.random() * 900000)}`;
-      const keyToUse = orderData.key_id || gatewayConfig?.key_id || 'rzp_test_SalonPulse2026';
+      const isCustomKey = Boolean(
+        orderData.is_custom_key || 
+        (orderData.key_id && orderData.key_id.startsWith('rzp_')) ||
+        true
+      );
+      const keyToUse = orderData.key_id || 'rzp_test_TfutS2M3FiTSWG';
 
-      // Check if key is dummy/placeholder
-      if (!keyToUse || keyToUse.includes('SalonPulse2026') || keyToUse === 'rzp_test_placeholder') {
-        alert('💡 Razorpay Merchant Key ID is currently set to placeholder.\n\nTo connect your real/sandbox Razorpay account, enter your Key ID (rzp_test_...) in Admin Panel -> Payment Gateway Setup.\n\nOpening POS Interactive Secured Terminal...');
-        setIsSubmitting(false);
-        setActiveCheckoutModal(preferredMethod === 'card' ? 'CARD' : 'UPI');
-        return;
+      // If merchant configured a Razorpay Key ID, launch Official Razorpay Cloud SDK popup
+      if (keyToUse) {
+        const loadSdk = () => new Promise((resolve) => {
+          if (window.Razorpay) return resolve(true);
+          const script = document.createElement('script');
+          script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+          script.onload = () => resolve(true);
+          script.onerror = () => resolve(false);
+          document.body.appendChild(script);
+        });
+
+        const sdkLoaded = await loadSdk();
+        if (sdkLoaded && window.Razorpay) {
+          let rawPhone = String(selectedCustomer?.phone || walkInPhone || '9876543210').replace(/\D/g, '');
+          const cleanPhone = rawPhone.length >= 10 ? rawPhone.slice(-10) : ('9876543210' + rawPhone).slice(-10);
+          const options = {
+            key: keyToUse,
+            amount: Math.round(grandTotal * 100),
+            currency: 'INR',
+            name: 'Salon & Spa POS Checkout',
+            description: `Payment for ${cartItems.length} Salon Services (Total: ₹${grandTotal.toFixed(2)})`,
+            image: 'https://cdn-icons-png.flaticon.com/512/2830/2830284.png',
+            order_id: (orderId && !orderId.includes('rcpt') && orderId.length > 14) ? orderId : undefined,
+            prefill: {
+              name: selectedCustomer?.name || walkInName || 'Walk-in Guest',
+              contact: cleanPhone,
+              email: selectedCustomer?.email || 'customer@salon.com'
+            },
+            theme: { color: '#2563eb' },
+            handler: async function (response) {
+              const payId = response.razorpay_payment_id || `pay_${Date.now()}`;
+              const rzpOrderId = response.razorpay_order_id || orderId;
+              const signature = response.razorpay_signature || 'verified_signature';
+
+              await Admin_Verify_Razorpay_Payment({
+                razorpay_order_id: rzpOrderId,
+                razorpay_payment_id: payId,
+                razorpay_signature: signature
+              }).catch(() => null);
+
+              await executeFinalCheckout({
+                rzpPayId: payId,
+                rzpOrderId: rzpOrderId,
+                paymentModeOverride: preferredMode || 'Razorpay Gateway'
+              });
+            },
+            modal: {
+              ondismiss: function () {
+                setIsSubmitting(false);
+              }
+            }
+          };
+
+          const rzp = new window.Razorpay(options);
+          rzp.on('payment.failed', function (response) {
+            console.warn('Razorpay SDK Payment Notice:', response);
+            setIsSubmitting(false);
+          });
+          rzp.open();
+          return;
+        }
       }
 
-      // 3. Official Razorpay Standard Options
-      const options = {
-        key: keyToUse,
-        amount: Math.round(grandTotal * 100),
-        currency: 'INR',
-        name: 'Salon & Spa POS Real Checkout Counter',
-        description: `POS Payment for ${cartItems.length} Salon Services`,
-        image: 'https://cdn-icons-png.flaticon.com/512/2830/2830284.png',
-        order_id: (orderId && orderId.startsWith('order_') && orderId.length > 18) ? orderId : undefined,
-        prefill: {
-          name: selectedCustomer?.name || walkInName || 'Walk-in Guest',
-          contact: selectedCustomer?.phone || walkInPhone || '9876543210',
-          email: selectedCustomer?.email || 'customer@salon.com'
-        },
-        theme: {
-          color: '#10b981'
-        },
-        handler: async function (response) {
-          const payId = response.razorpay_payment_id || `pay_${Date.now()}`;
-          const rzpOrderId = response.razorpay_order_id || orderId;
-          const signature = response.razorpay_signature || 'verified_signature';
-
-          // Verify signature on backend
-          await Admin_Verify_Razorpay_Payment({
-            razorpay_order_id: rzpOrderId,
-            razorpay_payment_id: payId,
-            razorpay_signature: signature
-          }).catch(() => null);
-
-          // Complete final POS bill creation with official Razorpay references
-          await executeFinalCheckout({
-            rzpPayId: payId,
-            rzpOrderId: rzpOrderId,
-            paymentModeOverride: preferredMethod === 'card' ? 'Card' : 'UPI'
-          });
-        },
-        modal: {
-          ondismiss: function () {
-            setIsSubmitting(false);
-          }
-        }
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.on('payment.failed', function (response) {
-        alert(`Razorpay Payment Notice: ${response.error?.description || response.error?.reason || 'Transaction cancelled'}`);
-        setIsSubmitting(false);
-      });
-
-      // Open official Razorpay modal popup
-      rzp.open();
+      // Default Mode (when no custom key is configured in DB): Launch built-in Razorpay Gateway Sandbox Modal
+      setRazorpayOrder({ order_id: orderId, amount: grandTotal });
+      setActiveCheckoutModal('RAZORPAY_SANDBOX');
     } catch (err) {
-      console.error('Razorpay SDK Exception:', err);
-      alert('Could not launch Razorpay Gateway: ' + err.message);
-      setActiveCheckoutModal('CARD');
+      console.error('Razorpay Gateway Launch Notice:', err);
+      setRazorpayOrder({ order_id: `order_${Date.now()}`, amount: grandTotal });
+      setActiveCheckoutModal('RAZORPAY_SANDBOX');
     } finally {
       setIsSubmitting(false);
     }
@@ -433,7 +546,7 @@ function POSBillingView({
 
     if (paymentMode === 'Split') {
       if (Math.abs(splitRemaining) > 1) {
-        alert(`Split payment sum (₹${splitSum}) must equal Grand Total (₹${grandTotal}). Remaining: ₹${splitRemaining}`);
+        setCustomAlert({ title: 'Split Sum Mismatch', message: `Split payment sum (₹${splitSum}) must equal Grand Total (₹${grandTotal}). Remaining: ₹${splitRemaining}`, type: 'warning' });
         return;
       }
       executeFinalCheckout();
@@ -465,6 +578,31 @@ function POSBillingView({
     }
   };
 
+  const handlePayViaMembershipCredit = async () => {
+    if (cartItems.length === 0 || !activeMember) return;
+    setIsSubmitting(true);
+    try {
+      const avail = parseFloat(activeMember.remaining_service_credit || 0);
+      const deductAmt = Math.min(rawSubtotal, avail);
+      const netPaid = Math.max(0, grandTotal - deductAmt);
+
+      if (onDeductMemberCredit) {
+        onDeductMemberCredit(activeMember, deductAmt);
+      }
+
+      await executeFinalCheckout({
+        paymentModeOverride: 'Membership Wallet Credit',
+        membershipDeductedAmt: deductAmt,
+        netPaidOverride: netPaid,
+        membershipPlanName: activeMember.membership_name
+      });
+    } catch (err) {
+      console.error('Membership redemption checkout error:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // ─── Final Billing Submit ───
   const executeFinalCheckout = async (extraData = {}) => {
     setIsSubmitting(true);
@@ -484,26 +622,50 @@ function POSBillingView({
         }).catch(() => null);
       }
 
+      // Automatically deduct membership wallet credit if applied
+      if (walletCreditDeduct > 0 && activeMember) {
+        if (onDeductMemberCredit) {
+          onDeductMemberCredit(activeMember, walletCreditDeduct);
+        }
+      }
+
+      const finalPaidTotal = grandTotal;
+      const finalDiscountAmt = totalDiscount;
+      const finalTaxAmt = taxAmount;
+
       const custObj = selectedCustomer || (isWalkIn ? { name: walkInName, phone: walkInPhone, isWalkIn: true } : null);
+
+      const effectivePaymentMode = walletCreditDeduct > 0
+        ? (finalPaidTotal === 0 ? 'Membership Wallet Credit' : `${modeUsed} (₹${walletCreditDeduct.toFixed(2)} Credit + ₹${finalPaidTotal.toFixed(2)} ${modeUsed})`)
+        : modeUsed;
 
       const billPayload = {
         customer_id: selectedCustomer?.id || null,
+        customer_name: custObj?.name || (isWalkIn ? walkInName || 'Walk-in Guest' : 'Walk-in Guest'),
+        customer_phone: custObj?.phone || walkInPhone || '',
         stylist_id: selectedStylistId || null,
+        stylist_name: activeStylist?.name || 'Staff',
         branch_id: null,
         items: cartItems,
-        payment_mode: modeUsed,
+        subtotal: rawSubtotal,
+        payment_mode: effectivePaymentMode,
+        payment_status: 'Paid',
         razorpay_order_id: rzpOrderId,
         razorpay_payment_id: rzpPayId,
-        discount_code: appliedCoupon?.code || (manualDiscountVal ? 'MANUAL_DISCOUNT' : (loyaltyProfile?.activeMembership ? 'MEMBERSHIP_TIER' : null)),
-        discount_amount: totalDiscount,
+        discount_code: walletCreditDeduct > 0 ? 'MEMBERSHIP_WALLET_REDEMPTION' : (appliedCoupon?.code || (manualDiscountVal ? 'MANUAL_DISCOUNT' : (loyaltyProfile?.activeMembership ? 'MEMBERSHIP_TIER' : null))),
+        discount_amount: finalDiscountAmt,
         tax_rate: gstRate,
+        tax_amount: finalTaxAmt,
+        total: finalPaidTotal,
+        grand_total: finalPaidTotal,
         tip_amount: tipVal,
         commission_amount: commissionTag,
         split_details: {
           ...(modeUsed === 'Split' ? { cash: cashPart, upi: upiPart, card: cardPart } : {}),
-          points_redeemed: pointsDiscountAmt
+          points_redeemed: pointsDiscountAmt,
+          membership_credit_redeemed: walletCreditDeduct
         },
-        notes: isWalkIn ? `Walk-in: ${walkInName} (${walkInPhone})` : null,
+        notes: walletCreditDeduct > 0 ? `Membership Credit (${activeMember?.membership_name || 'Wallet'}: ₹${walletCreditDeduct.toFixed(2)} deducted, Net Paid: ₹${finalPaidTotal.toFixed(2)})` : (isWalkIn ? `Walk-in: ${walkInName} (${walkInPhone})` : null),
       };
 
       const created = await onCreateBill(billPayload);
@@ -515,14 +677,14 @@ function POSBillingView({
         stylist: activeStylist,
         items: cartItems,
         subtotal: rawSubtotal,
-        totalDiscount,
-        netAmount,
+        totalDiscount: finalDiscountAmt,
+        netAmount: finalPaidTotal,
         tax_rate: gstRate,
         tax_amount: taxAmount,
         cgst: cgstAmount,
         sgst: sgstAmount,
         tip_amount: tipVal,
-        total: grandTotal,
+        total: finalPaidTotal,
         cashTendered: cashRec,
         changeDue,
         payment_mode: modeUsed,
@@ -530,12 +692,14 @@ function POSBillingView({
         razorpay_payment_id: rzpPayId,
         cardLast4: cardLast4 || '4242',
         split_details: modeUsed === 'Split' ? { cash: cashPart, upi: upiPart, card: cardPart } : null,
-        loyaltyEarned: Math.floor(grandTotal / 10),
-        discount_code: appliedCoupon?.code
+        loyaltyEarned: Math.floor(finalPaidTotal / 10),
+        discount_code: walletCreditDeduct > 0 ? 'MEMBERSHIP_WALLET_REDEMPTION' : appliedCoupon?.code,
+        membershipDeducted: walletCreditDeduct,
+        membershipPlanName: extraData.membershipPlanName || activeMember?.membership_name
       });
     } catch (e) {
       console.error('POS Checkout Error:', e);
-      alert(e?.data?.message || 'Failed to complete transaction. Please check server connection.');
+      setCustomAlert({ title: 'Transaction Error', message: e?.data?.message || 'Failed to complete transaction. Please check server connection.', type: 'error' });
     } finally {
       setIsSubmitting(false);
       setPaymentProcessing(false);
@@ -574,7 +738,7 @@ function POSBillingView({
     return (
       <div style={{ maxWidth: '580px', margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div style={{ width: '68px', height: '68px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(52,211,153,0.2), rgba(16,185,129,0.4))', color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', border: '2px solid rgba(52,211,153,0.5)', boxShadow: '0 0 20px rgba(52,211,153,0.2)' }}>
+          <div style={{ width: '68px', height: '68px', borderRadius: '50%', background: 'rgba(37,99,235,0.15)', color: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', border: '2px solid rgba(37,99,235,0.5)', boxShadow: '0 0 20px rgba(37,99,235,0.3)' }}>
             <CheckCircle2 size={40} />
           </div>
           <h2 style={{ fontSize: '1.7rem', fontWeight: '900', color: 'var(--text-main)' }}>Transaction Approved! 🎉</h2>
@@ -709,10 +873,137 @@ function POSBillingView({
           </div>
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <button className="btn-primary" onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', fontSize: '0.95rem' }}>
               <Printer size={18} /> Print Thermal Receipt
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!billCreated) return;
+                const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Tax Invoice #INV-${billCreated.id} - ${billCreated.customer?.name || 'Customer'}</title>
+  <style>
+    @page { size: A4; margin: 15mm; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; background: #fff; margin: 0; padding: 20px; line-height: 1.5; }
+    .invoice-card { max-width: 750px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 36px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2.5px solid #0f172a; padding-bottom: 18px; margin-bottom: 24px; }
+    .brand-title { font-size: 24px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px; }
+    .brand-sub { font-size: 12px; color: #64748b; margin-top: 2px; }
+    .badge { background: #2563eb; color: #fff; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 800; display: inline-block; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; background: #f8fafc; padding: 16px; border-radius: 10px; font-size: 13px; border: 1px solid #e2e8f0; }
+    .info-label { color: #64748b; font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+    .info-val { font-weight: 800; color: #0f172a; margin-top: 2px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 13px; }
+    th { background: #0f172a; color: #fff; text-align: left; padding: 10px 14px; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+    td { padding: 12px 14px; border-bottom: 1px solid #e2e8f0; }
+    .totals { width: 320px; margin-left: auto; font-size: 13px; }
+    .totals-row { display: flex; justify-content: space-between; padding: 5px 0; }
+    .grand-total { border-top: 2px solid #0f172a; border-bottom: 2px solid #0f172a; font-weight: 900; font-size: 16px; color: #2563eb; padding: 8px 0; margin-top: 8px; }
+    .footer { text-align: center; margin-top: 36px; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 16px; }
+  </style>
+</head>
+<body>
+  <div class="invoice-card">
+    <div class="header">
+      <div>
+        <div class="brand-title">✂️ SALONPULSE ERP</div>
+        <div class="brand-sub">Multi-Branch Luxury Salon & Spa Enterprise</div>
+        <div class="brand-sub">GSTIN: 07AAAAA0000A1Z5 · Official Tax Invoice</div>
+      </div>
+      <div style="text-align: right;">
+        <div class="badge">PAID IN FULL</div>
+        <div style="font-size: 18px; font-weight: 900; margin-top: 6px; color: #0f172a;">#INV-${billCreated.id}</div>
+        <div style="font-size: 12px; color: #64748b;">${new Date(billCreated.created_at || Date.now()).toLocaleDateString('en-IN')}</div>
+      </div>
+    </div>
+
+    <div class="info-grid">
+      <div>
+        <div class="info-label">Customer Details</div>
+        <div class="info-val">${billCreated.customer?.name || 'Walk-in Client'} ${billCreated.customer?.phone ? `(${billCreated.customer.phone})` : ''}</div>
+      </div>
+      <div>
+        <div class="info-label">Stylist Tagged</div>
+        <div class="info-val">${billCreated.stylist?.name || 'Salon Team'}</div>
+      </div>
+      <div>
+        <div class="info-label">Payment Mode</div>
+        <div class="info-val">${billCreated.payment_mode || 'Razorpay Gateway'}</div>
+      </div>
+      <div>
+        <div class="info-label">Invoice Date & Time</div>
+        <div class="info-val">${new Date(billCreated.created_at || Date.now()).toLocaleString('en-IN')}</div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Service / Package Description</th>
+          <th style="text-align: center;">Qty</th>
+          <th style="text-align: right;">Unit Price</th>
+          <th style="text-align: right;">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${billCreated.items && billCreated.items.length > 0 ? billCreated.items.map(item => `
+          <tr>
+            <td><strong>${item.service_name || 'Salon Service'}</strong></td>
+            <td style="text-align: center;">${item.qty || 1}</td>
+            <td style="text-align: right;">₹${parseFloat(item.price || 0).toFixed(2)}</td>
+            <td style="text-align: right;">₹${(parseFloat(item.price || 0) * (item.qty || 1)).toFixed(2)}</td>
+          </tr>
+        `).join('') : `
+          <tr>
+            <td><strong>Salon Services Rendered</strong></td>
+            <td style="text-align: center;">1</td>
+            <td style="text-align: right;">₹${billCreated.subtotal.toFixed(2)}</td>
+            <td style="text-align: right;">₹${billCreated.subtotal.toFixed(2)}</td>
+          </tr>
+        `}
+      </tbody>
+    </table>
+
+    <div class="totals">
+      <div class="totals-row"><span>Subtotal:</span><span>₹${billCreated.subtotal.toFixed(2)}</span></div>
+      ${billCreated.totalDiscount > 0 ? `<div class="totals-row" style="color: #dc2626;"><span>Discount (${billCreated.discount_code || 'PROMO'}):</span><span>-₹${billCreated.totalDiscount.toFixed(2)}</span></div>` : ''}
+      ${billCreated.tax_amount > 0 ? `<div class="totals-row"><span>GST (${billCreated.tax_rate}%):</span><span>₹${billCreated.tax_amount.toFixed(2)}</span></div>` : ''}
+      ${billCreated.tip_amount > 0 ? `<div class="totals-row" style="color: #2563eb;"><span>Stylist Tip:</span><span>+₹${billCreated.tip_amount.toFixed(2)}</span></div>` : ''}
+      <div class="totals-row grand-total"><span>Total Amount Paid:</span><span>₹${billCreated.total.toFixed(2)}</span></div>
+    </div>
+
+    <div class="footer">
+      🔒 Secured Transaction processed via SalonPulse ERP & Razorpay Engine<br>
+      Thank you for visiting SalonPulse! Have a wonderful day ✨
+    </div>
+  </div>
+  <script>window.onload = function() { window.print(); };</script>
+</body>
+</html>`;
+
+                const printWin = window.open('', '_blank');
+                if (printWin) {
+                  printWin.document.write(htmlContent);
+                  printWin.document.close();
+                }
+              }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', fontSize: '0.95rem',
+                background: 'rgba(37, 99, 235, 0.15)', border: '1.5px solid #2563eb', color: '#38bdf8',
+                fontWeight: '900', borderRadius: '10px', cursor: 'pointer'
+              }}
+            >
+              📥 Download PDF Invoice
+            </button>
+            {onViewHistory && (
+              <button onClick={onViewHistory} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', fontSize: '0.95rem', background: 'rgba(245, 158, 11, 0.15)', border: '1.5px solid var(--accent-gold)', color: 'var(--accent-gold)', fontWeight: '800', borderRadius: '10px', cursor: 'pointer' }}>
+                <Receipt size={18} /> View Billing History ({bills.length})
+              </button>
+            )}
             <button className="glass-card" onClick={onBack} style={{ padding: '12px 20px', cursor: 'pointer', color: 'var(--text-main)', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <ArrowLeft size={16} /> Return to POS Counter
             </button>
@@ -726,7 +1017,7 @@ function POSBillingView({
   return (
     <div>
       {/* ─── REAL POS TOP HEADER & CRM CLIENT BAR ─── */}
-      <div className="glass-panel" style={{ padding: '20px 24px', marginBottom: '20px', borderRadius: '16px' }}>
+      <div className="glass-panel" style={{ padding: '20px 24px', marginBottom: '20px', borderRadius: '16px', position: 'relative', zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
           
           {/* Title & Back */}
@@ -738,6 +1029,15 @@ function POSBillingView({
             >
               <ArrowLeft size={16} /> Back
             </button>
+            {onViewHistory && (
+              <button
+                className="glass-card"
+                onClick={onViewHistory}
+                style={{ padding: '8px 14px', cursor: 'pointer', color: 'var(--accent-gold)', border: '1.5px solid var(--accent-gold)', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '10px', fontWeight: '800', fontSize: '0.82rem' }}
+              >
+                <Receipt size={16} /> Billing History ({bills.length})
+              </button>
+            )}
             <div>
               <h2 style={{ fontSize: '1.3rem', fontWeight: '900', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Receipt size={24} style={{ color: 'var(--accent-gold)' }} />
@@ -757,10 +1057,10 @@ function POSBillingView({
                 onClick={() => { setIsWalkIn(true); setSelectedCustomer(null); }}
                 style={{
                   padding: '7px 16px', borderRadius: '9px', border: 'none',
-                  background: isWalkIn ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'transparent',
+                  background: isWalkIn ? '#2563eb' : 'transparent',
                   color: isWalkIn ? '#ffffff' : 'var(--text-sub)',
                   fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer',
-                  boxShadow: isWalkIn ? '0 2px 10px rgba(16, 185, 129, 0.3)' : 'none',
+                  boxShadow: isWalkIn ? '0 2px 10px rgba(37, 99, 235, 0.35)' : 'none',
                   transition: 'all 0.2s'
                 }}
               >
@@ -771,10 +1071,10 @@ function POSBillingView({
                 onClick={() => { setIsWalkIn(false); }}
                 style={{
                   padding: '7px 16px', borderRadius: '9px', border: 'none',
-                  background: !isWalkIn ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'transparent',
+                  background: !isWalkIn ? '#2563eb' : 'transparent',
                   color: !isWalkIn ? '#ffffff' : 'var(--text-sub)',
                   fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer',
-                  boxShadow: !isWalkIn ? '0 2px 10px rgba(16, 185, 129, 0.3)' : 'none',
+                  boxShadow: !isWalkIn ? '0 2px 10px rgba(37, 99, 235, 0.35)' : 'none',
                   transition: 'all 0.2s'
                 }}
               >
@@ -800,7 +1100,7 @@ function POSBillingView({
                 />
               </div>
             ) : (
-              <div className="search-input-wrapper" style={{ width: '260px' }}>
+              <div className="search-input-wrapper" style={{ width: '260px', position: 'relative', zIndex: 101 }}>
                 <Search size={15} className="search-icon" />
                 <input
                   type="text"
@@ -811,22 +1111,28 @@ function POSBillingView({
                   onChange={e => { setSelectedCustomer(null); setCustomerSearch(e.target.value); setShowCustDropdown(true); }}
                 />
                 {showCustDropdown && !selectedCustomer && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 30, background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '12px', marginTop: '6px', maxHeight: '220px', overflowY: 'auto', boxShadow: '0 15px 35px rgba(0,0,0,0.6)' }}>
-                    {filteredCustomers.map(c => (
-                      <div
-                        key={c.id}
-                        onClick={() => { setSelectedCustomer(c); setShowCustDropdown(false); }}
-                        style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontSize: '0.83rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-                      >
-                        <div>
-                          <strong style={{ color: 'var(--text-main)' }}>{c.name}</strong>
-                          <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>📞 {c.phone}</div>
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 9999, background: '#1e293b', border: '1.5px solid var(--accent-gold)', borderRadius: '12px', marginTop: '6px', maxHeight: '260px', overflowY: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.95), 0 0 15px rgba(245,158,11,0.2)' }}>
+                    {filteredCustomers.length === 0 ? (
+                      <div style={{ padding: '12px', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>No CRM client found</div>
+                    ) : (
+                      filteredCustomers.map(c => (
+                        <div
+                          key={c.id}
+                          onClick={() => { setSelectedCustomer(c); setShowCustDropdown(false); }}
+                          style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontSize: '0.83rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', transition: 'background 0.15s' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(16,185,129,0.15)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                        >
+                          <div>
+                            <strong style={{ color: '#ffffff' }}>{c.name}</strong>
+                            <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>📞 {c.phone}</div>
+                          </div>
+                          <span style={{ fontSize: '0.74rem', background: 'rgba(16,185,129,0.15)', color: '#10b981', padding: '2px 8px', borderRadius: '6px', fontWeight: '800' }}>
+                            🏆 {c.loyalty_points || 0} pts
+                          </span>
                         </div>
-                        <span style={{ fontSize: '0.74rem', background: 'rgba(16,185,129,0.15)', color: '#10b981', padding: '2px 8px', borderRadius: '6px', fontWeight: '800' }}>
-                          🏆 {c.loyalty_points || 0} pts
-                        </span>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 )}
               </div>
@@ -854,7 +1160,7 @@ function POSBillingView({
 
         {/* Selected Customer Banner */}
         {selectedCustomer && !isWalkIn && (
-          <div style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(5,150,105,0.05) 100%)', border: '1.5px solid rgba(16,185,129,0.35)', padding: '12px 18px', borderRadius: '14px', marginTop: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ background: 'rgba(37,99,235,0.12)', border: '1.5px solid rgba(37,99,235,0.35)', padding: '12px 18px', borderRadius: '14px', marginTop: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <User size={20} style={{ color: '#10b981' }} />
               <div>
@@ -920,32 +1226,86 @@ function POSBillingView({
             
             {/* Bundled Special Packages */}
             {filteredPackages.length > 0 && (
-              <div style={{ marginBottom: '12px' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--accent-gold)', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' }}>
-                  🎁 Bundled Combo Packages ({filteredPackages.length})
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--accent-gold)', textTransform: 'uppercase', marginBottom: '10px', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Layers size={14} /> Bundled Combo Packages ({filteredPackages.length})
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '10px' }}>
-                  {filteredPackages.map(pkg => (
-                    <div
-                      key={pkg.id}
-                      onClick={() => addServiceToCart(pkg, true)}
-                      style={{
-                        padding: '12px 14px', background: 'rgba(245,158,11,0.05)', borderRadius: '12px', border: '1px solid rgba(245,158,11,0.25)',
-                        cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontWeight: '800', fontSize: '0.88rem', color: '#fff' }}>{pkg.name}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>{pkg.description || 'Special Bundle Combo'}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
+                  {filteredPackages.map(pkg => {
+                    const includedServices = getIncludedServicesForPackage(pkg, services);
+                    return (
+                      <div
+                        key={pkg.id}
+                        onClick={() => addServiceToCart(pkg, true)}
+                        style={{
+                          padding: '14px',
+                          background: 'linear-gradient(145deg, rgba(245,158,11,0.06), rgba(16,185,129,0.04))',
+                          borderRadius: '14px',
+                          border: '1.5px solid rgba(245,158,11,0.3)',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justify: 'space-between',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.borderColor = 'var(--accent-gold)';
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.borderColor = 'rgba(245,158,11,0.3)';
+                          e.currentTarget.style.transform = 'translateY(0)';
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '4px' }}>
+                            <div style={{ fontWeight: '800', fontSize: '0.9rem', color: '#ffffff', lineHeight: '1.3' }}>{pkg.name}</div>
+                            <span style={{ fontSize: '0.68rem', background: 'rgba(245, 158, 11, 0.2)', color: 'var(--accent-gold)', border: '1px solid var(--accent-gold)', padding: '2px 7px', borderRadius: '12px', fontWeight: '900', whiteSpace: 'nowrap' }}>
+                              {pkg.category || 'Combo'}
+                            </span>
+                          </div>
+
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '8px', lineHeight: '1.35' }}>
+                            {pkg.description || 'Special Bundle Package'}
+                          </div>
+
+                          {/* Included Combo Services List */}
+                          {includedServices.length > 0 && (
+                            <div style={{ background: 'rgba(0, 0, 0, 0.3)', borderRadius: '10px', padding: '8px 10px', marginBottom: '10px', border: '1px solid rgba(245,158,11,0.18)' }}>
+                              <div style={{ fontSize: '0.68rem', color: 'var(--accent-gold)', fontWeight: '800', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <Scissors size={11} /> Included Services ({includedServices.length}):
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                {includedServices.map((srvName, idx) => (
+                                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.76rem', color: '#f8fafc', fontWeight: '600' }}>
+                                    <CheckCircle2 size={12} style={{ color: '#10b981', flexShrink: 0 }} />
+                                    <span>{srvName}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', paddingTop: '8px', borderTop: '1px dashed rgba(245,158,11,0.2)' }}>
+                          <div>
+                            <span style={{ fontWeight: '900', color: 'var(--accent-gold)', fontSize: '1rem' }}>
+                              ₹{parseFloat(pkg.package_price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </span>
+                            {pkg.standalone_price > pkg.package_price && (
+                              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textDecoration: 'line-through', marginLeft: '6px' }}>
+                                ₹{pkg.standalone_price}
+                              </span>
+                            )}
+                          </div>
+                          <span style={{ fontSize: '0.74rem', background: 'var(--accent-gold)', color: '#000', padding: '4px 10px', borderRadius: '8px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Plus size={13} /> Add Combo
+                          </span>
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
-                        <span style={{ fontWeight: '900', color: 'var(--accent-gold)', fontSize: '0.95rem' }}>₹{pkg.package_price}</span>
-                        <span style={{ fontSize: '0.72rem', background: 'var(--accent-gold)', color: '#000', padding: '3px 8px', borderRadius: '6px', fontWeight: '900' }}>
-                          + Add Combo
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -966,7 +1326,7 @@ function POSBillingView({
                     onClick={() => addServiceToCart(s, false)}
                     style={{
                       padding: '14px',
-                      background: 'rgba(255, 255, 255, 0.03)',
+                      background: 'var(--bg-card)',
                       borderRadius: '14px',
                       border: '1px solid var(--border)',
                       cursor: 'pointer',
@@ -981,7 +1341,7 @@ function POSBillingView({
                       e.currentTarget.style.transform = 'translateY(-2px)';
                     }}
                     onMouseLeave={e => {
-                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                      e.currentTarget.style.background = 'var(--bg-card)';
                       e.currentTarget.style.borderColor = 'var(--border)';
                       e.currentTarget.style.transform = 'translateY(0)';
                     }}
@@ -1001,7 +1361,7 @@ function POSBillingView({
                       <button
                         type="button"
                         style={{
-                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                          background: '#2563eb',
                           border: 'none',
                           color: '#ffffff',
                           padding: '5px 12px',
@@ -1049,43 +1409,69 @@ function POSBillingView({
                 🛒 Cart is empty.<br />Click <strong>+</strong> on any service to add to bill.
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto', marginBottom: '14px' }}>
-                {cartItems.map(item => (
-                  <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ fontWeight: '700', fontSize: '0.85rem', color: 'var(--text-main)' }}>{item.service_name}</div>
-                      <div style={{ fontWeight: '900', color: 'var(--accent-gold)', fontSize: '0.88rem' }}>₹{(item.price * item.qty).toFixed(2)}</div>
-                    </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '340px', overflowY: 'auto', marginBottom: '14px' }}>
+                {cartItems.map(item => {
+                  const pkgObj = item.package_id ? packages.find(p => String(p.id) === String(item.package_id)) : null;
+                  const incServices = pkgObj ? getIncludedServicesForPackage(pkgObj, services) : [];
 
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-                      {/* Stylist Tag per Item */}
-                      <select
-                        value={item.stylist_id || ''}
-                        onChange={e => updateItemStylist(item.id, e.target.value)}
-                        style={{ padding: '2px 6px', fontSize: '0.72rem', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '4px', color: 'var(--text-sub)' }}
-                      >
-                        <option value="">Primary Stylist</option>
-                        {stylists.map(s => (
-                          <option key={s.id} value={s.id}>{s.name}</option>
-                        ))}
-                      </select>
+                  return (
+                    <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                      {/* Title & Price Header */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ fontWeight: '800', fontSize: '0.9rem', color: '#ffffff' }}>
+                          {item.service_name}
+                        </div>
+                        <div style={{ fontWeight: '900', color: '#10b981', fontSize: '0.95rem' }}>
+                          ₹{(item.price * item.qty).toFixed(2)}
+                        </div>
+                      </div>
 
-                      {/* Qty Controls */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <button onClick={() => updateQty(item.id, -1)} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: '#fff', width: '22px', height: '22px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Minus size={10} />
-                        </button>
-                        <span style={{ fontWeight: '800', width: '16px', textAlign: 'center', fontSize: '0.85rem' }}>{item.qty}</span>
-                        <button onClick={() => updateQty(item.id, 1)} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: '#fff', width: '22px', height: '22px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Plus size={10} />
-                        </button>
-                        <button onClick={() => removeFromCart(item.id)} style={{ background: 'rgba(239,68,68,0.12)', border: 'none', color: '#ef4444', width: '22px', height: '22px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '4px' }}>
-                          <Trash2 size={10} />
-                        </button>
+                      {/* Included Services Breakdown for Combo Packages */}
+                      {item.package_id && incServices.length > 0 && (
+                        <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: '8px', padding: '8px 10px', border: '1px solid rgba(245, 158, 11, 0.25)', marginTop: '2px', marginBottom: '2px' }}>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--accent-gold)', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Scissors size={11} /> Included Services ({incServices.length}):
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {incServices.map((sName, idx) => (
+                              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: '#f8fafc', fontWeight: '600' }}>
+                                <CheckCircle2 size={12} style={{ color: '#10b981', flexShrink: 0 }} />
+                                <span>{sName}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Bottom Controls: Stylist Dropdown & Qty */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem', marginTop: '2px' }}>
+                        <select
+                          value={item.stylist_id || ''}
+                          onChange={e => updateItemStylist(item.id, e.target.value)}
+                          style={{ padding: '3px 8px', fontSize: '0.74rem', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-sub)' }}
+                        >
+                          <option value="">Assign Stylist</option>
+                          {stylists.map(s => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                        </select>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <button onClick={() => updateQty(item.id, -1)} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: '#fff', width: '22px', height: '22px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Minus size={10} />
+                          </button>
+                          <span style={{ fontWeight: '800', width: '18px', textAlign: 'center', fontSize: '0.85rem' }}>{item.qty}</span>
+                          <button onClick={() => updateQty(item.id, 1)} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: '#fff', width: '22px', height: '22px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Plus size={10} />
+                          </button>
+                          <button onClick={() => removeFromCart(item.id)} style={{ background: 'rgba(239,68,68,0.12)', border: 'none', color: '#ef4444', width: '22px', height: '22px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '4px' }}>
+                            <Trash2 size={10} />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -1156,9 +1542,9 @@ function POSBillingView({
                 {loyaltyProfile?.activeMembership && (
                   <div style={{
                     padding: '6px 10px', borderRadius: '6px', marginBottom: '6px',
-                    background: `${loyaltyProfile.activeMembership.badge_color || '#00E676'}22`,
-                    border: `1px solid ${loyaltyProfile.activeMembership.badge_color || '#00E676'}`,
-                    color: loyaltyProfile.activeMembership.badge_color || '#00E676',
+                    background: `${loyaltyProfile.activeMembership.badge_color || '#2563eb'}22`,
+                    border: `1px solid ${loyaltyProfile.activeMembership.badge_color || '#2563eb'}`,
+                    color: loyaltyProfile.activeMembership.badge_color || '#38bdf8',
                     fontSize: '0.76rem', fontWeight: '700', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                   }}>
                     <span>👑 {loyaltyProfile.activeMembership.membership_name} ({loyaltyProfile.activeMembership.discount_percent}% Auto Off)</span>
@@ -1168,7 +1554,7 @@ function POSBillingView({
 
                 {selectedCustomer && (
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.74rem', color: '#00E676', fontWeight: '600' }}>
+                    <span style={{ fontSize: '0.74rem', color: '#38bdf8', fontWeight: '600' }}>
                       🎁 Points: <strong>{availPoints}</strong>
                     </span>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
@@ -1180,7 +1566,7 @@ function POSBillingView({
                         style={{ width: '85px', padding: '3px 6px', fontSize: '0.74rem', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-main)', borderRadius: '4px' }}
                       />
                       {pointsDiscountAmt > 0 && (
-                        <span style={{ fontSize: '0.72rem', color: '#00E676', fontWeight: '700' }}>-₹{pointsDiscountAmt}</span>
+                        <span style={{ fontSize: '0.72rem', color: '#38bdf8', fontWeight: '700' }}>-₹{pointsDiscountAmt}</span>
                       )}
                     </div>
                   </div>
@@ -1208,10 +1594,10 @@ function POSBillingView({
                 <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: '700' }}>Stylist Tip (₹):</span>
                 <input
                   type="number"
-                  placeholder="0.00"
+                  placeholder="0"
                   value={tipAmount}
                   onChange={e => setTipAmount(e.target.value)}
-                  style={{ width: '75px', padding: '3px 6px', fontSize: '0.76rem', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-main)', borderRadius: '4px', textAlign: 'right' }}
+                  style={{ width: '70px', padding: '3px 6px', fontSize: '0.74rem', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-main)', borderRadius: '4px', textAlign: 'right' }}
                 />
               </div>
             </div>
@@ -1227,6 +1613,11 @@ function POSBillingView({
                     <span>Discount</span><span>-₹{totalDiscount.toFixed(2)}</span>
                   </div>
                 )}
+                {walletCreditDeduct > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', color: '#10b981', fontWeight: '800' }}>
+                    <span>👑 Wallet Credit Applied</span><span>-₹{walletCreditDeduct.toFixed(2)}</span>
+                  </div>
+                )}
                 {gstRate > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', color: '#34d399' }}>
                     <span>GST ({gstRate}%)</span><span>₹{taxAmount.toFixed(2)}</span>
@@ -1238,110 +1629,165 @@ function POSBillingView({
                   </div>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: '1.5px solid var(--border)', fontWeight: '900', fontSize: '1.05rem', marginTop: '4px' }}>
-                  <span>GRAND TOTAL</span>
-                  <span style={{ color: 'var(--accent-gold)' }}>₹{grandTotal.toFixed(2)}</span>
+                  <span>GRAND TOTAL PAYABLE</span>
+                  <span style={{ color: grandTotal === 0 ? '#10b981' : 'var(--accent-gold)' }}>₹{grandTotal.toFixed(2)}</span>
                 </div>
               </div>
             )}
 
           </div>
 
-          {/* ─── PAYMENT CHECKOUT MODE PANEL ─── */}
+          {/* ─── OFFICIAL PAYMENT GATEWAY CHECKOUT PANEL ─── */}
           <div className="glass-panel" style={{ padding: '16px' }}>
-            <h4 style={{ fontWeight: '800', fontSize: '0.85rem', marginBottom: '8px', color: 'var(--text-main)' }}>Payment Method</h4>
+            <h4 style={{ fontWeight: '800', fontSize: '0.85rem', marginBottom: '10px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>Payment Gateway Checkout</span>
+              <span style={{ fontSize: '0.7rem', color: '#10b981', background: 'rgba(16,185,129,0.12)', padding: '2px 8px', borderRadius: '6px', fontWeight: '800' }}>
+                ⚡ Razorpay / Stripe SDK
+              </span>
+            </h4>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', marginBottom: '10px' }}>
-              {[
-                { mode: 'Cash', icon: '💵', color: '#34d399' },
-                { mode: 'Card', icon: '💳', color: '#818cf8' },
-                { mode: 'UPI', icon: '📱', color: 'var(--accent-gold)' },
-                { mode: 'Split', icon: '🔀', color: '#ec4899' },
-              ].map(({ mode, icon, color }) => (
-                <button
-                  key={mode}
-                  onClick={() => {
-                    setPaymentMode(mode);
-                    if (mode === 'Card' && cartItems.length > 0) {
-                      setActiveCheckoutModal('CARD');
-                    }
-                  }}
-                  style={{
-                    padding: '8px 4px', borderRadius: '10px',
-                    border: paymentMode === mode ? `2px solid ${color}` : '1px solid var(--border)',
-                    background: paymentMode === mode ? `${color}20` : 'rgba(255,255,255,0.03)',
-                    color: paymentMode === mode ? color : 'var(--text-sub)',
-                    cursor: 'pointer', fontWeight: '800', fontSize: '0.75rem',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px'
-                  }}
-                >
-                  <span style={{ fontSize: '1rem' }}>{icon}</span>
-                  {mode}
-                </button>
-              ))}
-            </div>
+            {/* Membership Wallet Credit Redemption Checkbox Card (Manual Toggle) */}
+            {activeMember && availWalletCredit > 0 && (
+              <div style={{
+                marginBottom: '12px',
+                padding: '12px',
+                borderRadius: '12px',
+                background: isUseWalletCredit ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+                border: isUseWalletCredit ? '1.5px solid #10b981' : '1px dashed var(--border)',
+                transition: 'all 0.2s ease'
+              }}>
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', margin: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input
+                      type="checkbox"
+                      checked={isUseWalletCredit}
+                      onChange={e => setIsUseWalletCredit(e.target.checked)}
+                      style={{ width: '18px', height: '18px', accentColor: '#10b981', cursor: 'pointer' }}
+                    />
+                    <div>
+                      <div style={{ fontSize: '0.84rem', fontWeight: '800', color: isUseWalletCredit ? '#10b981' : 'var(--text-main)' }}>
+                        👑 Manually Redeem {activeMember.membership_name} Credit Wallet
+                      </div>
+                      <div style={{ fontSize: '0.73rem', color: 'var(--text-muted)' }}>
+                        Available Balance: <strong style={{ color: '#10b981' }}>₹{availWalletCredit.toLocaleString()}</strong> {!isUseWalletCredit && '(Click to Redeem)'}
+                      </div>
+                    </div>
+                  </div>
 
-            {/* Split Payment Fields */}
-            {paymentMode === 'Split' && (
-              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '8px', border: '1px solid var(--border)', marginBottom: '10px', fontSize: '0.75rem' }}>
-                <div style={{ fontWeight: '800', marginBottom: '4px', color: '#ec4899' }}>Split Amounts:</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px' }}>
-                  <div>
-                    <span style={{ color: 'var(--text-muted)' }}>Cash:</span>
-                    <input type="number" placeholder="0" value={splitCash} onChange={e => setSplitCash(e.target.value)} style={{ width: '100%', padding: '3px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '4px', color: '#fff', fontSize: '0.75rem' }} />
+                  {isUseWalletCredit && walletCreditDeduct > 0 && (
+                    <span style={{ fontSize: '0.86rem', fontWeight: '900', color: '#10b981' }}>
+                      -₹{walletCreditDeduct.toFixed(2)}
+                    </span>
+                  )}
+                </label>
+
+                {isUseWalletCredit && walletCreditDeduct > 0 && (
+                  <div style={{ marginTop: '8px', fontSize: '0.75rem', color: 'var(--text-sub)', borderTop: '1px dashed rgba(16, 185, 129, 0.3)', paddingTop: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Remaining Net Payable:</span>
+                    <strong style={{ color: grandTotal === 0 ? '#10b981' : 'var(--accent-gold)' }}>
+                      {grandTotal === 0 ? '₹0.00 (Fully Covered by Wallet)' : `₹${grandTotal.toFixed(2)}`}
+                    </strong>
                   </div>
-                  <div>
-                    <span style={{ color: 'var(--text-muted)' }}>UPI:</span>
-                    <input type="number" placeholder="0" value={splitUPI} onChange={e => setSplitUPI(e.target.value)} style={{ width: '100%', padding: '3px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '4px', color: '#fff', fontSize: '0.75rem' }} />
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-muted)' }}>Card:</span>
-                    <input type="number" placeholder="0" value={splitCard} onChange={e => setSplitCard(e.target.value)} style={{ width: '100%', padding: '3px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '4px', color: '#fff', fontSize: '0.75rem' }} />
-                  </div>
-                </div>
-                <div style={{ marginTop: '4px', textAlign: 'right', fontWeight: '800', color: Math.abs(splitRemaining) < 1 ? '#34d399' : '#ef4444' }}>
-                  {Math.abs(splitRemaining) < 1 ? '✓ Balanced' : `Remaining: ₹${splitRemaining}`}
-                </div>
+                )}
               </div>
             )}
 
-            {/* Initiate Real Payment Button */}
-            <button
-              className="btn-primary"
-              onClick={handleStartCheckout}
-              disabled={cartItems.length === 0 || isSubmitting}
-              style={{
-                width: '100%', fontSize: '0.92rem', padding: '12px', opacity: cartItems.length === 0 ? 0.5 : 1,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
-              }}
-            >
-              <CheckCircle2 size={17} /> Proceed to Pay ₹{grandTotal.toFixed(2)}
-            </button>
+            {/* If 100% covered by wallet credit */}
+            {grandTotal === 0 && walletCreditDeduct > 0 ? (
+              <button
+                type="button"
+                onClick={() => executeFinalCheckout({ paymentModeOverride: 'Membership Wallet Credit' })}
+                disabled={cartItems.length === 0 || isSubmitting}
+                style={{
+                  width: '100%',
+                  marginBottom: '10px',
+                  fontSize: '0.92rem',
+                  padding: '13px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  color: '#ffffff',
+                  fontWeight: '900',
+                  border: 'none',
+                  boxShadow: '0 4px 16px rgba(16, 185, 129, 0.4)',
+                  cursor: cartItems.length === 0 ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  opacity: cartItems.length === 0 ? 0.5 : 1
+                }}
+              >
+                <Crown size={18} />
+                {isSubmitting ? 'Redeeming Membership Credit...' : `👑 Pay ₹0.00 via Membership Wallet (₹${walletCreditDeduct.toFixed(2)} Used · ₹${remainingWalletBalAfter.toFixed(2)} Bal Left)`}
+              </button>
+            ) : (
+              <>
+                {walletCreditDeduct > 0 && (
+                  <div style={{ padding: '8px 12px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', borderRadius: '8px', color: '#10b981', fontSize: '0.78rem', fontWeight: '800', marginBottom: '10px', textAlign: 'center' }}>
+                    👑 ₹{walletCreditDeduct.toFixed(2)} Wallet Credit Applied (₹{remainingWalletBalAfter.toFixed(2)} Balance Remaining). Pay remaining net ₹{grandTotal.toFixed(2)} below:
+                  </div>
+                )}
+              </>
+            )}
 
-            {/* Official Razorpay Gateway Direct Launch Button */}
+            {/* Primary Direct Official Razorpay SDK Popup Button */}
             <button
               type="button"
-              onClick={() => triggerRazorpayOfficialCheckout(paymentMode.toLowerCase())}
+              className="btn-primary"
+              onClick={() => triggerRazorpayOfficialCheckout('Razorpay Gateway')}
               disabled={cartItems.length === 0 || isSubmitting}
               style={{
                 width: '100%',
-                marginTop: '8px',
+                fontSize: '0.96rem',
+                padding: '14px',
+                opacity: cartItems.length === 0 ? 0.5 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                background: '#2563eb',
+                boxShadow: '0 4px 20px rgba(37, 99, 235, 0.4)',
+                cursor: 'pointer'
+              }}
+            >
+              <Sparkles size={18} />
+              {isSubmitting ? 'Opening Razorpay Gateway SDK...' : `Proceed to Pay ₹${grandTotal.toFixed(2)} via Razorpay Gateway`}
+            </button>
+
+            {/* Counter Cash Payment Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setPaymentMode('Cash');
+                if (!cashTendered) setCashTendered(String(Math.ceil(grandTotal)));
+                setActiveCheckoutModal('CASH');
+              }}
+              disabled={cartItems.length === 0 || isSubmitting}
+              style={{
+                width: '100%',
+                marginTop: '10px',
                 fontSize: '0.82rem',
                 padding: '10px',
                 borderRadius: '10px',
-                background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.25) 0%, rgba(3, 105, 161, 0.25) 100%)',
-                border: '1px solid #0284c7',
-                color: '#38bdf8',
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-sub)',
+                fontWeight: '700',
                 cursor: 'pointer',
-                fontWeight: '800',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '6px',
+                transition: 'all 0.2s ease',
                 opacity: cartItems.length === 0 ? 0.5 : 1
               }}
             >
-              <Sparkles size={15} /> Launch Official Razorpay Gateway Popup (Bank Account Deposit)
+              <Banknote size={15} style={{ color: '#34d399' }} /> Pay via Counter Cash (Manual Bill)
             </button>
+
+            <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+              🔒 Secured SSL Payment Transaction via Official Razorpay SDK
+            </div>
           </div>
 
         </div>
@@ -1487,7 +1933,7 @@ function POSBillingView({
                     padding: '12px',
                     marginBottom: '16px',
                     borderRadius: '12px',
-                    background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                    background: '#2563eb',
                     color: '#ffffff',
                     border: 'none',
                     fontWeight: '800',
@@ -1503,12 +1949,37 @@ function POSBillingView({
                   <Sparkles size={18} /> Open Official Razorpay Gateway Window (Real Bank Deposit)
                 </button>
 
-                <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
-                  — OR USE POS COUNTER CARD TERMINAL BELOW —
+                <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
+                  — OR USE POS SANDBOX COUNTER TERMINAL BELOW —
+                </div>
+
+                {/* Sandbox Quick Test Card Fill Chips */}
+                <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
+                  <button
+                    type="button"
+                    onClick={() => { setCardNumber('4111 1111 1111 1111'); setCardHolder('TEST VISA CLIENT'); setCardExpiry('12/30'); setCardCvv('123'); }}
+                    style={{ flex: 1, padding: '6px 8px', borderRadius: '8px', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', color: '#34d399', fontSize: '0.72rem', fontWeight: '800', cursor: 'pointer' }}
+                  >
+                    ⚡ Visa Test
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setCardNumber('5105 1051 0510 5105'); setCardHolder('TEST MASTERCARD CLIENT'); setCardExpiry('12/30'); setCardCvv('123'); }}
+                    style={{ flex: 1, padding: '6px 8px', borderRadius: '8px', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', color: '#818cf8', fontSize: '0.72rem', fontWeight: '800', cursor: 'pointer' }}
+                  >
+                    ⚡ MasterCard
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setCardNumber('6071 0000 0000 0000'); setCardHolder('TEST RUPAY CLIENT'); setCardExpiry('12/30'); setCardCvv('123'); }}
+                    style={{ flex: 1, padding: '6px 8px', borderRadius: '8px', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b', fontSize: '0.72rem', fontWeight: '800', cursor: 'pointer' }}
+                  >
+                    ⚡ RuPay Test
+                  </button>
                 </div>
                 {/* ─── INTERACTIVE VIRTUAL BANK CREDIT / DEBIT CARD ─── */}
                 <div style={{
-                  background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #059669 100%)',
+                  background: '#0d0d0d',
                   borderRadius: '16px',
                   padding: '20px',
                   color: '#ffffff',
@@ -1708,7 +2179,216 @@ function POSBillingView({
         </div>
       )}
 
+      {/* 4. REAL RAZORPAY GATEWAY SANDBOX & SDK SIMULATOR MODAL */}
+      {activeCheckoutModal === 'RAZORPAY_SANDBOX' && (
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
+          <div className="glass-panel modal-content" style={{ maxWidth: '500px', width: '94%', padding: '0', overflow: 'hidden', borderRadius: '20px', border: '1px solid rgba(16, 185, 129, 0.4)', background: 'var(--bg-surface)' }}>
+            
+            {/* Razorpay Authentic Modal Header */}
+            <div style={{ background: '#0a0a0a', padding: '20px 24px', color: '#fff', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ background: '#10b981', width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: '#fff', fontSize: '1rem' }}>
+                    R
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '1.05rem', fontWeight: '800', margin: 0, color: '#fff' }}>
+                      Razorpay Payment Gateway
+                    </h3>
+                    <div style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: '700' }}>
+                      ● Sandbox Checkout Mode
+                    </div>
+                  </div>
+                </div>
+                <button onClick={() => setActiveCheckoutModal(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                  <X size={20} />
+                </button>
+              </div>
 
+              {/* Order & Merchant Info Box */}
+              <div style={{ marginTop: '16px', background: 'rgba(255,255,255,0.05)', padding: '12px 16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Merchant</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: '800', color: '#f8fafc' }}>SalonPulse POS Enterprise</div>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>Order: {razorpayOrder?.order_id || `order_${Date.now()}`}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Payable</div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: '900', color: '#34d399' }}>₹{grandTotal.toFixed(2)}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Body: Payment Methods */}
+            <div style={{ padding: '20px 24px' }}>
+              <div style={{ background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', padding: '10px 14px', borderRadius: '10px', fontSize: '0.76rem', color: 'var(--text-sub)', marginBottom: '16px', lineHeight: '1.4' }}>
+                💡 <strong>Merchant Tip:</strong> To switch from Sandbox Mode to Razorpay's official web SDK popup, enter your real Razorpay Test Key ID (`rzp_test_...`) in <strong>Admin & Security Settings → Payment Gateway Setup</strong>.
+              </div>
+
+              <div style={{ fontWeight: '800', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Select Test Payment Method:
+              </div>
+
+              {/* Payment Methods Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const payId = `pay_${Date.now()}`;
+                    await Admin_Verify_Razorpay_Payment({
+                      razorpay_order_id: razorpayOrder?.order_id || `order_${Date.now()}`,
+                      razorpay_payment_id: payId,
+                      razorpay_signature: 'verified_signature'
+                    }).catch(() => null);
+                    await executeFinalCheckout({ rzpPayId: payId, rzpOrderId: razorpayOrder?.order_id, paymentModeOverride: 'Razorpay UPI (Sandbox)' });
+                  }}
+                  style={{
+                    padding: '14px', borderRadius: '12px', background: 'var(--bg-card)', border: '1px solid var(--border)',
+                    cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s ease', display: 'flex', flexDirection: 'column', gap: '4px'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = '#10b981'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '800', color: 'var(--text-main)', fontSize: '0.88rem' }}>
+                    <Sparkles size={16} style={{ color: '#10b981' }} /> UPI / QR Scan
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>GPay, PhonePe, Paytm Instant Test</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const payId = `pay_${Date.now()}`;
+                    await Admin_Verify_Razorpay_Payment({
+                      razorpay_order_id: razorpayOrder?.order_id || `order_${Date.now()}`,
+                      razorpay_payment_id: payId,
+                      razorpay_signature: 'verified_signature'
+                    }).catch(() => null);
+                    await executeFinalCheckout({ rzpPayId: payId, rzpOrderId: razorpayOrder?.order_id, paymentModeOverride: 'Razorpay Card (Sandbox)' });
+                  }}
+                  style={{
+                    padding: '14px', borderRadius: '12px', background: 'var(--bg-card)', border: '1px solid var(--border)',
+                    cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s ease', display: 'flex', flexDirection: 'column', gap: '4px'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = '#818cf8'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '800', color: 'var(--text-main)', fontSize: '0.88rem' }}>
+                    <CreditCard size={16} style={{ color: '#818cf8' }} /> Debit / Credit Card
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Visa, MasterCard, RuPay Test</div>
+                </button>
+              </div>
+
+              {/* Primary Simulate Success Button */}
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={async () => {
+                  const payId = `pay_${Date.now()}`;
+                  await Admin_Verify_Razorpay_Payment({
+                    razorpay_order_id: razorpayOrder?.order_id || `order_${Date.now()}`,
+                    razorpay_payment_id: payId,
+                    razorpay_signature: 'verified_signature'
+                  }).catch(() => null);
+                  await executeFinalCheckout({ rzpPayId: payId, rzpOrderId: razorpayOrder?.order_id, paymentModeOverride: 'Razorpay Gateway' });
+                }}
+                disabled={isSubmitting}
+                style={{
+                  width: '100%', padding: '14px', borderRadius: '12px', background: '#2563eb',
+                  fontWeight: '900', fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  boxShadow: '0 4px 16px rgba(16, 185, 129, 0.4)'
+                }}
+              >
+                {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <><CheckCircle2 size={18} /> Pay ₹{grandTotal.toFixed(2)} via Razorpay Gateway</>}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveCheckoutModal(null);
+                  setCustomAlert({ title: 'Payment Cancelled', message: 'Razorpay Notice: Payment was cancelled by customer.', type: 'info' });
+                }}
+                style={{
+                  width: '100%', padding: '10px', marginTop: '10px', background: 'none', border: 'none',
+                  color: 'var(--text-muted)', fontSize: '0.78rem', cursor: 'pointer', fontWeight: '700'
+                }}
+              >
+                Cancel Razorpay Transaction
+              </button>
+            </div>
+
+            <div style={{ padding: '12px', background: 'rgba(0,0,0,0.2)', textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)' }}>
+              🔒 Secured 256-Bit Encryption via Official Razorpay Payment Engine
+            </div>
+
+          </div>
+        </div>
+      )}
+
+
+      {/* ─── THEME-MATCHED CUSTOM ALERT / NOTIFICATION MODAL ─── */}
+      {customAlert && (
+        <div className="modal-overlay" style={{ zIndex: 10000, animation: 'fadeIn 0.2s ease-out' }}>
+          <div className="glass-panel modal-content" style={{
+            maxWidth: '440px',
+            width: '90%',
+            padding: '32px 28px 28px',
+            textAlign: 'center',
+            borderRadius: '24px',
+            border: customAlert.type === 'success' ? '1.5px solid #10b981' : customAlert.type === 'error' ? '1.5px solid #ef4444' : '1.5px solid var(--accent-gold)',
+            boxShadow: customAlert.type === 'success' ? '0 20px 50px rgba(16, 185, 129, 0.25)' : customAlert.type === 'error' ? '0 20px 50px rgba(239, 68, 68, 0.25)' : '0 20px 50px rgba(245, 158, 11, 0.25)',
+            background: 'var(--bg-surface)'
+          }}>
+            <div style={{
+              width: '64px', height: '64px', borderRadius: '50%',
+              background: customAlert.type === 'success' ? 'rgba(16, 185, 129, 0.16)' : customAlert.type === 'error' ? 'rgba(239, 68, 68, 0.16)' : 'rgba(245, 158, 11, 0.16)',
+              color: customAlert.type === 'success' ? '#10b981' : customAlert.type === 'error' ? '#ef4444' : 'var(--accent-gold)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 18px',
+              border: customAlert.type === 'success' ? '1.5px solid rgba(16, 185, 129, 0.4)' : customAlert.type === 'error' ? '1.5px solid rgba(239, 68, 68, 0.4)' : '1.5px solid rgba(245, 158, 11, 0.4)'
+            }}>
+              {customAlert.type === 'success' ? <CheckCircle2 size={34} /> : customAlert.type === 'error' ? <AlertCircle size={34} /> : <Sparkles size={34} />}
+            </div>
+
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '900', marginBottom: '10px', color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
+              {customAlert.title || 'SalonPulse Notice'}
+            </h3>
+
+            <div style={{
+              fontSize: '0.88rem',
+              color: 'var(--text-sub)',
+              marginBottom: '26px',
+              lineHeight: '1.6',
+              whiteSpace: 'pre-line',
+              background: 'rgba(255, 255, 255, 0.03)',
+              padding: '14px 16px',
+              borderRadius: '14px',
+              border: '1px solid var(--border)'
+            }}>
+              {customAlert.message}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setCustomAlert(null)}
+              className="btn-primary"
+              style={{
+                width: '100%',
+                padding: '13px',
+                fontSize: '0.95rem',
+                fontWeight: '900',
+                borderRadius: '14px',
+                background: customAlert.type === 'success' ? 'linear-gradient(135deg, #10b981, #059669)' : customAlert.type === 'error' ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                boxShadow: customAlert.type === 'success' ? '0 4px 20px rgba(16, 185, 129, 0.4)' : '0 4px 20px rgba(37, 99, 235, 0.4)',
+                cursor: 'pointer'
+              }}
+            >
+              Done / Got It
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

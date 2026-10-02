@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Scissors, Lock, Mail, ArrowRight, ShieldCheck, Sparkles, Building, BarChart3, CheckCircle2, Sun, Moon } from 'lucide-react';
+import { Scissors, Lock, Mail, ArrowRight, ShieldCheck, Sparkles, Building, BarChart3, CheckCircle2, Sun, Moon, Eye, EyeOff } from 'lucide-react';
 import { Admin_Login } from '../services/apiService';
 
-function LoginView({ onLoginSuccess, theme = 'dark', onToggleTheme }) {
+function LoginView({ users = [], onLoginSuccess, theme = 'dark', onToggleTheme }) {
 
   const [email, setEmail] = useState('admin@saloon.com');
   const [password, setPassword] = useState('admin123');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -26,20 +27,39 @@ function LoginView({ onLoginSuccess, theme = 'dark', onToggleTheme }) {
           user: res.data.data.user
         });
       } else {
-        // Fallback demo authentication login data
-        const role = userEmail.includes('manager') ? 'Manager' : userEmail.includes('reception') ? 'Receptionist' : userEmail.includes('stylist') ? 'Staff' : 'Admin';
-        const name = userEmail.includes('manager') ? 'Rohan Verma (Manager)' : userEmail.includes('reception') ? 'Priya Sharma (Receptionist)' : userEmail.includes('stylist') ? 'Amit Singh (Staff)' : 'Sunil Kumar (Admin)';
+        const cleanEmail = String(userEmail || '').toLowerCase().trim();
 
-        onLoginSuccess({
-          token: `demo_jwt_token_${Date.now()}`,
-          user: {
-            id: 1,
-            name: name,
-            email: userEmail,
-            role: role,
-            branch_name: 'Connaught Place Main Salon'
-          }
-        });
+        // Master super admin account fallback
+        if (cleanEmail === 'admin@saloon.com') {
+          onLoginSuccess({
+            token: `demo_jwt_token_${Date.now()}`,
+            user: {
+              id: 1,
+              name: 'Sunil Kumar (Super Admin)',
+              email: 'admin@saloon.com',
+              role: 'Super Admin',
+              is_super_admin: true,
+              branch_id: null,
+              branch_name: '🌐 Global SaaS System Master'
+            }
+          });
+          return;
+        }
+
+        // Check if user exists in active system users list
+        const matchedUser = Array.isArray(users) ? users.find(u => u && u.email && String(u.email).toLowerCase().trim() === cleanEmail) : null;
+
+        if (matchedUser && matchedUser.is_active !== false) {
+          onLoginSuccess({
+            token: `demo_jwt_token_${Date.now()}`,
+            user: {
+              ...matchedUser,
+              role: matchedUser.role || matchedUser.role_name || 'Staff'
+            }
+          });
+        } else {
+          setErrorMsg('❌ Access Denied: User account does not exist or has been deleted by Super Admin.');
+        }
       }
     } catch (err) {
       console.error('Login Error:', err);
@@ -90,7 +110,7 @@ function LoginView({ onLoginSuccess, theme = 'dark', onToggleTheme }) {
         {/* Left Column: Premium Branding & Feature Highlights */}
         <div
           style={{
-            background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(11, 17, 32, 0.95))',
+            background: '#0a0a0a',
             padding: '44px 36px',
             display: 'flex',
             flexDirection: 'column',
@@ -194,13 +214,35 @@ function LoginView({ onLoginSuccess, theme = 'dark', onToggleTheme }) {
 
             <div className="form-group">
               <label><Lock size={14} style={{ display: 'inline', marginRight: '6px' }} /> Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                placeholder="••••••••"
-              />
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  placeholder="••••••••"
+                  style={{ width: '100%', paddingRight: '42px' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-sub)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '4px'
+                  }}
+                  title={showPassword ? 'Hide Password' : 'Show Password'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
             <button

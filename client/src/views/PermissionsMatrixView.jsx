@@ -139,8 +139,8 @@ function PermissionsMatrixView({ roles, onUpdateRoles }) {
     <div>
       {/* ─── User-Friendly How-To Banner ─── */}
       <div style={{
-        background: 'linear-gradient(135deg, rgba(0,230,118,0.1) 0%, rgba(99,102,241,0.08) 100%)',
-        border: '1.5px solid rgba(0,230,118,0.25)',
+        background: '#0a0a0a',
+        border: '1.5px solid rgba(37,99,235,0.35)',
         borderRadius: '14px',
         padding: '16px 20px',
         marginBottom: '20px',

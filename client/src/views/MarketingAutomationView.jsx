@@ -149,10 +149,10 @@ const MarketingAutomationView = () => {
         marginBottom: '24px', flexWrap: 'wrap', gap: '16px'
       }}>
         <div>
-          <h1 style={{ fontSize: '26px', fontWeight: '700', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
-            <Send size={28} color="#10B981" /> Marketing Automation & Communication
+          <h1 style={{ fontSize: '26px', fontWeight: '700', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+            <Send size={28} color="var(--accent-gold)" /> Marketing Automation & Communication
           </h1>
-          <p style={{ color: '#90A4AE', fontSize: '14px', marginTop: '4px', margin: 0 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px', margin: 0 }}>
             Bulk SMS & WhatsApp campaigns, automated birthday/anniversary offer triggers, and client re-engagement.
           </p>
         </div>
@@ -161,10 +161,10 @@ const MarketingAutomationView = () => {
           <button
             onClick={() => setIsCampaignModalOpen(true)}
             style={{
-              padding: '10px 18px', background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+              padding: '10px 18px', background: '#2563eb',
               color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '700',
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
-              boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)'
+              boxShadow: '0 4px 15px rgba(37, 99, 235, 0.3)'
             }}
           >
             <Plus size={18} /> New Campaign Blast
@@ -176,8 +176,8 @@ const MarketingAutomationView = () => {
               setIsTemplateModalOpen(true);
             }}
             style={{
-              padding: '10px 18px', background: '#1E293B', color: '#10B981',
-              border: '1px solid #10B981', borderRadius: '8px', fontWeight: '600',
+              padding: '10px 18px', background: 'var(--bg-card)', color: 'var(--accent-gold)',
+              border: '1px solid var(--accent-gold)', borderRadius: '8px', fontWeight: '600',
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
             }}
           >
@@ -186,8 +186,8 @@ const MarketingAutomationView = () => {
           <button
             onClick={fetchData}
             style={{
-              padding: '10px', background: '#1E293B', color: '#90A4AE',
-              border: '1px solid #334155', borderRadius: '8px', cursor: 'pointer'
+              padding: '10px', background: 'var(--bg-card)', color: 'var(--text-sub)',
+              border: '1px solid var(--border)', borderRadius: '8px', cursor: 'pointer'
             }}
           >
             <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
@@ -214,25 +214,25 @@ const MarketingAutomationView = () => {
         display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
         gap: '16px', marginBottom: '28px'
       }}>
-        <div style={{ background: '#1E293B', border: '1px solid #334155', borderRadius: '12px', padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#90A4AE', fontSize: '13px', fontWeight: '600' }}>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '13px', fontWeight: '600' }}>
             <span>TOTAL CAMPAIGNS</span>
-            <Send size={20} color="#10B981" />
+            <Send size={20} color="var(--accent-gold)" />
           </div>
-          <div style={{ fontSize: '28px', fontWeight: '700', color: '#fff', marginTop: '8px' }}>
+          <div style={{ fontSize: '28px', fontWeight: '700', color: 'var(--text-main)', marginTop: '8px' }}>
             {campaigns.length}
           </div>
-          <div style={{ fontSize: '12px', color: '#10B981', marginTop: '4px' }}>
+          <div style={{ fontSize: '12px', color: 'var(--accent-gold)', marginTop: '4px' }}>
             SMS & WhatsApp Promotional Blasts
           </div>
         </div>
 
-        <div style={{ background: '#1E293B', border: '1px solid #334155', borderRadius: '12px', padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#90A4AE', fontSize: '13px', fontWeight: '600' }}>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '13px', fontWeight: '600' }}>
             <span>MESSAGES DELIVERED</span>
             <CheckCircle size={20} color="#34D399" />
           </div>
-          <div style={{ fontSize: '28px', fontWeight: '700', color: '#fff', marginTop: '8px' }}>
+          <div style={{ fontSize: '28px', fontWeight: '700', color: 'var(--text-main)', marginTop: '8px' }}>
             {totalDelivered.toLocaleString()}
           </div>
           <div style={{ fontSize: '12px', color: '#34D399', marginTop: '4px' }}>
@@ -240,12 +240,12 @@ const MarketingAutomationView = () => {
           </div>
         </div>
 
-        <div style={{ background: '#1E293B', border: '1px solid #334155', borderRadius: '12px', padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#90A4AE', fontSize: '13px', fontWeight: '600' }}>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '13px', fontWeight: '600' }}>
             <span>AUTOMATION TRIGGERS</span>
             <Zap size={20} color="#FFD700" />
           </div>
-          <div style={{ fontSize: '28px', fontWeight: '700', color: '#fff', marginTop: '8px' }}>
+          <div style={{ fontSize: '28px', fontWeight: '700', color: 'var(--text-main)', marginTop: '8px' }}>
             {activeTriggersCount} Active
           </div>
           <div style={{ fontSize: '12px', color: '#FFD700', marginTop: '4px' }}>
@@ -253,12 +253,12 @@ const MarketingAutomationView = () => {
           </div>
         </div>
 
-        <div style={{ background: '#1E293B', border: '1px solid #334155', borderRadius: '12px', padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#90A4AE', fontSize: '13px', fontWeight: '600' }}>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '13px', fontWeight: '600' }}>
             <span>INACTIVE CLIENTS (30+ DAYS)</span>
             <Clock size={20} color="#E040FB" />
           </div>
-          <div style={{ fontSize: '28px', fontWeight: '700', color: '#fff', marginTop: '8px' }}>
+          <div style={{ fontSize: '28px', fontWeight: '700', color: 'var(--text-main)', marginTop: '8px' }}>
             {occasions.inactive?.length || 0}
           </div>
           <div style={{ fontSize: '12px', color: '#E040FB', marginTop: '4px' }}>
@@ -361,7 +361,7 @@ const MarketingAutomationView = () => {
                           onClick={() => handleSendCampaign(camp.id)}
                           disabled={sendingCampaignId === camp.id}
                           style={{
-                            padding: '6px 14px', background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                            padding: '6px 14px', background: '#2563eb',
                             color: '#ffffff', border: 'none', borderRadius: '6px', fontWeight: '700',
                             cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px'
                           }}
@@ -392,8 +392,8 @@ const MarketingAutomationView = () => {
         <div>
           {/* Spotlight: Today's Occasions */}
           <div style={{
-            background: 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)',
-            border: '1px solid #10B981', borderRadius: '16px', padding: '24px', marginBottom: '28px'
+            background: '#0a0a0a',
+            border: '1px solid #2563eb', borderRadius: '16px', padding: '24px', marginBottom: '28px'
           }}>
             <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#10B981', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Cake size={22} /> Today's Birthday & Anniversary Spotlight

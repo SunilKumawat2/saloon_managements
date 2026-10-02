@@ -1,9 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Target, Plus, Phone, Mail, Clock, AlertTriangle,
   BellRing, CheckCircle2, Edit3, Trash2, X, Search,
-  UserCheck, Sparkles, Camera, Upload
+  UserCheck, Sparkles, Camera, Upload, Loader2
 } from 'lucide-react';
+import { Admin_Get_Leads } from '../services/apiService';
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? window.location.origin : 'http://localhost:5000';
 
@@ -23,7 +24,19 @@ const getReminderStatus = (followupDate) => {
 
 // ─── Lead Avatar component (shows photo or initials fallback) ───
 const LeadAvatar = ({ lead, previewUrl, size = 44, style = {} }) => {
-  const avatarUrl = previewUrl || (lead?.avatar_url ? `${API_BASE}${lead.avatar_url}` : null);
+  const [imgFailed, setImgFailed] = useState(false);
+
+  useEffect(() => {
+    setImgFailed(false);
+  }, [previewUrl, lead?.avatar_url, lead?.id]);
+
+  const rawUrl = previewUrl || lead?.avatar_url;
+  const avatarUrl = (rawUrl && !imgFailed)
+    ? (rawUrl.startsWith('data:') || rawUrl.startsWith('blob:') || rawUrl.startsWith('http://') || rawUrl.startsWith('https://')
+        ? rawUrl
+        : `${API_BASE}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`)
+    : null;
+
   const initials = lead?.name
     ? String(lead.name).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : 'LP';
@@ -42,7 +55,7 @@ const LeadAvatar = ({ lead, previewUrl, size = 44, style = {} }) => {
         boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
         ...style
       }}
-      onError={(e) => { e.target.style.display = 'none'; }}
+      onError={() => setImgFailed(true)}
     />
   ) : (
     <div style={{
@@ -50,7 +63,7 @@ const LeadAvatar = ({ lead, previewUrl, size = 44, style = {} }) => {
       height: size,
       borderRadius: '50%',
       flexShrink: 0,
-      background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+      background: '#2563eb',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -66,20 +79,39 @@ const LeadAvatar = ({ lead, previewUrl, size = 44, style = {} }) => {
   );
 };
 
-function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead, onUpdateLeadStatus }) {
+function LeadsManagementView({
+  leads: initialLeads = [],
+  branches = [],
+  currentUser,
+  onAddLead,
+  onUpdateLead,
+  onDeleteLead,
+  onUpdateLeadStatus,
+  selectedBranchId = 'all'
+}) {
+  const [leads, setLeads] = useState(initialLeads);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
   const [deletingLead, setDeletingLead] = useState(null);
   const [statusFilter, setStatusFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // ─── Pagination States & Backend Sync ───
+  const [pageSize, setPageSize]             = useState(10); // 5, 10, 20, 50, 100, or 'all'
+  const [currentPage, setCurrentPage]       = useState(1);
+  const [serverData, setServerData]         = useState(null);
+  const [loadingBackend, setLoadingBackend] = useState(false);
+
   // Image Upload State
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState('');
   const fileInputRef = useRef(null);
 
+  const defaultBranchId = selectedBranchId !== 'all' ? selectedBranchId : (branches && branches[0]?.id ? branches[0].id : null);
+
   // Form State for Add / Edit
   const [formData, setFormData] = useState({
+    branch_id: defaultBranchId,
     name: '',
     phone: '',
     email: '',
@@ -89,14 +121,76 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
     status: 'New'
   });
 
+  useEffect(() => { setLeads(initialLeads); }, [initialLeads]);
+
+  const fetchBackendLeads = async () => {
+    setLoadingBackend(true);
+    try {
+      const queryParams = {
+        page: currentPage,
+        limit: pageSize === 'all' ? 'all' : pageSize,
+        search: searchQuery,
+        status: statusFilter
+      };
+      if (selectedBranchId && selectedBranchId !== 'all') {
+        queryParams.branch_id = selectedBranchId;
+      }
+      const res = await Admin_Get_Leads(queryParams).catch(() => null);
+      if (res?.data) {
+        if (res.data.pagination && Array.isArray(res.data.data)) {
+          setServerData({ data: res.data.data, pagination: res.data.pagination });
+        } else if (Array.isArray(res.data.data)) {
+          setServerData({ data: res.data.data, pagination: null });
+        }
+      }
+    } finally {
+      setLoadingBackend(false);
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+    fetchBackendLeads();
+    return () => { active = false; };
+  }, [pageSize, currentPage, searchQuery, statusFilter, selectedBranchId]);
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleStatusFilterChange = (e) => {
+    setStatusFilter(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handlePageSizeChange = (e) => {
+    const val = e.target.value === 'all' ? 'all' : Number(e.target.value);
+    setPageSize(val);
+    setCurrentPage(1);
+  };
+
   // Urgent reminders
   const urgentReminders = leads.filter(l => {
     const status = getReminderStatus(l.followup_date);
     return status && l.status !== 'Converted' && l.status !== 'Lost';
   });
 
-  // Filtered leads
-  const filtered = leads.filter(l => {
+  // ─── Source of Truth & Filter ───
+  const baseList = (serverData?.data && Array.isArray(serverData.data)) ? serverData.data : leads;
+
+  const rawList = baseList.filter(l => {
+    if (!l) return false;
+    if (selectedBranchId !== 'all' && l.branch_id && String(l.branch_id) !== String(selectedBranchId)) {
+      return false;
+    }
+    return true;
+  });
+
+  const filtered = rawList.filter(l => {
+    if (serverData?.pagination) {
+      return true; // Already filtered on server
+    }
     const matchesStatus = statusFilter === 'All' || l.status === statusFilter;
     const matchesSearch = !searchQuery.trim() ||
       l.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -105,6 +199,18 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
       l.source?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
+
+  const totalItems = serverData?.pagination?.total ?? filtered.length;
+  const isAll = pageSize === 'all';
+  const effectivePageSize = isAll ? (totalItems || 1) : Number(pageSize);
+  const totalPages = serverData?.pagination?.totalPages ?? (isAll || effectivePageSize === 0 ? 1 : Math.ceil(totalItems / effectivePageSize));
+  const safePage = Math.max(1, Math.min(currentPage, totalPages));
+
+  const isServerPaginated = Boolean(serverData?.pagination && serverData.pagination.limit === pageSize);
+  const paginatedList = isServerPaginated ? filtered : filtered.slice((safePage - 1) * effectivePageSize, safePage * effectivePageSize);
+
+  const startIndex = isAll || totalItems === 0 ? 0 : (safePage - 1) * (isServerPaginated ? Number(pageSize) : effectivePageSize);
+  const endIndex = isAll ? totalItems : Math.min(startIndex + paginatedList.length, totalItems);
 
   // Handle Photo Picker Selection
   const handleFileChange = (e) => {
@@ -115,9 +221,22 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
     }
   };
 
+  const [phoneError, setPhoneError] = useState('');
+
+  const handlePhoneChange = (e) => {
+    const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setFormData(prev => ({ ...prev, phone: digitsOnly }));
+    if (digitsOnly.length > 0 && digitsOnly.length < 10) {
+      setPhoneError('Mobile number must be exactly 10 digits.');
+    } else {
+      setPhoneError('');
+    }
+  };
+
   // Open Add Modal
   const handleOpenAdd = () => {
     setFormData({
+      branch_id: selectedBranchId !== 'all' ? selectedBranchId : (branches && branches[0]?.id ? branches[0].id : null),
       name: '',
       phone: '',
       email: '',
@@ -128,6 +247,7 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
     });
     setAvatarFile(null);
     setAvatarPreview('');
+    setPhoneError('');
     setShowAddModal(true);
   };
 
@@ -135,6 +255,7 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
   const handleOpenEdit = (lead) => {
     setEditingLead(lead);
     setFormData({
+      branch_id: lead.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : (branches && branches[0]?.id ? branches[0].id : null)),
       name: lead.name || '',
       phone: lead.phone || '',
       email: lead.email || '',
@@ -145,30 +266,104 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
     });
     setAvatarFile(null);
     setAvatarPreview(lead.avatar_url ? `${API_BASE}${lead.avatar_url}` : '');
+    setPhoneError('');
   };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // Submit Add
-  const handleAddSubmit = (e) => {
+  const handleAddSubmit = async (e) => {
     e.preventDefault();
-    if (onAddLead) onAddLead(formData, avatarFile);
-    setShowAddModal(false);
+    const phoneClean = String(formData.phone || '').trim();
+    if (!phoneClean || phoneClean.length !== 10 || !/^\d{10}$/.test(phoneClean)) {
+      setPhoneError('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const activeBranch = formData.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : (branches && branches[0]?.id ? branches[0].id : null));
+      const payload = { ...formData, branch_id: activeBranch, phone: phoneClean };
+      if (onAddLead) {
+        const created = await onAddLead(payload, avatarFile);
+        if (created) {
+          setServerData(prev => {
+            const curList = Array.isArray(prev?.data) ? prev.data : [];
+            const newTotal = (prev?.pagination?.total || curList.length) + 1;
+            return {
+              data: [created, ...curList.filter(l => String(l.id) !== String(created.id))],
+              pagination: prev?.pagination ? {
+                ...prev.pagination,
+                total: newTotal,
+                totalPages: Math.ceil(newTotal / (pageSize === 'all' ? (newTotal || 1) : pageSize))
+              } : null
+            };
+          });
+        }
+      }
+      setShowAddModal(false);
+      fetchBackendLeads();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Submit Edit
-  const handleEditSubmit = (e) => {
+  const handleEditSubmit = async (e) => {
     e.preventDefault();
-    if (onUpdateLead && editingLead) {
-      onUpdateLead(editingLead.id, formData, avatarFile);
+    const phoneClean = String(formData.phone || '').trim();
+    if (!phoneClean || phoneClean.length !== 10 || !/^\d{10}$/.test(phoneClean)) {
+      setPhoneError('Please enter a valid 10-digit mobile number.');
+      return;
     }
-    setEditingLead(null);
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      if (onUpdateLead && editingLead) {
+        const activeBranch = formData.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : (branches && branches[0]?.id ? branches[0].id : null));
+        const payload = { ...formData, branch_id: activeBranch, phone: phoneClean };
+        const updated = await onUpdateLead(editingLead.id, payload, avatarFile);
+        if (updated) {
+          setServerData(prev => {
+            if (!prev || !Array.isArray(prev.data)) return prev;
+            return {
+              ...prev,
+              data: prev.data.map(l => String(l.id) === String(editingLead.id) ? { ...l, ...updated } : l)
+            };
+          });
+        }
+      }
+      setEditingLead(null);
+      fetchBackendLeads();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Confirm Delete
-  const handleConfirmDelete = () => {
-    if (onDeleteLead && deletingLead) {
-      onDeleteLead(deletingLead.id);
+  const handleConfirmDelete = async () => {
+    if (deletingLead) {
+      const targetId = deletingLead.id;
+      if (onDeleteLead) {
+        await onDeleteLead(targetId);
+      }
+      setServerData(prev => {
+        if (!prev || !Array.isArray(prev.data)) return prev;
+        return {
+          ...prev,
+          data: prev.data.filter(l => String(l.id) !== String(targetId)),
+          pagination: prev.pagination ? {
+            ...prev.pagination,
+            total: Math.max(0, (prev.pagination.total || 1) - 1)
+          } : prev.pagination
+        };
+      });
+      setDeletingLead(null);
     }
-    setDeletingLead(null);
   };
 
   return (
@@ -280,11 +475,11 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
               type="text"
               placeholder="Search by name, phone, email, source..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={handleSearchChange}
               style={{
                 width: '100%',
                 paddingLeft: '36px',
-                paddingRight: '12px',
+                paddingRight: '30px',
                 paddingTop: '8px',
                 paddingBottom: '8px',
                 background: 'rgba(255,255,255,0.03)',
@@ -294,9 +489,19 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
                 fontSize: '0.85rem'
               }}
             />
+            {searchQuery && (
+              <button 
+                type="button" 
+                onClick={() => { setSearchQuery(''); setCurrentPage(1); }}
+                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem' }}
+                title="Clear search"
+              >
+                ✕
+              </button>
+            )}
           </div>
 
-          <select className="select-filter" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <select className="select-filter" value={statusFilter} onChange={handleStatusFilterChange}>
             <option value="All">All Lead Pipeline Stages</option>
             <option value="New">New Inquiries</option>
             <option value="Contacted">Contacted / Follow-up</option>
@@ -310,128 +515,253 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
         </button>
       </div>
 
-      {/* ─── Lead Cards Pipeline Grid ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '22px' }}>
-        {filtered.length === 0 ? (
-          <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', gridColumn: '1 / -1' }}>
-            <Target size={36} style={{ opacity: 0.3, marginBottom: '12px' }} />
-            <p style={{ margin: 0 }}>No lead prospects found matching your search and filter criteria.</p>
+      {/* ─── Lead Cards Pipeline Grid / Loader ─── */}
+      {loadingBackend ? (
+        <div className="glass-panel" style={{ padding: '60px 24px', textAlign: 'center', margin: '20px 0', borderRadius: '14px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '14px' }}>
+            <Loader2 size={36} style={{ animation: 'spin 0.8s linear infinite', color: 'var(--accent)' }} />
+            <span style={{ fontSize: '0.88rem', color: 'var(--text-sub)', fontWeight: '700', letterSpacing: '0.02em' }}>
+              Fetching lead prospects from pipeline... (Page {currentPage}, Limit {pageSize})
+            </span>
           </div>
-        ) : filtered.map((lead) => {
-          const reminder = getReminderStatus(lead.followup_date);
-          return (
-            <div key={lead.id} className="glass-panel" style={{ padding: '24px', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              {/* Reminder indicator strip */}
-              {reminder && (
-                <div style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: '3px',
-                  background: `linear-gradient(90deg, ${reminder.color}, transparent)`,
-                  borderRadius: '16px 16px 0 0',
-                }} />
-              )}
-              
-              <div>
-                {/* Header with Photo Avatar & Name */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                    <LeadAvatar lead={lead} size={48} />
-                    <div>
-                      <span style={{ fontSize: '0.72rem', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', padding: '2px 8px', borderRadius: '6px', fontWeight: '800' }}>
-                        Source: {lead.source}
-                      </span>
-                      <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginTop: '4px', marginBottom: 0, color: '#fff' }}>{lead.name}</h3>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '22px' }}>
+          {filtered.length === 0 ? (
+            <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', gridColumn: '1 / -1' }}>
+              <Target size={36} style={{ opacity: 0.3, marginBottom: '12px' }} />
+              <p style={{ margin: 0 }}>No lead prospects found matching your search and filter criteria.</p>
+            </div>
+          ) : paginatedList.map((lead) => {
+            const reminder = getReminderStatus(lead.followup_date);
+            return (
+              <div key={lead.id} className="glass-panel" style={{ padding: '24px', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                {/* Reminder indicator strip */}
+                {reminder && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: '3px',
+                    background: `linear-gradient(90deg, ${reminder.color}, transparent)`,
+                    borderRadius: '16px 16px 0 0',
+                  }} />
+                )}
+                
+                <div>
+                  {/* Header with Photo Avatar & Name */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <LeadAvatar lead={lead} size={48} />
+                      <div>
+                        <span style={{ fontSize: '0.72rem', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', padding: '2px 8px', borderRadius: '6px', fontWeight: '800' }}>
+                          Source: {lead.source}
+                        </span>
+                        <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginTop: '4px', marginBottom: 0, color: '#fff' }}>{lead.name}</h3>
+                      </div>
                     </div>
+
+                    <select
+                      value={lead.status}
+                      onChange={(e) => onUpdateLeadStatus(lead.id, e.target.value)}
+                      style={{
+                        background: lead.status === 'Converted' ? 'rgba(16, 185, 129, 0.2)' : lead.status === 'Contacted' ? 'rgba(245, 158, 11, 0.2)' : lead.status === 'Lost' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.2)',
+                        color: lead.status === 'Converted' ? 'var(--success)' : lead.status === 'Contacted' ? 'var(--accent-gold)' : lead.status === 'Lost' ? '#ef4444' : 'var(--primary-indigo)',
+                        border: '1px solid var(--border)',
+                        padding: '4px 8px',
+                        borderRadius: '12px',
+                        fontSize: '0.78rem',
+                        fontWeight: '800',
+                        cursor: 'pointer',
+                        outline: 'none',
+                        flexShrink: 0
+                      }}
+                    >
+                      <option value="New">New</option>
+                      <option value="Contacted">Contacted</option>
+                      <option value="Converted">Converted ✓</option>
+                      <option value="Lost">Lost</option>
+                    </select>
                   </div>
 
-                  <select
-                    value={lead.status}
-                    onChange={(e) => onUpdateLeadStatus(lead.id, e.target.value)}
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-sub)', display: 'flex', flexDirection: 'column', gap: '6px', margin: '14px 0' }}>
+                    <div><Phone size={12} style={{ display: 'inline', marginRight: '6px', color: 'var(--accent-gold)' }} /> {lead.phone}</div>
+                    <div><Mail size={12} style={{ display: 'inline', marginRight: '6px' }} /> {lead.email || 'N/A'}</div>
+                    {lead.followup_date && (
+                      <div style={{ color: reminder ? reminder.color : 'var(--accent-gold)', fontSize: '0.78rem', marginTop: '4px', fontWeight: reminder ? '800' : '400' }}>
+                        <Clock size={12} style={{ display: 'inline', marginRight: '4px' }} />
+                        Follow-up: {String(lead.followup_date).split('T')[0]}
+                        {reminder && ` — ${reminder.label}`}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                    📝 {lead.notes || 'No follow-up notes.'}
+                  </div>
+                </div>
+
+                {/* Card Footer Action Buttons (Edit & Delete) */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                  <button
+                    onClick={() => handleOpenEdit(lead)}
+                    title="Edit Lead Details & Photo"
                     style={{
-                      background: lead.status === 'Converted' ? 'rgba(16, 185, 129, 0.2)' : lead.status === 'Contacted' ? 'rgba(245, 158, 11, 0.2)' : lead.status === 'Lost' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.2)',
-                      color: lead.status === 'Converted' ? 'var(--success)' : lead.status === 'Contacted' ? 'var(--accent-gold)' : lead.status === 'Lost' ? '#ef4444' : 'var(--primary-indigo)',
-                      border: '1px solid var(--border)',
-                      padding: '4px 8px',
-                      borderRadius: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '6px 12px',
+                      background: 'rgba(99, 102, 241, 0.1)',
+                      border: '1px solid rgba(99, 102, 241, 0.3)',
+                      borderRadius: '8px',
+                      color: '#818cf8',
                       fontSize: '0.78rem',
-                      fontWeight: '800',
-                      cursor: 'pointer',
-                      outline: 'none',
-                      flexShrink: 0
+                      fontWeight: '700',
+                      cursor: 'pointer'
                     }}
                   >
-                    <option value="New">New</option>
-                    <option value="Contacted">Contacted</option>
-                    <option value="Converted">Converted ✓</option>
-                    <option value="Lost">Lost</option>
-                  </select>
-                </div>
+                    <Edit3 size={13} /> Edit Details
+                  </button>
 
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-sub)', display: 'flex', flexDirection: 'column', gap: '6px', margin: '14px 0' }}>
-                  <div><Phone size={12} style={{ display: 'inline', marginRight: '6px', color: 'var(--accent-gold)' }} /> {lead.phone}</div>
-                  <div><Mail size={12} style={{ display: 'inline', marginRight: '6px' }} /> {lead.email || 'N/A'}</div>
-                  {lead.followup_date && (
-                    <div style={{ color: reminder ? reminder.color : 'var(--accent-gold)', fontSize: '0.78rem', marginTop: '4px', fontWeight: reminder ? '800' : '400' }}>
-                      <Clock size={12} style={{ display: 'inline', marginRight: '4px' }} />
-                      Follow-up: {String(lead.followup_date).split('T')[0]}
-                      {reminder && ` — ${reminder.label}`}
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                  📝 {lead.notes || 'No follow-up notes.'}
+                  <button
+                    onClick={() => setDeletingLead(lead)}
+                    title="Delete Lead"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '6px 12px',
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      borderRadius: '8px',
+                      color: '#ef4444',
+                      fontSize: '0.78rem',
+                      fontWeight: '700',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Trash2 size={13} /> Delete
+                  </button>
                 </div>
               </div>
+            );
+          })}
+        </div>
+      )}
 
-              {/* Card Footer Action Buttons (Edit & Delete) */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <button
-                  onClick={() => handleOpenEdit(lead)}
-                  title="Edit Lead Details & Photo"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '6px 12px',
-                    background: 'rgba(99, 102, 241, 0.1)',
-                    border: '1px solid rgba(99, 102, 241, 0.3)',
-                    borderRadius: '8px',
-                    color: '#818cf8',
-                    fontSize: '0.78rem',
-                    fontWeight: '700',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <Edit3 size={13} /> Edit Details
-                </button>
+      {/* ─── Pagination Bar ─── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px',
+        marginTop: '20px', padding: '12px 18px',
+        background: 'var(--glass-bg)', border: '1px solid var(--border)', borderRadius: '12px'
+      }}>
+        {/* Left: Per Page Selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.84rem', color: 'var(--text-sub)' }}>
+          <span>Rows per page:</span>
+          <select
+            value={pageSize}
+            onChange={handlePageSizeChange}
+            disabled={loadingBackend}
+            style={{
+              background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)',
+              borderRadius: '8px', padding: '4px 10px', color: 'var(--text-main)',
+              fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer', outline: 'none',
+              opacity: loadingBackend ? 0.6 : 1
+            }}
+          >
+            <option value={5}>5</option>
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+            <option value="all">All</option>
+          </select>
+          {loadingBackend && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.76rem', color: 'var(--accent)', fontWeight: '600' }}>
+              <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> Loading...
+            </span>
+          )}
+        </div>
 
-                <button
-                  onClick={() => setDeletingLead(lead)}
-                  title="Delete Lead"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '6px 12px',
-                    background: 'rgba(239, 68, 68, 0.1)',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                    borderRadius: '8px',
-                    color: '#ef4444',
-                    fontSize: '0.78rem',
-                    fontWeight: '700',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <Trash2 size={13} /> Delete
-                </button>
-              </div>
-            </div>
-          );
-        })}
+        {/* Middle: Range Information */}
+        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: '600' }}>
+          Showing {totalItems > 0 ? startIndex + 1 : 0} – {endIndex} of <strong style={{ color: 'var(--accent)' }}>{totalItems}</strong> leads
+        </div>
+
+        {/* Right: Page Navigation Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button
+            disabled={loadingBackend || isAll || safePage <= 1}
+            onClick={() => setCurrentPage(1)}
+            style={{
+              padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border)',
+              background: (loadingBackend || isAll || safePage <= 1) ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.08)',
+              color: (loadingBackend || isAll || safePage <= 1) ? 'var(--text-muted)' : 'var(--text-main)',
+              cursor: (loadingBackend || isAll || safePage <= 1) ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: '600',
+              opacity: (loadingBackend || isAll || safePage <= 1) ? 0.4 : 1
+            }}
+            title="First Page"
+          >
+            « First
+          </button>
+
+          <button
+            disabled={loadingBackend || isAll || safePage <= 1}
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            style={{
+              padding: '6px 14px', borderRadius: '8px', border: '1px solid var(--border)',
+              background: (loadingBackend || isAll || safePage <= 1) ? 'rgba(255,255,255,0.02)' : 'rgba(0,230,118,0.12)',
+              color: (loadingBackend || isAll || safePage <= 1) ? 'var(--text-muted)' : 'var(--accent)',
+              borderColor: (loadingBackend || isAll || safePage <= 1) ? 'var(--border)' : 'rgba(0,230,118,0.4)',
+              cursor: (loadingBackend || isAll || safePage <= 1) ? 'not-allowed' : 'pointer', fontSize: '0.82rem', fontWeight: '700',
+              opacity: (loadingBackend || isAll || safePage <= 1) ? 0.4 : 1
+            }}
+          >
+            ‹ Previous
+          </button>
+
+          {!isAll && Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter(p => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+            .map((p, idx, arr) => {
+              const showEllipsis = idx > 0 && p - arr[idx - 1] > 1;
+              return (
+                <React.Fragment key={p}>
+                  {showEllipsis && <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', padding: '0 2px' }}>...</span>}
+                  <button
+                    disabled={loadingBackend}
+                    onClick={() => setCurrentPage(p)}
+                    style={{
+                      padding: '6px 12px', borderRadius: '8px',
+                      border: p === safePage ? '1px solid var(--accent)' : '1px solid var(--border)',
+                      background: p === safePage ? 'var(--accent)' : 'rgba(255,255,255,0.06)',
+                      color: p === safePage ? '#000' : 'var(--text-main)',
+                      fontWeight: p === safePage ? '800' : '600',
+                      cursor: loadingBackend ? 'not-allowed' : 'pointer', fontSize: '0.82rem',
+                      opacity: loadingBackend ? 0.6 : 1
+                    }}
+                  >
+                    {p}
+                  </button>
+                </React.Fragment>
+              );
+            })}
+
+          <button
+            disabled={loadingBackend || isAll || safePage >= totalPages}
+            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            style={{
+              padding: '6px 14px', borderRadius: '8px', border: '1px solid var(--border)',
+              background: (loadingBackend || isAll || safePage >= totalPages) ? 'rgba(255,255,255,0.02)' : 'rgba(0,230,118,0.12)',
+              color: (loadingBackend || isAll || safePage >= totalPages) ? 'var(--text-muted)' : 'var(--accent)',
+              borderColor: (loadingBackend || isAll || safePage >= totalPages) ? 'var(--border)' : 'rgba(0,230,118,0.4)',
+              cursor: (loadingBackend || isAll || safePage >= totalPages) ? 'not-allowed' : 'pointer', fontSize: '0.82rem', fontWeight: '700',
+              opacity: (loadingBackend || isAll || safePage >= totalPages) ? 0.4 : 1
+            }}
+          >
+            Next ›
+          </button>
+        </div>
       </div>
 
       {/* ─── ADD PROSPECT LEAD MODAL ─── */}
@@ -500,6 +830,32 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
                 </span>
               </div>
 
+              {branches && branches.length > 0 && (
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label>Salon Branch *</label>
+                  <select
+                    value={formData.branch_id || (branches[0]?.id || '')}
+                    onChange={(e) => setFormData({ ...formData, branch_id: Number(e.target.value) })}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      color: 'var(--text-main)',
+                      fontSize: '0.9rem',
+                      outline: 'none'
+                    }}
+                  >
+                    {branches.map(b => (
+                      <option key={b.id} value={b.id} style={{ background: '#1e1e1e', color: '#fff' }}>
+                        🏢 {b.name} ({b.code || `ID:${b.id}`})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="form-group">
                 <label>Prospect Name *</label>
                 <input
@@ -517,10 +873,17 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
                   <input
                     type="text"
                     required
-                    placeholder="9876543210"
+                    inputMode="numeric"
+                    maxLength={10}
+                    placeholder="9876543210 (10 digits)"
                     value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    onChange={handlePhoneChange}
                   />
+                  {phoneError && (
+                    <div style={{ color: '#ef4444', fontSize: '0.74rem', marginTop: '4px', fontWeight: '700' }}>
+                      ⚠️ {phoneError}
+                    </div>
+                  )}
                 </div>
                 <div className="form-group">
                   <label>Lead Source</label>
@@ -578,8 +941,25 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
                 <button type="button" onClick={() => setShowAddModal(false)} className="glass-card" style={{ padding: '8px 16px', cursor: 'pointer', color: 'var(--text-sub)' }}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary">
-                  Save Prospect Lead
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="btn-primary"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    opacity: isSubmitting ? 0.75 : 1,
+                    cursor: isSubmitting ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Saving Lead...
+                    </>
+                  ) : (
+                    'Save Prospect Lead'
+                  )}
                 </button>
               </div>
             </form>
@@ -653,6 +1033,32 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
                 </span>
               </div>
 
+              {branches && branches.length > 0 && (
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label>Salon Branch *</label>
+                  <select
+                    value={formData.branch_id || (branches[0]?.id || '')}
+                    onChange={(e) => setFormData({ ...formData, branch_id: Number(e.target.value) })}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      color: 'var(--text-main)',
+                      fontSize: '0.9rem',
+                      outline: 'none'
+                    }}
+                  >
+                    {branches.map(b => (
+                      <option key={b.id} value={b.id} style={{ background: '#1e1e1e', color: '#fff' }}>
+                        🏢 {b.name} ({b.code || `ID:${b.id}`})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="form-group">
                 <label>Prospect Name *</label>
                 <input
@@ -669,9 +1075,17 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
                   <input
                     type="text"
                     required
+                    inputMode="numeric"
+                    maxLength={10}
+                    placeholder="9876543210 (10 digits)"
                     value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    onChange={handlePhoneChange}
                   />
+                  {phoneError && (
+                    <div style={{ color: '#ef4444', fontSize: '0.74rem', marginTop: '4px', fontWeight: '700' }}>
+                      ⚠️ {phoneError}
+                    </div>
+                  )}
                 </div>
                 <div className="form-group">
                   <label>Lead Source</label>
@@ -727,8 +1141,25 @@ function LeadsManagementView({ leads = [], onAddLead, onUpdateLead, onDeleteLead
                 <button type="button" onClick={() => setEditingLead(null)} className="glass-card" style={{ padding: '8px 16px', cursor: 'pointer', color: 'var(--text-sub)' }}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary">
-                  Update Lead Details
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="btn-primary"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    opacity: isSubmitting ? 0.75 : 1,
+                    cursor: isSubmitting ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Updating...
+                    </>
+                  ) : (
+                    'Update Lead Details'
+                  )}
                 </button>
               </div>
             </form>

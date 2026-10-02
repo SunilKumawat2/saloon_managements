@@ -38,17 +38,18 @@ export const MOCK_CATEGORIES = [
 ];
 
 export const MOCK_SERVICES = [
-  { id: 1, name: 'Classic Haircut & Styling', category: 'Hair', description: 'Professional haircut, wash & blow dry styling', price: 350.00, duration_minutes: 30, buffer_time_minutes: 15, commission_rate: 12.00, is_active: true },
-  { id: 2, name: 'Beard Shaping & Hot Towel Spa', category: 'Beard', description: 'Precision beard shaping and hot towel steam treatment', price: 200.00, duration_minutes: 20, buffer_time_minutes: 10, commission_rate: 10.00, is_active: true },
-  { id: 3, name: 'Royal Gold Facial & Clean-up', category: 'Facial', description: 'Deep skin cleansing, herbal scrub, and gold mask treatment', price: 1200.00, duration_minutes: 45, buffer_time_minutes: 15, commission_rate: 15.00, is_active: true },
-  { id: 4, name: 'Keratin Hair Smoothing Treatment', category: 'Hair Spa', description: 'Premium hair keratin smoothing & scalp massage', price: 3500.00, duration_minutes: 90, buffer_time_minutes: 20, commission_rate: 20.00, is_active: true },
-  { id: 5, name: 'Organic Hair Coloring & Glossing', category: 'Color', description: 'Ammonia-free hair color application & deep gloss shine', price: 1800.00, duration_minutes: 60, buffer_time_minutes: 15, commission_rate: 15.00, is_active: true },
-  { id: 6, name: 'Detox Scalp Spa & Massage', category: 'Hair Spa', description: 'Deep anti-dandruff oil massage & steam relaxation', price: 850.00, duration_minutes: 40, buffer_time_minutes: 10, commission_rate: 10.00, is_active: true }
+  { id: 1, branch_id: 1, name: 'Classic Haircut & Styling', category: 'Hair', description: 'Professional haircut, wash & blow dry styling', price: 350.00, duration_minutes: 30, buffer_time_minutes: 15, commission_rate: 12.00, is_active: true },
+  { id: 2, branch_id: 1, name: 'Beard Shaping & Hot Towel Spa', category: 'Beard', description: 'Precision beard shaping and hot towel steam treatment', price: 200.00, duration_minutes: 20, buffer_time_minutes: 10, commission_rate: 10.00, is_active: true },
+  { id: 3, branch_id: 1, name: 'Royal Gold Facial & Clean-up', category: 'Facial', description: 'Deep skin cleansing, herbal scrub, and gold mask treatment', price: 1200.00, duration_minutes: 45, buffer_time_minutes: 15, commission_rate: 15.00, is_active: true },
+  { id: 4, branch_id: 2, name: 'Keratin Hair Smoothing Treatment', category: 'Hair Spa', description: 'Premium hair keratin smoothing & scalp massage', price: 3500.00, duration_minutes: 90, buffer_time_minutes: 20, commission_rate: 20.00, is_active: true },
+  { id: 5, branch_id: 1, name: 'Organic Hair Coloring & Glossing', category: 'Color', description: 'Ammonia-free hair color application & deep gloss shine', price: 1800.00, duration_minutes: 60, buffer_time_minutes: 15, commission_rate: 15.00, is_active: true },
+  { id: 6, branch_id: 2, name: 'Detox Scalp Spa & Massage', category: 'Hair Spa', description: 'Deep anti-dandruff oil massage & steam relaxation', price: 850.00, duration_minutes: 40, buffer_time_minutes: 10, commission_rate: 10.00, is_active: true }
 ];
 
 export const MOCK_PACKAGES = [
   {
     id: 1,
+    branch_id: 1,
     name: 'Groom Gentleman Combo Package',
     category: 'Combo Package',
     description: 'Complete grooming bundle: Haircut, Beard Spa, and Gold Facial Clean-up.',
@@ -61,6 +62,7 @@ export const MOCK_PACKAGES = [
   },
   {
     id: 2,
+    branch_id: 2,
     name: 'Bridal Glow & Hair Transformation',
     category: 'Bridal Package',
     description: 'Luxury hair smoothing and herbal gold facial for special occasions.',
@@ -73,6 +75,7 @@ export const MOCK_PACKAGES = [
   },
   {
     id: 3,
+    branch_id: 1,
     name: 'Weekend Refresh Spa Bundle',
     category: 'Spa Bundle',
     description: 'Relaxing detox scalp spa combined with classic styling.',
@@ -86,9 +89,9 @@ export const MOCK_PACKAGES = [
 ];
 
 export const MOCK_STYLISTS = [
-  { id: 1, branch_id: 1, name: 'Rohan Sharma', phone: '9876543210', specialization: 'Senior Stylist & Hair Specialist', rating: 4.90 },
-  { id: 2, branch_id: 1, name: 'Amit Verma', phone: '9876543211', specialization: 'Beard & Facial Expert', rating: 4.80 },
-  { id: 3, branch_id: 2, name: 'Priya Singh', phone: '9876543212', specialization: 'Hair Color & Beauty Consultant', rating: 5.00 }
+  { id: 1, branch_id: 1, name: 'Rohan Sharma', phone: '9876543210', specialization: 'Senior Stylist & Hair Specialist', rating: 4.90, is_available: true },
+  { id: 2, branch_id: 1, name: 'Amit Verma', phone: '9876543211', specialization: 'Beard & Facial Expert', rating: 4.80, is_available: true },
+  { id: 3, branch_id: 2, name: 'Priya Singh', phone: '9876543212', specialization: 'Hair Color & Beauty Consultant', rating: 5.00, is_available: true }
 ];
 
 export const MOCK_CUSTOMERS = [

@@ -46,3 +46,25 @@ export const createBill = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to create bill.' });
   }
 };
+
+// DELETE /api/v1/billing/:id — Delete single bill
+export const deleteBill = async (req, res) => {
+  try {
+    const deleted = await Bill.delete(parseInt(req.params.id));
+    res.json({ success: true, data: deleted, message: 'Bill deleted successfully.' });
+  } catch (err) {
+    console.error('deleteBill error:', err);
+    res.status(500).json({ success: false, message: 'Failed to delete bill.' });
+  }
+};
+
+// DELETE /api/v1/billing/clear/all — Clear all bills
+export const clearBills = async (req, res) => {
+  try {
+    await Bill.clearAll();
+    res.json({ success: true, message: 'All bills cleared successfully.' });
+  } catch (err) {
+    console.error('clearBills error:', err);
+    res.status(500).json({ success: false, message: 'Failed to clear bills.' });
+  }
+};

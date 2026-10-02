@@ -55,10 +55,12 @@ ALTER TABLE services ADD COLUMN IF NOT EXISTS buffer_time_minutes INT DEFAULT 15
 ALTER TABLE services ADD COLUMN IF NOT EXISTS commission_rate DECIMAL(5, 2) DEFAULT 10.00;
 ALTER TABLE services ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
 ALTER TABLE services ADD COLUMN IF NOT EXISTS is_package BOOLEAN DEFAULT FALSE;
+ALTER TABLE services ADD COLUMN IF NOT EXISTS branch_id INT REFERENCES branches(id) ON DELETE CASCADE;
 
 -- Table: packages (Module 4 Bundled Combo Packages)
 CREATE TABLE IF NOT EXISTS packages (
     id SERIAL PRIMARY KEY,
+    branch_id INT REFERENCES branches(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     category VARCHAR(50) DEFAULT 'Combo Package',
     description TEXT,
@@ -66,10 +68,14 @@ CREATE TABLE IF NOT EXISTS packages (
     standalone_price DECIMAL(10, 2) NOT NULL,
     discount_percentage DECIMAL(5, 2) DEFAULT 0,
     validity_days INT DEFAULT 30,
+    valid_until DATE,
     is_active BOOLEAN DEFAULT TRUE,
     service_ids JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE packages ADD COLUMN IF NOT EXISTS valid_until DATE;
+ALTER TABLE packages ADD COLUMN IF NOT EXISTS validity_days INT DEFAULT 30;
+ALTER TABLE packages ADD COLUMN IF NOT EXISTS branch_id INT REFERENCES branches(id) ON DELETE CASCADE;
 
 -- Table: stylists
 CREATE TABLE IF NOT EXISTS stylists (
@@ -135,6 +141,8 @@ CREATE TABLE IF NOT EXISTS appointments (
 );
 
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS branch_id INT REFERENCES branches(id) ON DELETE SET NULL;
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS customer_name VARCHAR(100);
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS customer_phone VARCHAR(20);
 
 -- Table: bills (Receptionist POS Billing)
 CREATE TABLE IF NOT EXISTS bills (

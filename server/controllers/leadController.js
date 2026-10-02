@@ -1,9 +1,20 @@
 import { LeadModel } from '../models/Lead.js';
+import { pool } from '../config/db.js';
 
 export const getLeads = async (req, res) => {
   try {
-    const leads = await LeadModel.findAll();
-    return res.json({ status: 'success', data: leads });
+    const page = parseInt(req.query.page || '1');
+    const limitQuery = req.query.limit || req.query.per_page;
+    const limit = limitQuery === 'all' ? null : parseInt(limitQuery || '0');
+    const search = req.query.search || '';
+    const status = req.query.status || '';
+    const branch_id = req.query.branch_id || '';
+
+    const result = await LeadModel.findAll({ page, limit, search, status, branch_id, currentUser: req.user });
+    if (result && result.pagination) {
+      return res.json({ status: 'success', data: result.data, pagination: result.pagination });
+    }
+    return res.json({ status: 'success', data: result });
   } catch (error) {
     return res.status(500).json({ status: 'error', message: error.message });
   }
@@ -11,12 +22,36 @@ export const getLeads = async (req, res) => {
 
 export const createLead = async (req, res) => {
   try {
-    const { branch_id, name, phone, email, source, notes, followup_date } = req.body;
+    let { branch_id, name, phone, email, source, notes, followup_date } = req.body;
     if (!name || !phone) {
       return res.status(400).json({ status: 'error', message: 'Lead name and phone number are required' });
     }
 
-    const newLead = await LeadModel.create({ branch_id, name, phone, email, source, notes, followup_date });
+    const cleanPhone = phone ? String(phone).replace(/\D/g, '') : '';
+    if (cleanPhone.length !== 10) {
+      return res.status(400).json({ status: 'error', message: 'Phone number must be exactly 10 digits' });
+    }
+
+    // Auto-resolve branch_id if missing or unassigned
+    let resolvedBranchId = branch_id ? parseInt(branch_id) : null;
+    if (!resolvedBranchId && req.user) {
+      if (req.user.branch_id) {
+        resolvedBranchId = req.user.branch_id;
+      } else {
+        const { rows } = await pool.query('SELECT id FROM branches WHERE admin_id = $1 OR created_by_user_id = $1 ORDER BY id ASC LIMIT 1', [req.user.id]);
+        if (rows.length > 0) resolvedBranchId = rows[0].id;
+      }
+    }
+
+    const newLead = await LeadModel.create({
+      branch_id: resolvedBranchId,
+      name,
+      phone: cleanPhone,
+      email,
+      source,
+      notes,
+      followup_date
+    });
     return res.status(201).json({ status: 'success', message: 'Lead created successfully', data: newLead });
   } catch (error) {
     return res.status(500).json({ status: 'error', message: error.message });

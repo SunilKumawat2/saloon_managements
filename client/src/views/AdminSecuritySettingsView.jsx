@@ -13,11 +13,13 @@ import {
   Admin_Get_Users,
   Admin_Create_User,
   Admin_Get_Branches,
-  Admin_Get_Roles
+  Admin_Get_Roles,
+  Admin_Get_Gateway_Config,
+  Admin_Update_Gateway_Config
 } from '../services/apiService';
 
 const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
-  const [activeTab, setActiveTab] = useState('settings'); // 'settings', 'users', 'audit', 'backups'
+  const [activeTab, setActiveTab] = useState('settings'); // 'settings', 'users', 'audit', 'backups', 'gateway'
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState({});
   const [auditLogs, setAuditLogs] = useState([]);
@@ -27,6 +29,16 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
   const [roles, setRoles] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [backupProcessing, setBackupProcessing] = useState(false);
+
+  // Payment Gateway Configuration State
+  const [gatewayForm, setGatewayForm] = useState({
+    gateway_name: 'razorpay',
+    key_id: 'rzp_test_Sandbox_SalonPulse',
+    key_secret: '',
+    mode: 'test',
+    is_enabled: true
+  });
+  const [gatewaySaving, setGatewaySaving] = useState(false);
 
   // User creation modal
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -43,24 +55,49 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [settRes, auditRes, backRes, userRes, branchRes] = await Promise.all([
-        Admin_Get_System_Settings(),
-        Admin_Get_Audit_Logs(),
-        Admin_Get_Database_Backups(),
-        Admin_Get_Users(),
-        Admin_Get_Branches()
+      const [settRes, auditRes, backRes, userRes, branchRes, gwRes] = await Promise.all([
+        Admin_Get_System_Settings().catch(() => null),
+        Admin_Get_Audit_Logs().catch(() => null),
+        Admin_Get_Database_Backups().catch(() => null),
+        Admin_Get_Users().catch(() => null),
+        Admin_Get_Branches().catch(() => null),
+        Admin_Get_Gateway_Config().catch(() => null)
       ]);
 
-      if (settRes.data?.success) setSettings(settRes.data.settings);
-      if (auditRes.data?.success) setAuditLogs(auditRes.data.logs);
-      if (backRes.data?.success) setBackups(backRes.data.backups);
-      if (userRes.data?.users) setUsers(userRes.data.users);
-      if (branchRes.data?.branches) setBranches(branchRes.data.branches);
+      if (settRes?.data?.success) setSettings(settRes.data.settings);
+      if (auditRes?.data?.success) setAuditLogs(auditRes.data.logs);
+      if (backRes?.data?.success) setBackups(backRes.data.backups);
+      if (userRes?.data?.users) setUsers(userRes.data.users);
+      if (branchRes?.data?.branches) setBranches(branchRes.data.branches);
+      if (gwRes?.data?.data) {
+        const d = gwRes.data.data;
+        setGatewayForm({
+          gateway_name: d.gateway_name || 'razorpay',
+          key_id: d.key_id || 'rzp_test_Sandbox_SalonPulse',
+          key_secret: '',
+          mode: d.mode || 'test',
+          is_enabled: d.is_enabled ?? true
+        });
+      }
     } catch (err) {
       console.error('Error fetching settings:', err);
       showFeedback('error', 'Failed to load system settings and audit logs.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveGatewayConfig = async (e) => {
+    e.preventDefault();
+    setGatewaySaving(true);
+    try {
+      const res = await Admin_Update_Gateway_Config(gatewayForm);
+      showFeedback('success', res?.data?.message || 'Payment Gateway Configuration Saved & Activated!');
+      fetchData();
+    } catch (err) {
+      showFeedback('error', err?.data?.message || err.message || 'Failed to update payment gateway config.');
+    } finally {
+      setGatewaySaving(false);
     }
   };
 
@@ -116,45 +153,23 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
       }}>
         <div>
           <h1 style={{ fontSize: '26px', fontWeight: '700', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
-            <ShieldCheck size={28} color="#10B981" /> Admin Panel & Security Settings
+            <ShieldCheck size={28} color="#3b82f6" /> Admin Panel & Security Settings
           </h1>
           <p style={{ color: '#90A4AE', fontSize: '14px', marginTop: '4px', margin: 0 }}>
             Centralized ERP configuration, user access control, security audit logs & database backup recovery.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button
-            onClick={handleCreateBackup}
-            disabled={backupProcessing}
-            style={{
-              padding: '10px 18px', background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-              color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '700',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
-              boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)'
-            }}
-          >
-            <Database size={18} /> {backupProcessing ? 'Generating Dump...' : 'Create DB Backup'}
-          </button>
-          <button
-            onClick={fetchData}
-            style={{
-              padding: '10px', background: '#1E293B', color: '#90A4AE',
-              border: '1px solid #334155', borderRadius: '8px', cursor: 'pointer'
-            }}
-          >
-            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-          </button>
-        </div>
+
       </div>
 
       {/* Feedback Toast */}
       {feedback.msg && (
         <div style={{
           padding: '12px 16px', borderRadius: '8px', marginBottom: '20px',
-          background: feedback.type === 'error' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-          border: `1px solid ${feedback.type === 'error' ? '#EF4444' : '#10B981'}`,
-          color: feedback.type === 'error' ? '#EF4444' : '#10B981',
+          background: feedback.type === 'error' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(37, 99, 235, 0.15)',
+          border: `1px solid ${feedback.type === 'error' ? '#EF4444' : '#2563eb'}`,
+          color: feedback.type === 'error' ? '#EF4444' : '#3b82f6',
           display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '500'
         }}>
           {feedback.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle size={18} />}
@@ -169,6 +184,7 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
       }}>
         {[
           { id: 'settings', label: 'Centralized System & Tax Settings', icon: Sliders },
+          { id: 'gateway', label: 'Payment Gateway & Sandbox Setup', icon: CreditCard },
           { id: 'users', label: 'User & Role Access Control', icon: Users },
           { id: 'audit', label: 'Security Audit Log', icon: Shield },
           { id: 'backups', label: 'Database Backup & Recovery', icon: Database }
@@ -181,8 +197,8 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
               onClick={() => setActiveTab(tab.id)}
               style={{
                 padding: '12px 20px', background: 'transparent', border: 'none',
-                borderBottom: isActive ? '3px solid #10B981' : '3px solid transparent',
-                color: isActive ? '#10B981' : '#90A4AE', fontWeight: isActive ? '700' : '500',
+                borderBottom: isActive ? '3px solid #2563eb' : '3px solid transparent',
+                color: isActive ? '#3b82f6' : '#90A4AE', fontWeight: isActive ? '700' : '500',
                 cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
                 fontSize: '14px', whiteSpace: 'nowrap', transition: 'all 0.2s'
               }}
@@ -197,7 +213,7 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
       {activeTab === 'settings' && (
         <form onSubmit={handleSaveSettings} style={{ background: '#1E293B', border: '1px solid #334155', borderRadius: '16px', padding: '24px' }}>
           <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#fff', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Sliders size={20} color="#10B981" /> Centralized System Configuration
+            <Sliders size={20} color="#3b82f6" /> Centralized System Configuration
           </h3>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginBottom: '24px' }}>
@@ -284,7 +300,7 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
           <button
             type="submit"
             style={{
-              padding: '12px 24px', background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+              padding: '12px 24px', background: '#2563eb',
               color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '700',
               cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px'
             }}
@@ -292,6 +308,120 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
             <Save size={18} /> Save System Settings
           </button>
         </form>
+      )}
+
+      {/* TAB: PAYMENT GATEWAY & SANDBOX SETUP */}
+      {activeTab === 'gateway' && (
+        <div className="glass-panel" style={{ padding: '28px', borderRadius: '16px', background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CreditCard size={22} color="#3b82f6" /> Payment Gateway Integration (Razorpay & Stripe Sandbox)
+              </h3>
+              <p style={{ fontSize: '0.8rem', color: '#90A4AE', marginTop: '4px', margin: 0 }}>
+                Configure live or test sandbox credentials for instant card, UPI QR, and netbanking POS payments.
+              </p>
+            </div>
+            <span style={{
+              fontSize: '0.75rem', padding: '4px 12px', borderRadius: '12px', fontWeight: '800',
+              background: gatewayForm.mode === 'test' ? 'rgba(245, 158, 11, 0.18)' : 'rgba(37, 99, 235, 0.18)',
+              color: gatewayForm.mode === 'test' ? '#F59E0B' : '#3b82f6',
+              border: `1px solid ${gatewayForm.mode === 'test' ? 'rgba(245, 158, 11, 0.4)' : 'rgba(37, 99, 235, 0.4)'}`
+            }}>
+              ⚡ Mode: {gatewayForm.mode === 'test' ? 'Sandbox / Test Mode' : 'Live Production'}
+            </span>
+          </div>
+
+          <form onSubmit={handleSaveGatewayConfig}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+              <div>
+                <label style={{ fontSize: '13px', color: '#90A4AE', display: 'block', marginBottom: '6px' }}>Payment Provider</label>
+                <select
+                  value={gatewayForm.gateway_name}
+                  onChange={e => setGatewayForm({ ...gatewayForm, gateway_name: e.target.value })}
+                  style={{ width: '100%', padding: '10px', background: '#0F172A', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }}
+                >
+                  <option value="razorpay">Razorpay Payment Gateway (UPI, Cards, Netbanking)</option>
+                  <option value="stripe">Stripe Payments (Credit/Debit & International)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '13px', color: '#90A4AE', display: 'block', marginBottom: '6px' }}>Environment Mode</label>
+                <select
+                  value={gatewayForm.mode}
+                  onChange={e => setGatewayForm({ ...gatewayForm, mode: e.target.value })}
+                  style={{ width: '100%', padding: '10px', background: '#0F172A', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }}
+                >
+                  <option value="test">Sandbox / Test Mode (Safe for testing without real money)</option>
+                  <option value="live">Live / Production Mode (Real bank deposits)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '13px', color: '#90A4AE', display: 'block', marginBottom: '6px' }}>Gateway Status</label>
+                <select
+                  value={gatewayForm.is_enabled ? 'true' : 'false'}
+                  onChange={e => setGatewayForm({ ...gatewayForm, is_enabled: e.target.value === 'true' })}
+                  style={{ width: '100%', padding: '10px', background: '#0F172A', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }}
+                >
+                  <option value="true">Enabled (Active for POS Checkout)</option>
+                  <option value="false">Disabled</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+              <div>
+                <label style={{ fontSize: '13px', color: '#90A4AE', display: 'block', marginBottom: '6px' }}>
+                  Merchant Key ID (rzp_test_... or rzp_live_...)
+                </label>
+                <input
+                  type="text"
+                  placeholder="rzp_test_YourKeyIDHere"
+                  value={gatewayForm.key_id}
+                  onChange={e => setGatewayForm({ ...gatewayForm, key_id: e.target.value })}
+                  style={{ width: '100%', padding: '10px', background: '#0F172A', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '13px', color: '#90A4AE', display: 'block', marginBottom: '6px' }}>
+                  Secret Key (Keep secure)
+                </label>
+                <input
+                  type="password"
+                  placeholder="Enter Secret Key to update (or leave blank to keep existing)"
+                  value={gatewayForm.key_secret}
+                  onChange={e => setGatewayForm({ ...gatewayForm, key_secret: e.target.value })}
+                  style={{ width: '100%', padding: '10px', background: '#0F172A', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ background: 'rgba(37, 99, 235, 0.08)', border: '1px solid rgba(37, 99, 235, 0.25)', borderRadius: '12px', padding: '16px', marginBottom: '24px' }}>
+              <div style={{ fontWeight: '800', fontSize: '0.86rem', color: '#3b82f6', marginBottom: '4px' }}>
+                💡 Sandbox Test Mode Instructions:
+              </div>
+              <ul style={{ fontSize: '0.78rem', color: '#90A4AE', paddingLeft: '20px', lineHeight: '1.6', margin: 0 }}>
+                <li>Even without adding custom keys, the system includes an <strong>Interactive Real-time Sandbox Terminal</strong> for POS billing.</li>
+                <li>When you enter your own Razorpay Key ID (<code>rzp_test_...</code>), POS Checkout will launch official <strong>Razorpay Checkout SDK Modal Window</strong> automatically.</li>
+              </ul>
+            </div>
+
+            <button
+              type="submit"
+              disabled={gatewaySaving}
+              style={{
+                padding: '12px 24px', background: '#2563eb',
+                color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '700',
+                cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px'
+              }}
+            >
+              <Save size={18} /> {gatewaySaving ? 'Saving Configuration...' : 'Save & Activate Payment Gateway'}
+            </button>
+          </form>
+        </div>
       )}
 
       {/* TAB 2: USER & ROLE ACCESS CONTROL */}
@@ -304,8 +434,8 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
             <button
               onClick={() => setIsUserModalOpen(true)}
               style={{
-                padding: '8px 16px', background: '#1E293B', color: '#10B981',
-                border: '1px solid #10B981', borderRadius: '8px', fontWeight: '600',
+                padding: '8px 16px', background: '#1E293B', color: '#3b82f6',
+                border: '1px solid #2563eb', borderRadius: '8px', fontWeight: '600',
                 cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
               }}
             >
@@ -335,8 +465,8 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
                     <td style={{ padding: '14px 16px' }}>
                       <span style={{
                         padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '700',
-                        background: u.role_name === 'Admin' ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)',
-                        color: u.role_name === 'Admin' ? '#EF4444' : '#10B981'
+                        background: u.role_name === 'Admin' ? 'rgba(239,68,68,0.15)' : 'rgba(37,99,235,0.15)',
+                        color: u.role_name === 'Admin' ? '#EF4444' : '#3b82f6'
                       }}>
                         {u.role_name || u.role || 'Staff'}
                       </span>
@@ -345,7 +475,7 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
                     <td style={{ padding: '14px 16px' }}>
                       <span style={{
                         padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '600',
-                        background: 'rgba(16,185,129,0.15)', color: '#10B981'
+                        background: 'rgba(37,99,235,0.15)', color: '#3b82f6'
                       }}>
                         Active
                       </span>
@@ -383,11 +513,11 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
                   </td>
                   <td style={{ padding: '14px 16px', fontWeight: '600', color: '#fff' }}>{log.user_name}</td>
                   <td style={{ padding: '14px 16px' }}>
-                    <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: 'rgba(255,255,255,0.08)', color: '#10B981' }}>
+                    <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', background: 'rgba(255,255,255,0.08)', color: '#3b82f6' }}>
                       {log.user_role}
                     </span>
                   </td>
-                  <td style={{ padding: '14px 16px', fontWeight: '700', color: '#10B981' }}>{log.action}</td>
+                  <td style={{ padding: '14px 16px', fontWeight: '700', color: '#3b82f6' }}>{log.action}</td>
                   <td style={{ padding: '14px 16px', color: '#CBD5E1', fontSize: '13px' }}>{log.resource}</td>
                   <td style={{ padding: '14px 16px', color: '#94A3B8', fontSize: '13px' }}>{log.details}</td>
                 </tr>
@@ -408,7 +538,7 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
               onClick={handleCreateBackup}
               disabled={backupProcessing}
               style={{
-                padding: '8px 16px', background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                padding: '8px 16px', background: '#2563eb',
                 color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer'
               }}
             >
@@ -431,13 +561,13 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
                 {backups.map(b => (
                   <tr key={b.id} style={{ borderBottom: '1px solid #334155', fontSize: '14px' }}>
                     <td style={{ padding: '14px 16px', fontWeight: '600', color: '#fff' }}>
-                      <code style={{ color: '#10B981', background: '#0F172A', padding: '2px 8px', borderRadius: '4px' }}>{b.file_name}</code>
+                      <code style={{ color: '#3b82f6', background: '#0F172A', padding: '2px 8px', borderRadius: '4px' }}>{b.file_name}</code>
                     </td>
                     <td style={{ padding: '14px 16px', color: '#CBD5E1' }}>{b.backup_type}</td>
                     <td style={{ padding: '14px 16px', color: '#94A3B8' }}>{(b.file_size_bytes / (1024 * 1024)).toFixed(2)} MB</td>
                     <td style={{ padding: '14px 16px', color: '#94A3B8', fontSize: '13px' }}>{new Date(b.created_at).toLocaleString()}</td>
                     <td style={{ padding: '14px 16px' }}>
-                      <span style={{ padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '600', background: 'rgba(16,185,129,0.15)', color: '#10B981' }}>
+                      <span style={{ padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '600', background: 'rgba(37,99,235,0.15)', color: '#3b82f6' }}>
                         ✓ {b.status}
                       </span>
                     </td>
@@ -519,7 +649,7 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
               <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
                 <button
                   type="submit"
-                  style={{ flex: 1, padding: '12px', background: '#10B981', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}
+                  style={{ flex: 1, padding: '12px', background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}
                 >
                   Create System User
                 </button>
