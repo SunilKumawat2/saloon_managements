@@ -961,17 +961,32 @@ export default function App() {
 
   // Handlers for Module 3 Booking & Receptionist Queue
   const handleAddAppointment = async (newApp) => {
-    const targetDate = newApp.appointment_date || new Date().toISOString().split('T')[0];
-    const targetTimeHour = String(newApp.appointment_time || '10:00').split(':')[0];
+    const normalizeDateStr = (d) => {
+      if (!d) return '';
+      const str = String(d).trim();
+      if (str.includes('T')) return str.split('T')[0];
+      if (str.includes(' ')) return str.split(' ')[0];
+      return str;
+    };
+    const normalizeHourStr = (t) => {
+      if (!t) return '';
+      const match = String(t).match(/(\d{1,2})/);
+      return match ? match[1].padStart(2, '0') : '';
+    };
+
+    const targetDate = normalizeDateStr(newApp.appointment_date || new Date().toISOString().split('T')[0]);
+    const targetTimeHour = normalizeHourStr(newApp.appointment_time || '10:00');
     const targetStylistId = newApp.stylist_id;
 
     // Double-booking prevention check
     const isConflict = appointments.some(a => {
       if (String(a.status || '').toLowerCase() === 'cancelled') return false;
-      const aDate = String(a.appointment_date || '');
-      const aHour = String(a.appointment_time || '').split(':')[0];
-      const aStylistId = a.stylist_id;
-      return aDate === targetDate && aHour === targetTimeHour && String(aStylistId) === String(targetStylistId);
+      const aDate = normalizeDateStr(a.appointment_date);
+      const aHour = normalizeHourStr(a.appointment_time);
+      const isStylistMatch = String(a.stylist_id) === String(targetStylistId) ||
+        (a.stylist_name && combinedStylists.some(s => String(s.id) === String(targetStylistId) && String(a.stylist_name).toLowerCase().trim() === String(s.name).toLowerCase().trim())) ||
+        (filterByBranch(combinedStylists).length === 1);
+      return aDate === targetDate && aHour === targetTimeHour && isStylistMatch;
     });
 
     if (isConflict) {

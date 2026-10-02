@@ -118,20 +118,38 @@ function AppointmentsCalendarView({
     return isNaN(num) ? idVal : num;
   };
 
+  const normalizeDate = (d) => {
+    if (!d) return '';
+    const str = String(d).trim();
+    if (str.includes('T')) return str.split('T')[0];
+    if (str.includes(' ')) return str.split(' ')[0];
+    return str;
+  };
+
+  const normalizeHour = (t) => {
+    if (!t) return '';
+    const match = String(t).match(/(\d{1,2})/);
+    return match ? match[1].padStart(2, '0') : '';
+  };
+
   const checkDoubleBooking = (dateStr, timeStr, stylistId, excludeAppId = null) => {
     if (!dateStr || !timeStr || !stylistId) return null;
-    const targetHour = String(timeStr).split(':')[0];
+    const normTargetDate = normalizeDate(dateStr);
+    const normTargetHour = normalizeHour(timeStr);
     
     return appointments.find(app => {
       if (excludeAppId && String(app.id) === String(excludeAppId)) return false;
       if (String(app.status || '').toLowerCase() === 'cancelled') return false;
 
-      const appDateMatch = String(app.appointment_date) === String(dateStr);
-      const appHour = String(app.appointment_time || '').split(':')[0];
-      const appTimeMatch = appHour === targetHour;
+      const normAppDate = normalizeDate(app.appointment_date);
+      const normAppHour = normalizeHour(app.appointment_time);
+
+      const appDateMatch = normAppDate === normTargetDate;
+      const appTimeMatch = normAppHour === normTargetHour;
 
       const isStylistMatch = String(app.stylist_id) === String(stylistId) ||
-        (app.stylist_name && stylists.some(s => String(s.id) === String(stylistId) && String(app.stylist_name).toLowerCase().trim() === String(s.name).toLowerCase().trim()));
+        (app.stylist_name && stylists.some(s => String(s.id) === String(stylistId) && String(app.stylist_name).toLowerCase().trim() === String(s.name).toLowerCase().trim())) ||
+        (stylists.length === 1);
 
       return appDateMatch && appTimeMatch && isStylistMatch;
     });
