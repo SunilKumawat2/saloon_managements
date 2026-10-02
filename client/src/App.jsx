@@ -280,6 +280,33 @@ export default function App() {
     );
   }, [branches, currentUser]);
 
+  const combinedStylists = useMemo(() => {
+    const staffUsers = (users || []).filter(u => {
+      if (!u) return false;
+      const rName = String(u.role || u.role_name || '').toLowerCase();
+      return rName.includes('staff') || rName.includes('stylist') || u.role_id === 4;
+    }).map(u => ({
+      id: u.id,
+      branch_id: u.branch_id,
+      admin_id: u.admin_id || u.created_by_admin_id || u.created_by_user_id,
+      created_by_admin_id: u.admin_id || u.created_by_admin_id || u.created_by_user_id,
+      name: u.name,
+      phone: u.phone,
+      specialization: u.specialization || u.designation || 'Staff Stylist',
+      rating: u.rating || 5.0,
+      is_available: u.is_active !== false
+    }));
+
+    const existingIds = new Set(staffUsers.map(s => String(s.id)));
+    const existingNames = new Set(staffUsers.map(s => (s.name || '').toLowerCase()));
+
+    const extraStylists = (stylists || []).filter(st => 
+      st && !existingIds.has(String(st.id)) && !existingNames.has(String(st.name || '').toLowerCase())
+    );
+
+    return [...staffUsers, ...extraStylists];
+  }, [users, stylists]);
+
   useEffect(() => {
     try {
       localStorage.setItem('saloon_enrolled_members', JSON.stringify(members));
@@ -500,42 +527,59 @@ export default function App() {
     const isScoped = isBranchScopedUser(currentUser);
     const isOwner = isSalonAdmin(currentUser) && !isMaster;
 
-    // 1. If specific branch is selected in dropdown (e.g. Branch #1), filter by branch_id
-    if (selectedBranchId !== 'all') {
-      return list.filter(item => item && String(item.branch_id) === String(selectedBranchId));
-    }
-
-    // 2. Super Admin in 'all' view sees everything
+    // 1. Super Admin sees everything
     if (isMaster) {
+      if (selectedBranchId !== 'all') {
+        return list.filter(item => item && String(item.branch_id) === String(selectedBranchId));
+      }
       return list;
     }
 
-    // 3. Branch Scoped Member (Manager, Receptionist, Staff):
-    // Strictly limited to their single assigned branch_id!
+    // 2. Branch-Scoped User (Manager, Receptionist, Staff)
     if (isScoped) {
-      return list.filter(item => item && String(item.branch_id) === String(currentUser.branch_id));
-    }
-
-    // 4. Salon Admin (Salon Owner) in 'all' view:
-    // Only sees items belonging to their owned branches or created by themselves
-    if (isOwner) {
-      const myBranchIds = new Set(accessibleBranches.map(b => String(b.id)));
+      const userBranchId = String(currentUser.branch_id || '');
       return list.filter(item => {
         if (!item) return false;
-        const itemAdminId = item.created_by_admin_id || item.admin_id || item.created_by;
-        if (itemAdminId && String(itemAdminId) === String(currentUser.id)) return true;
+        if (selectedBranchId !== 'all' && String(item.branch_id) !== String(selectedBranchId)) {
+          return false;
+        }
+        return String(item.branch_id) === userBranchId;
+      });
+    }
 
-        // Hide Super Admin
-        if (item.is_super_admin || item.email === 'admin@saloon.com' || item.id === 1) return false;
-        const itemRole = String(item.role || item.role_name || '').toLowerCase();
-        if (itemRole.includes('super')) return false;
+    // 3. Salon Admin (Salon Owner)
+    if (isOwner) {
+      const currentAdminId = String(currentUser.id);
+      const myBranchIds = new Set(accessibleBranches.map(b => String(b.id)));
 
-        // Check if item belongs to one of owner's branches
-        if (item.branch_id) {
-          return myBranchIds.has(String(item.branch_id));
+      return list.filter(item => {
+        if (!item) return false;
+
+        // Hide Super Admin items / accounts
+        if (item.is_super_admin || item.email === 'admin@saloon.com') return false;
+
+        // Check explicit admin creator ID
+        const itemAdminId = item.created_by_admin_id || item.admin_id || item.created_by_user_id || item.created_by;
+        if (itemAdminId) {
+          if (String(itemAdminId) !== currentAdminId) {
+            return false; // Belongs to another admin!
+          }
+          if (selectedBranchId !== 'all' && String(item.branch_id) !== String(selectedBranchId)) {
+            return false;
+          }
+          return true;
         }
 
-        return true;
+        // If item has a branch_id, check if it belongs to one of owner's branches
+        if (item.branch_id && myBranchIds.has(String(item.branch_id))) {
+          if (selectedBranchId !== 'all' && String(item.branch_id) !== String(selectedBranchId)) {
+            return false;
+          }
+          return true;
+        }
+
+        // Default mock/unknown items without admin_id or matching branch: hide for regular admin
+        return false;
       });
     }
 
@@ -647,14 +691,21 @@ export default function App() {
   };
 
   const handleAddCustomer = async (newCust, avatarFile) => {
+    const curAdminId = currentUser ? String(currentUser.admin_id || currentUser.id) : null;
+    const custPayload = {
+      ...newCust,
+      admin_id: newCust.admin_id || curAdminId,
+      created_by_admin_id: newCust.created_by_admin_id || curAdminId,
+      created_by_user_id: currentUser?.id
+    };
     const localPreview = avatarFile ? URL.createObjectURL(avatarFile) : null;
     try {
-      const res = await Admin_Create_Customer(newCust).catch(() => null);
+      const res = await Admin_Create_Customer(custPayload).catch(() => null);
       let customer = res?.data?.data || res?.data;
       if (!customer || typeof customer.name === 'number' || customer.name === 1 || customer.name === '1' || !customer.name) {
-        customer = { id: Date.now(), ...newCust, avatar_url: localPreview };
+        customer = { id: Date.now(), ...custPayload, avatar_url: localPreview };
       } else {
-        customer = { ...customer, ...newCust, name: newCust.name || customer.name, avatar_url: customer.avatar_url || localPreview };
+        customer = { ...customer, ...custPayload, name: custPayload.name || customer.name, avatar_url: customer.avatar_url || localPreview };
       }
       if (avatarFile && customer.id) {
         const avatarRes = await Admin_Upload_Customer_Avatar(customer.id, avatarFile).catch(() => null);
@@ -663,11 +714,13 @@ export default function App() {
           customer = { ...customer, avatar_url: uploadedUrl };
         }
       }
+      if (!customer.admin_id && curAdminId) customer.admin_id = curAdminId;
+      if (!customer.created_by_admin_id && curAdminId) customer.created_by_admin_id = curAdminId;
       setCustomers(prev => [customer, ...prev.filter(c => String(c.id) !== String(customer.id))]);
       return customer;
     } catch (e) {
       console.error(e);
-      const fallback = { id: Date.now(), ...newCust, avatar_url: localPreview };
+      const fallback = { id: Date.now(), ...custPayload, avatar_url: localPreview };
       setCustomers(prev => [fallback, ...prev]);
       return fallback;
     }
@@ -893,13 +946,22 @@ export default function App() {
 
   // Handlers for Module 3 Booking & Receptionist Queue
   const handleAddAppointment = async (newApp) => {
+    const curAdminId = currentUser ? String(currentUser.admin_id || currentUser.id) : null;
+    const appWithAdmin = {
+      ...newApp,
+      admin_id: newApp.admin_id || curAdminId,
+      created_by_admin_id: newApp.created_by_admin_id || curAdminId,
+      created_by_user_id: currentUser?.id
+    };
     let newItem = null;
     try {
-      const res = await Admin_Create_Appointment(newApp).catch(() => null);
-      newItem = res?.data?.data || res?.data || { id: Date.now(), ...newApp, status: newApp.status || 'Confirmed' };
+      const res = await Admin_Create_Appointment(appWithAdmin).catch(() => null);
+      newItem = res?.data?.data || res?.data || { id: Date.now(), ...appWithAdmin, status: appWithAdmin.status || 'Confirmed' };
+      if (!newItem.admin_id && curAdminId) newItem.admin_id = curAdminId;
+      if (!newItem.created_by_admin_id && curAdminId) newItem.created_by_admin_id = curAdminId;
     } catch (e) {
       console.error(e);
-      newItem = { id: Date.now(), ...newApp, status: newApp.status || 'Confirmed' };
+      newItem = { id: Date.now(), ...appWithAdmin, status: appWithAdmin.status || 'Confirmed' };
     }
     setAppointments(prev => [newItem, ...prev]);
     return newItem;
@@ -1737,7 +1799,7 @@ export default function App() {
               appointments={filterByBranch(appointments)}
               bills={filterByBranch(bills)}
               customers={filterByBranch(customers)}
-              stylists={filterByBranch(stylists)}
+              stylists={filterByBranch(combinedStylists)}
               services={filterByBranch(services)}
               members={members}
               selectedBranchId={selectedBranchId}
@@ -1758,7 +1820,7 @@ export default function App() {
           canAccess(['manage_appointments', 'manage_billing']) ? (
             <ReceptionistView
               customers={filterByBranch(customers)}
-              stylists={filterByBranch(stylists)}
+              stylists={filterByBranch(combinedStylists)}
               services={filterByBranch(services)}
               appointments={filterByBranch(appointments)}
               members={members}
@@ -1783,7 +1845,7 @@ export default function App() {
               customer={posCustomer}
               stylistId={posStylistId}
               initialServices={posInitialServices}
-              stylists={filterByBranch(stylists)}
+              stylists={filterByBranch(combinedStylists)}
               services={filterByBranch(services)}
               packages={filterByBranch(packages)}
               categories={categories}
@@ -1808,7 +1870,7 @@ export default function App() {
             <BillingHistoryView
               bills={filterByBranch(bills)}
               customers={filterByBranch(customers)}
-              stylists={filterByBranch(stylists)}
+              stylists={filterByBranch(combinedStylists)}
               members={members}
               selectedBranchId={selectedBranchId}
               onDeleteBill={handleDeleteBill}
@@ -1881,7 +1943,7 @@ export default function App() {
         {activeTab === 'tracking_records' && (
           canAccess(['view_reports', 'manage_finances', 'all']) ? (
             <StaffCustomerTrackingView
-              stylists={filterByBranch(stylists)}
+              stylists={filterByBranch(combinedStylists)}
               customers={filterByBranch(customers)}
               appointments={filterByBranch(appointments)}
               bills={filterByBranch(bills)}
