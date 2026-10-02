@@ -961,6 +961,24 @@ export default function App() {
 
   // Handlers for Module 3 Booking & Receptionist Queue
   const handleAddAppointment = async (newApp) => {
+    const targetDate = newApp.appointment_date || new Date().toISOString().split('T')[0];
+    const targetTimeHour = String(newApp.appointment_time || '10:00').split(':')[0];
+    const targetStylistId = newApp.stylist_id;
+
+    // Double-booking prevention check
+    const isConflict = appointments.some(a => {
+      if (String(a.status || '').toLowerCase() === 'cancelled') return false;
+      const aDate = String(a.appointment_date || '');
+      const aHour = String(a.appointment_time || '').split(':')[0];
+      const aStylistId = a.stylist_id;
+      return aDate === targetDate && aHour === targetTimeHour && String(aStylistId) === String(targetStylistId);
+    });
+
+    if (isConflict) {
+      alert(`⚠️ Cannot book appointment: Staff member is ALREADY BOOKED for ${targetDate} at ${newApp.appointment_time}. Double booking is blocked.`);
+      return null;
+    }
+
     const curAdminId = currentUser ? String(currentUser.admin_id || currentUser.id) : null;
     const appWithAdmin = {
       ...newApp,
@@ -971,6 +989,10 @@ export default function App() {
     let newItem = null;
     try {
       const res = await Admin_Create_Appointment(appWithAdmin).catch(() => null);
+      if (res?.data?.status === 'error' || res?.status === 400) {
+        alert(res?.data?.message || 'Double booking error');
+        return null;
+      }
       newItem = res?.data?.data || res?.data || { id: Date.now(), ...appWithAdmin, status: appWithAdmin.status || 'Confirmed' };
       if (!newItem.admin_id && curAdminId) newItem.admin_id = curAdminId;
       if (!newItem.created_by_admin_id && curAdminId) newItem.created_by_admin_id = curAdminId;

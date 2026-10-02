@@ -118,9 +118,34 @@ function AppointmentsCalendarView({
     return isNaN(num) ? idVal : num;
   };
 
+  const checkDoubleBooking = (dateStr, timeStr, stylistId, excludeAppId = null) => {
+    if (!dateStr || !timeStr || !stylistId) return null;
+    const targetHour = String(timeStr).split(':')[0];
+    
+    return appointments.find(app => {
+      if (excludeAppId && String(app.id) === String(excludeAppId)) return false;
+      if (String(app.status || '').toLowerCase() === 'cancelled') return false;
+
+      const appDateMatch = String(app.appointment_date) === String(dateStr);
+      const appHour = String(app.appointment_time || '').split(':')[0];
+      const appTimeMatch = appHour === targetHour;
+
+      const isStylistMatch = String(app.stylist_id) === String(stylistId) ||
+        (app.stylist_name && stylists.some(s => String(s.id) === String(stylistId) && String(app.stylist_name).toLowerCase().trim() === String(s.name).toLowerCase().trim()));
+
+      return appDateMatch && appTimeMatch && isStylistMatch;
+    });
+  };
+
   // Submit Add Booking
   const handleAddSubmit = (e) => {
     e.preventDefault();
+    const conflict = checkDoubleBooking(newApp.appointment_date, newApp.appointment_time, newApp.stylist_id);
+    if (conflict) {
+      alert(`⚠️ Cannot book appointment: Staff member is ALREADY BOOKED for ${newApp.appointment_date} at ${newApp.appointment_time}. Please select another time slot or staff member.`);
+      return;
+    }
+
     const selectedService = services.find(s => String(s.id) === String(newApp.service_id));
     const selectedCust = customers.find(c => String(c.id) === String(newApp.customer_id));
     const selectedStylist = stylists.find(s => String(s.id) === String(newApp.stylist_id));
@@ -768,7 +793,14 @@ function AppointmentsCalendarView({
                 <div className="form-group">
                   <label>Assign Stylist</label>
                   <select value={newApp.stylist_id} onChange={(e) => setNewApp({ ...newApp, stylist_id: e.target.value })}>
-                    {stylists.map(st => <option key={st.id} value={st.id}>{st.name} ({st.specialization})</option>)}
+                    {stylists.map(st => {
+                      const isB = checkDoubleBooking(newApp.appointment_date, newApp.appointment_time, st.id);
+                      return (
+                        <option key={st.id} value={st.id}>
+                          {st.name} ({st.specialization}) {isB ? '🚫 (Booked at ' + newApp.appointment_time + ')' : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
               </div>
@@ -782,10 +814,32 @@ function AppointmentsCalendarView({
                 <div className="form-group">
                   <label>Booking Time Slot</label>
                   <select value={newApp.appointment_time} onChange={(e) => setNewApp({ ...newApp, appointment_time: e.target.value })}>
-                    {TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}
+                    {TIME_SLOTS.map(t => {
+                      const isB = checkDoubleBooking(newApp.appointment_date, t, newApp.stylist_id);
+                      return (
+                        <option key={t} value={t}>
+                          {t} {isB ? `🚫 (Already Booked - ${isB.customer_name || 'Client'})` : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
               </div>
+
+              {checkDoubleBooking(newApp.appointment_date, newApp.appointment_time, newApp.stylist_id) && (
+                <div style={{
+                  padding: '10px 14px',
+                  background: 'rgba(239, 68, 68, 0.12)',
+                  border: '1px solid rgba(239, 68, 68, 0.35)',
+                  borderRadius: '8px',
+                  color: '#ef4444',
+                  fontSize: '0.8rem',
+                  fontWeight: '700',
+                  marginTop: '10px'
+                }}>
+                  ⚠️ This staff member is ALREADY BOOKED for {newApp.appointment_date} at {newApp.appointment_time}. Please select an open time slot or another staff member.
+                </div>
+              )}
 
               <div className="form-group">
                 <label>Booking Source</label>
@@ -805,7 +859,15 @@ function AppointmentsCalendarView({
                 <button type="button" onClick={() => setShowAddModal(false)} className="glass-card" style={{ padding: '8px 16px', cursor: 'pointer', color: 'var(--text-sub)' }}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary">
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={Boolean(checkDoubleBooking(newApp.appointment_date, newApp.appointment_time, newApp.stylist_id))}
+                  style={{
+                    opacity: checkDoubleBooking(newApp.appointment_date, newApp.appointment_time, newApp.stylist_id) ? 0.5 : 1,
+                    cursor: checkDoubleBooking(newApp.appointment_date, newApp.appointment_time, newApp.stylist_id) ? 'not-allowed' : 'pointer'
+                  }}
+                >
                   Confirm Booking
                 </button>
               </div>
