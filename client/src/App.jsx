@@ -618,17 +618,26 @@ export default function App() {
   };
 
   const handleAddUser = async (newUser) => {
+    const curAdminId = currentUser ? String(currentUser.admin_id || currentUser.id) : null;
+    const userPayload = {
+      ...newUser,
+      admin_id: newUser.admin_id || curAdminId,
+      created_by_admin_id: newUser.created_by_admin_id || curAdminId,
+      created_by_user_id: currentUser?.id
+    };
     try {
-      const res = await Admin_Create_User(newUser).catch(() => null);
-      const createdItem = res?.data?.data || res?.data;
+      const res = await Admin_Create_User(userPayload).catch(() => null);
+      let createdItem = res?.data?.data || res?.data;
       if (createdItem && createdItem.id) {
+        if (!createdItem.admin_id && curAdminId) createdItem.admin_id = curAdminId;
+        if (!createdItem.created_by_admin_id && curAdminId) createdItem.created_by_admin_id = curAdminId;
         setUsers(prev => [createdItem, ...prev.filter(u => String(u.id) !== String(createdItem.id))]);
         return createdItem;
       }
-      const roleObj = roles.find(r => r.id === newUser.role_id) || { name: newUser.role || 'Admin' };
+      const roleObj = roles.find(r => r.id === userPayload.role_id) || { name: userPayload.role || 'Staff' };
       const fallbackUser = {
         id: Date.now(),
-        ...newUser,
+        ...userPayload,
         role: roleObj.name,
         role_name: roleObj.name,
         is_active: true,
@@ -638,10 +647,10 @@ export default function App() {
       return fallbackUser;
     } catch (e) {
       console.error('Failed to create user:', e);
-      const roleObj = roles.find(r => r.id === newUser.role_id) || { name: newUser.role || 'Admin' };
+      const roleObj = roles.find(r => r.id === userPayload.role_id) || { name: userPayload.role || 'Staff' };
       const fallbackUser = {
         id: Date.now(),
-        ...newUser,
+        ...userPayload,
         role: roleObj.name,
         role_name: roleObj.name,
         is_active: true,

@@ -112,6 +112,12 @@ function AppointmentsCalendarView({
     setSelectedDate(d.toISOString().split('T')[0]);
   };
 
+  const parseSafeId = (idVal) => {
+    if (idVal == null) return idVal;
+    const num = Number(idVal);
+    return isNaN(num) ? idVal : num;
+  };
+
   // Submit Add Booking
   const handleAddSubmit = (e) => {
     e.preventDefault();
@@ -122,9 +128,9 @@ function AppointmentsCalendarView({
     if (onAddAppointment) {
       onAddAppointment({
         ...newApp,
-        customer_id: parseInt(newApp.customer_id),
-        stylist_id: parseInt(newApp.stylist_id),
-        service_id: parseInt(newApp.service_id),
+        customer_id: parseSafeId(newApp.customer_id),
+        stylist_id: parseSafeId(newApp.stylist_id),
+        service_id: parseSafeId(newApp.service_id),
         customer_name: selectedCust?.name || 'Walk-in Client',
         service_name: selectedService?.name || 'Salon Service',
         stylist_name: selectedStylist?.name || 'Staff',
@@ -162,7 +168,7 @@ function AppointmentsCalendarView({
         ...reschedulingApp,
         appointment_date: rescheduleDate,
         appointment_time: rescheduleTime,
-        stylist_id: parseInt(rescheduleStylist || reschedulingApp.stylist_id),
+        stylist_id: parseSafeId(rescheduleStylist || reschedulingApp.stylist_id),
         stylist_name: selectedStylist?.name || reschedulingApp.stylist_name
       });
     }
@@ -378,7 +384,9 @@ function AppointmentsCalendarView({
                 {/* Stylist Columns for this Time Slot */}
                 {stylists.map((st, idx) => {
                   const matched = filteredAppointments.filter(a => {
-                    const isStylistMatch = String(a.stylist_id) === String(st.id) || (!a.stylist_id && idx === 0);
+                    const isStylistMatch = String(a.stylist_id) === String(st.id) ||
+                      (a.stylist_name && st.name && String(a.stylist_name).toLowerCase().trim() === String(st.name).toLowerCase().trim()) ||
+                      (!a.stylist_id && !a.stylist_name && idx === 0);
                     const appHour = a.appointment_time ? String(a.appointment_time).split(':')[0] : '';
                     const targetHour = time.split(':')[0];
                     return isStylistMatch && appHour === targetHour;
