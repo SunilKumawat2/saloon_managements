@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Calendar, Clock, Scissors, UserCheck, Plus, CheckCircle2,
   AlertCircle, ChevronLeft, ChevronRight, MessageSquare, Send,
@@ -14,18 +14,21 @@ const TIME_SLOTS = [
   '17:00', '18:00', '19:00', '20:00'
 ];
 
-// Helper: Format Date robustly to YYYY-MM-DD
+// Helper: Format Date robustly to YYYY-MM-DD in local time
 const formatDateKey = (dateStr) => {
   if (!dateStr) return '';
-  const str = String(dateStr);
-  if (str.includes('T')) {
-    const d = new Date(str);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+  const str = String(dateStr).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    return str;
   }
-  return str.split(' ')[0].split('T')[0];
+  const d = new Date(str);
+  if (isNaN(d.getTime())) {
+    return str.split('T')[0].split(' ')[0];
+  }
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 // Helper: Calculate end time + 15m buffer
@@ -45,11 +48,62 @@ function AppointmentsCalendarView({
   customers = [],
   stylists = [],
   services = [],
+  timeSlots = [],
   onAddAppointment,
   onUpdateAppointment,
   onDeleteAppointment,
   onUpdateAppointmentStatus
 }) {
+  const getDayNameFromDateStr = (dateStr) => {
+    if (!dateStr) return '';
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    return days[d.getDay()];
+  };
+
+  const availableTimeSlots = useMemo(() => {
+    if (!timeSlots || timeSlots.length === 0) return TIME_SLOTS;
+    const targetDate = newApp?.appointment_date || selectedDate;
+    const dayName = getDayNameFromDateStr(targetDate);
+
+    const active = timeSlots.filter(s => {
+      if (s.is_active === false) return false;
+
+      if (s.specific_date && targetDate) {
+        return s.specific_date === targetDate;
+      }
+      if (s.specific_date && s.specific_date !== targetDate) {
+        return false;
+      }
+
+      if (s.day_of_week && s.day_of_week !== 'ALL' && dayName) {
+        return s.day_of_week === dayName;
+      }
+
+      return true;
+    });
+
+    return active.length > 0 ? active : timeSlots.filter(s => s.is_active !== false);
+  }, [timeSlots, newApp?.appointment_date, selectedDate]);
+
+  const getSlotValue = (slotItem) => typeof slotItem === 'object' ? (slotItem.start_time || slotItem.slot_time) : slotItem;
+
+  const getSlotLabel = (slotItem) => {
+    if (typeof slotItem === 'object') {
+      const s = slotItem.start_time || slotItem.slot_time;
+      const e = slotItem.end_time;
+      const d = slotItem.duration_minutes || 60;
+      let extra = '';
+      if (slotItem.specific_date) {
+        extra = ` [📆 Date: ${String(slotItem.specific_date).split('T')[0]}]`;
+      } else if (slotItem.day_of_week && slotItem.day_of_week !== 'ALL') {
+        extra = ` [📅 ${slotItem.day_of_week}]`;
+      }
+      return e ? `${s} - ${e} (${d} min)${extra}` : `${s} (${d} min)${extra}`;
+    }
+    return slotItem;
+  };
   // Calendar View Mode: 'dayGrid' | 'weekGrid' | 'tableList'
   const [viewMode, setViewMode] = useState('dayGrid');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -66,14 +120,42 @@ function AppointmentsCalendarView({
 
   // New Booking State
   const [newApp, setNewApp] = useState({
-    customer_id: customers[0]?.id || 1,
-    stylist_id: stylists[0]?.id || 1,
-    service_id: services[0]?.id || 1,
+    customer_id: customers[0]?.id || '',
+    stylist_id: stylists[0]?.id || '',
+    service_id: services[0]?.id || '',
     appointment_date: new Date().toISOString().split('T')[0],
     appointment_time: '11:00',
     source: 'Online Self-Booking',
     notes: ''
   });
+
+  // Sync default IDs when stylists, customers, or services load
+  React.useEffect(() => {
+    if (stylists && stylists.length > 0) {
+      setNewApp(prev => {
+        const exists = stylists.some(s => String(s.id) === String(prev.stylist_id));
+        return exists ? prev : { ...prev, stylist_id: stylists[0].id };
+      });
+    }
+  }, [stylists]);
+
+  React.useEffect(() => {
+    if (customers && customers.length > 0) {
+      setNewApp(prev => {
+        const exists = customers.some(c => String(c.id) === String(prev.customer_id));
+        return exists ? prev : { ...prev, customer_id: customers[0].id };
+      });
+    }
+  }, [customers]);
+
+  React.useEffect(() => {
+    if (services && services.length > 0) {
+      setNewApp(prev => {
+        const exists = services.some(s => String(s.id) === String(prev.service_id));
+        return exists ? prev : { ...prev, service_id: services[0].id };
+      });
+    }
+  }, [services]);
 
   // Edit Booking State
   const [editData, setEditData] = useState({
@@ -93,10 +175,14 @@ function AppointmentsCalendarView({
 
   // Open Add Modal & Sync Selected Date
   const handleOpenAddModal = () => {
+    const defaultStylistId = (stylists && stylists.length > 0) ? stylists[0].id : '';
+    const defaultCustId = (customers && customers.length > 0) ? customers[0].id : '';
+    const defaultServiceId = (services && services.length > 0) ? services[0].id : '';
+
     setNewApp({
-      customer_id: customers[0]?.id || 1,
-      stylist_id: stylists[0]?.id || 1,
-      service_id: services[0]?.id || 1,
+      customer_id: defaultCustId,
+      stylist_id: defaultStylistId,
+      service_id: defaultServiceId,
       appointment_date: selectedDate,
       appointment_time: '11:00',
       source: 'Online Self-Booking',
@@ -119,11 +205,7 @@ function AppointmentsCalendarView({
   };
 
   const normalizeDate = (d) => {
-    if (!d) return '';
-    const str = String(d).trim();
-    if (str.includes('T')) return str.split('T')[0];
-    if (str.includes(' ')) return str.split(' ')[0];
-    return str;
+    return formatDateKey(d);
   };
 
   // Normalize time to HH:MM — handles "11:00", "11:00:00", "11:00 AM", etc.
@@ -168,22 +250,29 @@ function AppointmentsCalendarView({
   // Submit Add Booking
   const handleAddSubmit = (e) => {
     e.preventDefault();
-    const conflict = checkDoubleBooking(newApp.appointment_date, newApp.appointment_time, newApp.stylist_id);
+    let effectiveStylistId = newApp.stylist_id;
+    let selectedStylist = stylists.find(s => String(s.id) === String(effectiveStylistId));
+
+    if (!selectedStylist && stylists && stylists.length > 0) {
+      selectedStylist = stylists[0];
+      effectiveStylistId = selectedStylist.id;
+    }
+
+    const conflict = checkDoubleBooking(newApp.appointment_date, newApp.appointment_time, effectiveStylistId);
     if (conflict) {
       alert(`⚠️ Cannot book appointment: Staff member is ALREADY BOOKED for ${newApp.appointment_date} at ${newApp.appointment_time}. Please select another time slot or staff member.`);
       return;
     }
 
-    const selectedService = services.find(s => String(s.id) === String(newApp.service_id));
-    const selectedCust = customers.find(c => String(c.id) === String(newApp.customer_id));
-    const selectedStylist = stylists.find(s => String(s.id) === String(newApp.stylist_id));
+    const selectedService = services.find(s => String(s.id) === String(newApp.service_id)) || (services[0] || null);
+    const selectedCust = customers.find(c => String(c.id) === String(newApp.customer_id)) || (customers[0] || null);
 
     if (onAddAppointment) {
       onAddAppointment({
         ...newApp,
-        customer_id: parseSafeId(newApp.customer_id),
-        stylist_id: parseSafeId(newApp.stylist_id),
-        service_id: parseSafeId(newApp.service_id),
+        customer_id: parseSafeId(newApp.customer_id || selectedCust?.id),
+        stylist_id: parseSafeId(effectiveStylistId),
+        service_id: parseSafeId(newApp.service_id || selectedService?.id),
         customer_name: selectedCust?.name || 'Walk-in Client',
         service_name: selectedService?.name || 'Salon Service',
         stylist_name: selectedStylist?.name || 'Staff',
@@ -427,11 +516,17 @@ function AppointmentsCalendarView({
             </div>
 
             {/* Time Slot Rows */}
-            {TIME_SLOTS.map(time => (
+            {availableTimeSlots.map(slotItem => {
+              const time = getSlotValue(slotItem);
+              const label = getSlotLabel(slotItem);
+              return (
               <div key={time} style={{ display: 'grid', gridTemplateColumns: `100px repeat(${stylists.length || 3}, 1fr)`, gap: '1px', background: 'var(--border)', borderTop: 'none' }}>
                 {/* Time Column */}
-                <div style={{ background: 'var(--bg-card)', padding: '16px 10px', fontWeight: '800', fontSize: '0.82rem', color: 'var(--accent-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {time}
+                <div style={{ background: 'var(--bg-card)', padding: '16px 10px', fontWeight: '800', fontSize: '0.78rem', color: 'var(--accent-gold)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                  <span>{time}</span>
+                  {typeof slotItem === 'object' && slotItem.end_time && (
+                    <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: '600' }}>till {slotItem.end_time}</span>
+                  )}
                 </div>
 
                 {/* Stylist Columns for this Time Slot */}
@@ -549,7 +644,8 @@ function AppointmentsCalendarView({
                   );
                 })}
               </div>
-            ))}
+            );
+            })}
           </div>
         </div>
       )}
@@ -820,7 +916,10 @@ function AppointmentsCalendarView({
 
                 <div className="form-group">
                   <label>Assign Stylist</label>
-                  <select value={newApp.stylist_id} onChange={(e) => setNewApp({ ...newApp, stylist_id: e.target.value })}>
+                  <select
+                    value={stylists.some(st => String(st.id) === String(newApp.stylist_id)) ? newApp.stylist_id : (stylists[0]?.id || '')}
+                    onChange={(e) => setNewApp({ ...newApp, stylist_id: e.target.value })}
+                  >
                     {stylists.map(st => {
                       const isB = checkDoubleBooking(newApp.appointment_date, newApp.appointment_time, st.id);
                       return (
@@ -842,11 +941,13 @@ function AppointmentsCalendarView({
                 <div className="form-group">
                   <label>Booking Time Slot</label>
                   <select value={newApp.appointment_time} onChange={(e) => setNewApp({ ...newApp, appointment_time: e.target.value })}>
-                    {TIME_SLOTS.map(t => {
+                    {availableTimeSlots.map(slotItem => {
+                      const t = getSlotValue(slotItem);
+                      const label = getSlotLabel(slotItem);
                       const isB = checkDoubleBooking(newApp.appointment_date, t, newApp.stylist_id);
                       return (
                         <option key={t} value={t}>
-                          {t} {isB ? `🚫 (Already Booked - ${isB.customer_name || 'Client'})` : ''}
+                          {label} {isB ? `🚫 (Already Booked - ${isB.customer_name || 'Client'})` : ''}
                         </option>
                       );
                     })}
@@ -943,7 +1044,10 @@ function AppointmentsCalendarView({
                 <div className="form-group">
                   <label>Booking Time</label>
                   <select value={editData.appointment_time} onChange={(e) => setEditData({ ...editData, appointment_time: e.target.value })}>
-                    {TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}
+                    {availableTimeSlots.map(slotItem => {
+                      const t = getSlotValue(slotItem);
+                      return <option key={t} value={t}>{getSlotLabel(slotItem)}</option>;
+                    })}
                   </select>
                 </div>
               </div>
@@ -1003,7 +1107,10 @@ function AppointmentsCalendarView({
               <div className="form-group">
                 <label>New Time Slot</label>
                 <select value={rescheduleTime} onChange={(e) => setRescheduleTime(e.target.value)}>
-                  {TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}
+                  {availableTimeSlots.map(slotItem => {
+                    const t = getSlotValue(slotItem);
+                    return <option key={t} value={t}>{getSlotLabel(slotItem)}</option>;
+                  })}
                 </select>
               </div>
 

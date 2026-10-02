@@ -63,8 +63,7 @@ const DEFAULT_CUSTOMERS = [
   { id: 1, name: 'Rahul Kumar', phone: '9988776655', email: 'rahul.k@gmail.com' },
   { id: 2, name: 'Sneha Kapoor', phone: '9988776656', email: 'sneha.k@outlook.com' },
   { id: 3, name: 'Karan Johar', phone: '9988776657', email: 'karan@media.com' },
-  { id: 4, name: 'Priya Sharma', phone: '9876543210', email: 'priya@gmail.com' },
-  { id: 5, name: 'Amit Verma', phone: '9123456789', email: 'amit.v@yahoo.com' }
+  { id: 4, name: 'Priya Sharma', phone: '9876543210', email: 'priya@gmail.com' }
 ];
 
 const LoyaltyMembershipView = ({ customers: propCustomers = [], bills: propBills = [], members: propMembers = [], onUpdateMembers, onCreateBill, selectedBranchId = 'all' }) => {

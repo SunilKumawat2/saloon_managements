@@ -12,8 +12,7 @@ export const MOCK_USERS = [
   { id: 100, branch_id: null, role_id: 1, is_super_admin: true, name: 'Global Super Admin', email: 'admin@saloon.com', phone: '9999999999', role: 'Super Admin', branch_name: '🌐 Global SaaS System Master' },
   { id: 1, branch_id: 1, role_id: 1, is_super_admin: false, name: 'Sunil Kumar (Admin)', email: 'sunil.admin@saloon.com', phone: '9876543210', role: 'Admin', branch_name: 'Connaught Place Main Salon' },
   { id: 2, branch_id: 1, role_id: 2, is_super_admin: false, name: 'Rohan Verma (Manager)', email: 'rohan.manager@saloon.com', phone: '9876543211', role: 'Manager', branch_name: 'Connaught Place Main Salon' },
-  { id: 3, branch_id: 1, role_id: 3, is_super_admin: false, name: 'Priya Sharma (Receptionist)', email: 'priya.reception@saloon.com', phone: '9876543212', role: 'Receptionist', branch_name: 'Connaught Place Main Salon' },
-  { id: 4, branch_id: 2, role_id: 4, is_super_admin: false, name: 'Amit Singh (Senior Stylist)', email: 'amit.stylist@saloon.com', phone: '9876543213', role: 'Staff', branch_name: 'Cyber Hub Luxury Branch' }
+  { id: 3, branch_id: 1, role_id: 3, is_super_admin: false, name: 'Priya Sharma (Receptionist)', email: 'priya.reception@saloon.com', phone: '9876543212', role: 'Receptionist', branch_name: 'Connaught Place Main Salon' }
 ];
 
 export const MOCK_BRANCHES = [
@@ -89,14 +88,10 @@ export const MOCK_PACKAGES = [
   }
 ];
 
-export const MOCK_STYLISTS = [
-  { id: 1, branch_id: 1, name: 'Rohan Sharma', phone: '9876543210', specialization: 'Senior Stylist & Hair Specialist', rating: 4.90, is_available: true },
-  { id: 2, branch_id: 1, name: 'Amit Verma', phone: '9876543211', specialization: 'Beard & Facial Expert', rating: 4.80, is_available: true },
-  { id: 3, branch_id: 2, name: 'Priya Singh', phone: '9876543212', specialization: 'Hair Color & Beauty Consultant', rating: 5.00, is_available: true }
-];
+export const MOCK_STYLISTS = [];
 
 export const MOCK_CUSTOMERS = [
-  { id: 1, branch_id: 1, name: 'Rahul Kumar', phone: '9988776655', email: 'rahul.k@gmail.com', gender: 'Male', dob: '1995-08-14', loyalty_points: 120, notes: 'Prefers Rohan Sharma for haircut' },
+  { id: 1, branch_id: 1, name: 'Rahul Kumar', phone: '9988776655', email: 'rahul.k@gmail.com', gender: 'Male', dob: '1995-08-14', loyalty_points: 120, notes: 'Regular customer' },
   { id: 2, branch_id: 1, name: 'Sneha Kapoor', phone: '9988776656', email: 'sneha.k@outlook.com', gender: 'Female', dob: '1998-11-20', loyalty_points: 250, notes: 'Regular facial client, sensitive skin' },
   { id: 3, branch_id: 2, name: 'Karan Johar', phone: '9988776657', email: 'karan@media.com', gender: 'Male', dob: '1990-03-08', loyalty_points: 80, notes: 'Prefers weekend morning slots' },
   { id: 4, branch_id: 1, name: 'Sunil', phone: '8574857485', email: 'N/A', gender: 'Unspecified', dob: 'N/A', loyalty_points: 50, notes: 'Walk-in Guest' }
@@ -108,74 +103,6 @@ export const MOCK_LEADS = [
   { id: 3, branch_id: 2, name: 'Kiara Advani', phone: '9811223346', email: 'kiara@gmail.com', source: 'Website Portal', status: 'Converted', notes: 'Booked Gold Facial appointment', followup_date: todayStr }
 ];
 
-export const MOCK_APPOINTMENTS = [
-  { 
-    id: 101, 
-    branch_id: 1, 
-    customer_id: 1, 
-    stylist_id: 1, 
-    service_id: 1, 
-    appointment_date: todayStr, 
-    appointment_time: '14:00', 
-    status: 'Scheduled', 
-    total_amount: 350.00, 
-    notes: 'Classic Haircut slot', 
-    customer_name: 'Rahul Kumar', 
-    customer_phone: '9988776655', 
-    service_name: 'Classic Haircut & Styling', 
-    service_duration: 30, 
-    stylist_name: 'Rohan Sharma' 
-  },
-  { 
-    id: 102, 
-    branch_id: 1, 
-    customer_id: 2, 
-    stylist_id: 1, 
-    service_id: 3, 
-    appointment_date: todayStr, 
-    appointment_time: '11:00', 
-    status: 'In-Progress', 
-    total_amount: 1200.00, 
-    notes: 'Royal Gold Facial', 
-    customer_name: 'Sneha Kapoor', 
-    customer_phone: '9988776656', 
-    service_name: 'Royal Gold Facial & Clean-up', 
-    service_duration: 45, 
-    stylist_name: 'Rohan Sharma' 
-  },
-  { 
-    id: 103, 
-    branch_id: 1, 
-    customer_id: 4, 
-    stylist_id: 2, 
-    service_id: 1, 
-    appointment_date: todayStr, 
-    appointment_time: '16:00', 
-    status: 'Scheduled', 
-    total_amount: 350.00, 
-    notes: 'Walk-in haircut appointment', 
-    customer_name: 'Sunil', 
-    customer_phone: '8574857485', 
-    service_name: 'Classic Haircut & Styling', 
-    service_duration: 30, 
-    stylist_name: 'Amit Verma' 
-  }
-];
+export const MOCK_APPOINTMENTS = [];
 
-export const MOCK_BILLS = [
-  { 
-    id: 1001, 
-    branch_id: 1, 
-    customer_id: 2, 
-    stylist_id: 1, 
-    customer_name: 'Sneha Kapoor', 
-    stylist_name: 'Rohan Sharma', 
-    subtotal: 1200.00, 
-    tax_amount: 216.00, 
-    total: 1416.00, 
-    payment_mode: 'UPI', 
-    status: 'Paid', 
-    created_at: new Date().toISOString(), 
-    items: [{ id: 1, service_name: 'Royal Gold Facial & Clean-up', price: 1200.00, qty: 1 }] 
-  }
-];
+export const MOCK_BILLS = [];

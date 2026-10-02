@@ -43,10 +43,7 @@ const memoryStore = {
   categories: [
     { id: 1, name: 'Hair' }, { id: 2, name: 'Beard' }, { id: 3, name: 'Facial' }, { id: 4, name: 'Hair Spa' }, { id: 5, name: 'Color' }, { id: 6, name: 'Packages & Combos' }
   ],
-  stylists: [
-    { id: 1, name: 'Rohan Sharma (Senior Stylist)', phone: '9876543210', specialization: 'Hair & Beard Expert', is_active: true },
-    { id: 2, name: 'Priya Verma (Beauty Therapist)', phone: '9876543211', specialization: 'Facial & Skin Care', is_active: true }
-  ],
+  stylists: [],
   customers: [
     { id: 1, name: 'Aarav Mehta', phone: '9876543210', email: 'aarav@example.com', total_visits: 5, total_spent: 2450.00 }
   ],

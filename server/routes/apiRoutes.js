@@ -24,7 +24,8 @@ import {
   updateCategory, 
   deleteCategory 
 } from '../controllers/categoryController.js';
-import { getStylists, createStylist } from '../controllers/stylistController.js';
+import { getStylists, createStylist, updateStylist, deleteStylist, toggleStylistActive } from '../controllers/stylistController.js';
+import { getTimeSlots, createTimeSlot, updateTimeSlot, deleteTimeSlot, toggleTimeSlotActive, generateTimeSlotRange } from '../controllers/timeSlotController.js';
 import { getCoupons, validateCoupon } from '../controllers/couponController.js';
 import {
   getMembershipTiers, createMembershipTier, updateMembershipTier,
@@ -114,6 +115,17 @@ router.delete('/packages/:id', authenticateToken, requirePermission('manage_serv
 // -------------------- Stylist / Staff Routes --------------------
 router.get('/stylists', authenticateToken, getStylists);
 router.post('/stylists/create', authenticateToken, requirePermission('manage_users'), createStylist);
+router.put('/stylists/:id', authenticateToken, requirePermission('manage_users'), updateStylist);
+router.delete('/stylists/:id', authenticateToken, requirePermission('manage_users'), deleteStylist);
+router.patch('/stylists/:id/toggle', authenticateToken, requirePermission('manage_users'), toggleStylistActive);
+
+// -------------------- Dynamic Time Slots & Schedule Routes --------------------
+router.get('/time-slots', authenticateToken, getTimeSlots);
+router.post('/time-slots/create', authenticateToken, requirePermission('manage_appointments'), createTimeSlot);
+router.put('/time-slots/:id', authenticateToken, requirePermission('manage_appointments'), updateTimeSlot);
+router.delete('/time-slots/:id', authenticateToken, requirePermission('manage_appointments'), deleteTimeSlot);
+router.patch('/time-slots/:id/toggle', authenticateToken, requirePermission('manage_appointments'), toggleTimeSlotActive);
+router.post('/time-slots/generate-range', authenticateToken, requirePermission('manage_appointments'), generateTimeSlotRange);
 
 // -------------------- Customer CRM Routes (Module 2) --------------------
 router.get('/customers', authenticateToken, getCustomers);

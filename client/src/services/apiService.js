@@ -556,6 +556,121 @@ export const Admin_Create_Stylist = async (stylistData) => {
   }
 };
 
+// <----------------  Admin Update Stylist / Staff ----------------->
+export const Admin_Update_Stylist = async (id, stylistData) => {
+  try {
+    const token = getToken();
+    const response = await axios.put(`${API_BASE_URL}/stylists/${id}`, stylistData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Admin Delete Stylist / Staff ----------------->
+export const Admin_Delete_Stylist = async (id) => {
+  try {
+    const token = getToken();
+    const response = await axios.delete(`${API_BASE_URL}/stylists/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Admin Toggle Stylist Active Status ----------------->
+export const Admin_Toggle_Stylist = async (id) => {
+  try {
+    const token = getToken();
+    const response = await axios.patch(`${API_BASE_URL}/stylists/${id}/toggle`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+export const Admin_Get_Time_Slots = async () => {
+  try {
+    const token = getToken();
+    const response = await axios.get(`${API_BASE_URL}/time-slots`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Admin Create Time Slot ----------------->
+export const Admin_Create_Time_Slot = async (slotData) => {
+  try {
+    const token = getToken();
+    const response = await axios.post(`${API_BASE_URL}/time-slots/create`, slotData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Admin Update Time Slot ----------------->
+export const Admin_Update_Time_Slot = async (id, slotData) => {
+  try {
+    const token = getToken();
+    const response = await axios.put(`${API_BASE_URL}/time-slots/${id}`, slotData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Admin Delete Time Slot ----------------->
+export const Admin_Delete_Time_Slot = async (id) => {
+  try {
+    const token = getToken();
+    const response = await axios.delete(`${API_BASE_URL}/time-slots/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Admin Toggle Time Slot Active ----------------->
+export const Admin_Toggle_Time_Slot = async (id) => {
+  try {
+    const token = getToken();
+    const response = await axios.patch(`${API_BASE_URL}/time-slots/${id}/toggle`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Admin Generate Time Slots Range ----------------->
+export const Admin_Generate_Time_Slots = async (rangeData) => {
+  try {
+    const token = getToken();
+    const response = await axios.post(`${API_BASE_URL}/time-slots/generate-range`, rangeData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
 // <----------------  Admin Get Appointments (Module 3 Booking) ----------------->
 export const Admin_Get_Appointments = async () => {
   try {

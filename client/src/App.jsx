@@ -22,7 +22,8 @@ import {
   Send,
   BarChart3,
   User,
-  Lock
+  Lock,
+  Clock
 } from 'lucide-react';
 
 
@@ -43,11 +44,14 @@ import MarketingAutomationView from './views/MarketingAutomationView';
 import ReportsAnalyticsView from './views/ReportsAnalyticsView';
 import StaffCustomerTrackingView from './views/StaffCustomerTrackingView';
 import AdminSecuritySettingsView from './views/AdminSecuritySettingsView';
+import StylistManagementView from './views/StylistManagementView';
+import TimeSlotsManagementView from './views/TimeSlotsManagementView';
 import UserProfileModal from './views/UserProfileModal';
 
 import {
   Admin_Get_Users,
   Admin_Create_User,
+  Admin_Delete_User,
   Admin_Get_Branches,
   Admin_Create_Branch,
   Admin_Update_Branch,
@@ -79,6 +83,16 @@ import {
   Admin_Update_Category,
   Admin_Delete_Category,
   Admin_Get_Stylists,
+  Admin_Create_Stylist,
+  Admin_Update_Stylist,
+  Admin_Delete_Stylist,
+  Admin_Toggle_Stylist,
+  Admin_Get_Time_Slots,
+  Admin_Create_Time_Slot,
+  Admin_Update_Time_Slot,
+  Admin_Delete_Time_Slot,
+  Admin_Toggle_Time_Slot,
+  Admin_Generate_Time_Slots,
   Admin_Get_Appointments,
   Admin_Create_Appointment,
   Admin_Update_Appointment_Status,
@@ -273,6 +287,7 @@ export default function App() {
   const [services, setServices] = useState(() => getStoredData('saloon_services_custom', MOCK_SERVICES));
   const [packages, setPackages] = useState(() => getStoredData('saloon_packages_custom', MOCK_PACKAGES));
   const [stylists, setStylists] = useState(MOCK_STYLISTS);
+  const [timeSlots, setTimeSlots] = useState([]);
   const [appointments, setAppointments] = useState(MOCK_APPOINTMENTS);
   const [bills, setBills] = useState(MOCK_BILLS);
   const [products, setProducts] = useState([]);
@@ -439,7 +454,10 @@ export default function App() {
       }
 
       const stRes = await Admin_Get_Stylists().catch(() => null);
-      if (stRes?.data?.data && stRes.data.data.length > 0) setStylists(stRes.data.data);
+      if (stRes?.data?.data && Array.isArray(stRes.data.data)) setStylists(stRes.data.data);
+
+      const tsRes = await Admin_Get_Time_Slots().catch(() => null);
+      if (tsRes?.data?.data && Array.isArray(tsRes.data.data)) setTimeSlots(tsRes.data.data);
 
       const appRes = await Admin_Get_Appointments().catch(() => null);
       if (appRes?.data?.data && appRes.data.data.length > 0) setAppointments(appRes.data.data);
@@ -564,21 +582,21 @@ export default function App() {
         // Hide Super Admin items / accounts
         if (item.is_super_admin || item.email === 'admin@saloon.com') return false;
 
-        // Check explicit admin creator ID
-        const itemAdminId = item.created_by_admin_id || item.admin_id || item.created_by_user_id || item.created_by;
-        if (itemAdminId) {
-          if (String(itemAdminId) !== currentAdminId) {
-            return false; // Belongs to another admin!
-          }
+        // 1. If item has a branch_id, check if it belongs to one of owner's branches
+        if (item.branch_id && myBranchIds.has(String(item.branch_id))) {
           if (selectedBranchId !== 'all' && String(item.branch_id) !== String(selectedBranchId)) {
             return false;
           }
           return true;
         }
 
-        // If item has a branch_id, check if it belongs to one of owner's branches
-        if (item.branch_id && myBranchIds.has(String(item.branch_id))) {
-          if (selectedBranchId !== 'all' && String(item.branch_id) !== String(selectedBranchId)) {
+        // 2. Check explicit admin creator ID
+        const itemAdminId = item.created_by_admin_id || item.admin_id || item.created_by_user_id || item.created_by;
+        if (itemAdminId) {
+          if (String(itemAdminId) !== currentAdminId) {
+            return false; // Belongs to another admin!
+          }
+          if (selectedBranchId !== 'all' && item.branch_id && String(item.branch_id) !== String(selectedBranchId)) {
             return false;
           }
           return true;
@@ -840,6 +858,153 @@ export default function App() {
     setLeads(prev => prev.filter(l => String(l.id) !== String(id)));
   };
 
+  // Handlers for Stylist Management
+  const handleAddStylist = async (data) => {
+    const curAdminId = currentUser ? String(currentUser.admin_id || currentUser.id) : null;
+    const effectiveBranchId = data.branch_id || currentUser?.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : (branches && branches[0]?.id ? branches[0].id : null));
+    const payload = {
+      ...data,
+      branch_id: effectiveBranchId,
+      admin_id: curAdminId,
+      created_by_admin_id: currentUser?.admin_id || currentUser?.id,
+      created_by_user_id: currentUser?.id
+    };
+    try {
+      const res = await Admin_Create_Stylist(payload);
+      const created = res?.data?.data || { id: Date.now(), ...payload };
+      const enriched = {
+        ...payload,
+        ...created,
+        branch_id: created.branch_id || effectiveBranchId,
+        admin_id: created.admin_id || curAdminId,
+        created_by_admin_id: created.created_by_admin_id || payload.created_by_admin_id,
+        created_by_user_id: created.created_by_user_id || currentUser?.id
+      };
+      setStylists(prev => [enriched, ...prev.filter(s => String(s.id) !== String(enriched.id))]);
+      return enriched;
+    } catch (e) {
+      console.error("Create Stylist Error:", e);
+      throw e;
+    }
+  };
+
+  const handleUpdateStylist = async (id, data) => {
+    try {
+      const res = await Admin_Update_Stylist(id, data).catch(() => null);
+      const updated = res?.data?.data || { id, ...data };
+      setStylists(prev => prev.map(s => String(s.id) === String(id) ? { ...s, ...updated } : s));
+      setUsers(prev => prev.map(u => String(u.id) === String(id) ? { ...u, name: data.name || u.name, phone: data.phone || u.phone, branch_id: data.branch_id || u.branch_id } : u));
+      return updated;
+    } catch (e) {
+      console.error("Update Stylist Error:", e);
+      throw e;
+    }
+  };
+
+  const handleDeleteStylist = async (id) => {
+    try {
+      await Promise.allSettled([
+        Admin_Delete_Stylist(id),
+        Admin_Delete_User(id)
+      ]);
+      setStylists(prev => prev.filter(s => String(s.id) !== String(id)));
+      setUsers(prev => prev.filter(u => String(u.id) !== String(id)));
+    } catch (e) {
+      console.error("Delete Stylist Error:", e);
+      setStylists(prev => prev.filter(s => String(s.id) !== String(id)));
+      setUsers(prev => prev.filter(u => String(u.id) !== String(id)));
+    }
+  };
+
+  const handleToggleStylistActive = async (id) => {
+    try {
+      const res = await Admin_Toggle_Stylist(id).catch(() => null);
+      const updatedStatus = res?.data?.data?.is_active;
+      setStylists(prev => prev.map(s => String(s.id) === String(id) ? { ...s, is_active: updatedStatus !== undefined ? updatedStatus : !s.is_active } : s));
+      setUsers(prev => prev.map(u => String(u.id) === String(id) ? { ...u, is_active: updatedStatus !== undefined ? updatedStatus : !u.is_active } : u));
+    } catch (e) {
+      console.error("Toggle Stylist Active Error:", e);
+      throw e;
+    }
+  };
+
+  // Handlers for Time Slots Management
+  const handleAddTimeSlot = async (data) => {
+    const curAdminId = currentUser ? String(currentUser.admin_id || currentUser.id) : null;
+    const payload = {
+      ...data,
+      branch_id: data.branch_id || currentUser?.branch_id || (branches && branches[0]?.id ? branches[0].id : null),
+      admin_id: curAdminId,
+      created_by_admin_id: currentUser?.admin_id || currentUser?.id
+    };
+    try {
+      const res = await Admin_Create_Time_Slot(payload);
+      const created = res?.data?.data || { id: Date.now(), ...payload };
+      setTimeSlots(prev => [...prev, created]);
+      return created;
+    } catch (e) {
+      console.error("Create Time Slot Error:", e);
+      throw e;
+    }
+  };
+
+  const handleUpdateTimeSlot = async (id, data) => {
+    try {
+      const res = await Admin_Update_Time_Slot(id, data);
+      const updated = res?.data?.data || { id, ...data };
+      setTimeSlots(prev => prev.map(s => String(s.id) === String(id) ? { ...s, ...updated } : s));
+      return updated;
+    } catch (e) {
+      console.error("Update Time Slot Error:", e);
+      throw e;
+    }
+  };
+
+  const handleDeleteTimeSlot = async (id) => {
+    try {
+      await Admin_Delete_Time_Slot(id);
+      setTimeSlots(prev => prev.filter(s => String(s.id) !== String(id)));
+    } catch (e) {
+      console.error("Delete Time Slot Error:", e);
+      throw e;
+    }
+  };
+
+  const handleToggleTimeSlotActive = async (id) => {
+    try {
+      const res = await Admin_Toggle_Time_Slot(id);
+      const updatedStatus = res?.data?.data?.is_active;
+      setTimeSlots(prev => prev.map(s => String(s.id) === String(id) ? { ...s, is_active: updatedStatus !== undefined ? updatedStatus : !s.is_active } : s));
+    } catch (e) {
+      console.error("Toggle Time Slot Active Error:", e);
+      throw e;
+    }
+  };
+
+  const handleGenerateTimeSlots = async (rangeData) => {
+    const curAdminId = currentUser ? String(currentUser.admin_id || currentUser.id) : null;
+    const payload = {
+      ...rangeData,
+      branch_id: rangeData.branch_id || currentUser?.branch_id || (branches && branches[0]?.id ? branches[0].id : null),
+      admin_id: curAdminId,
+      created_by_admin_id: currentUser?.admin_id || currentUser?.id
+    };
+    try {
+      const res = await Admin_Generate_Time_Slots(payload);
+      const generated = res?.data?.data || [];
+      if (Array.isArray(generated) && generated.length > 0) {
+        setTimeSlots(prev => {
+          const genIds = new Set(generated.map(g => String(g.id)));
+          return [...generated, ...prev.filter(p => !genIds.has(String(p.id)))];
+        });
+      }
+      return generated;
+    } catch (e) {
+      console.error("Generate Time Slots Error:", e);
+      throw e;
+    }
+  };
+
   // Handlers for Module 4 Service & Package Management
   const handleAddService = async (serviceData) => {
     let newItem = null;
@@ -967,33 +1132,43 @@ export default function App() {
     const normalizeDateStr = (d) => {
       if (!d) return '';
       const str = String(d).trim();
-      if (str.includes('T')) return str.split('T')[0];
-      if (str.includes(' ')) return str.split(' ')[0];
-      return str;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+      const dt = new Date(str);
+      if (isNaN(dt.getTime())) return str.split('T')[0].split(' ')[0];
+      const year = dt.getFullYear();
+      const month = String(dt.getMonth() + 1).padStart(2, '0');
+      const day = String(dt.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     };
+    // Normalize time to HH:MM (handles "11:00", "11:00:00", "9:00 AM", etc.)
     const normalizeHourStr = (t) => {
       if (!t) return '';
-      const match = String(t).match(/(\d{1,2})/);
-      return match ? match[1].padStart(2, '0') : '';
+      const str = String(t).trim();
+      const match = str.match(/(\d{1,2}):(\d{2})/);
+      if (match) return match[1].padStart(2, '0') + ':' + match[2];
+      const hourOnly = str.match(/(\d{1,2})/);
+      return hourOnly ? hourOnly[1].padStart(2, '0') + ':00' : '';
     };
 
     const targetDate = normalizeDateStr(newApp.appointment_date || new Date().toISOString().split('T')[0]);
-    const targetTimeHour = normalizeHourStr(newApp.appointment_time || '10:00');
-    const targetStylistId = newApp.stylist_id;
+    const targetTime = normalizeHourStr(newApp.appointment_time || '10:00');
+    const targetStylistId = String(newApp.stylist_id || '');
 
-    // Double-booking prevention check
+    // Double-booking prevention: check ALL appointments for this stylist
     const isConflict = appointments.some(a => {
       if (String(a.status || '').toLowerCase() === 'cancelled') return false;
       const aDate = normalizeDateStr(a.appointment_date);
-      const aHour = normalizeHourStr(a.appointment_time);
-      const isStylistMatch = String(a.stylist_id) === String(targetStylistId) ||
-        (a.stylist_name && combinedStylists.some(s => String(s.id) === String(targetStylistId) && String(a.stylist_name).toLowerCase().trim() === String(s.name).toLowerCase().trim())) ||
-        (filterByBranch(combinedStylists).length === 1);
-      return aDate === targetDate && aHour === targetTimeHour && isStylistMatch;
+      const aTime = normalizeHourStr(a.appointment_time);
+      const isStylistMatch = String(a.stylist_id) === targetStylistId ||
+        (a.stylist_name && combinedStylists.some(s =>
+          String(s.id) === targetStylistId &&
+          String(a.stylist_name).toLowerCase().trim() === String(s.name).toLowerCase().trim()
+        ));
+      return aDate === targetDate && aTime === targetTime && isStylistMatch;
     });
 
     if (isConflict) {
-      alert(`⚠️ Cannot book appointment: Staff member is ALREADY BOOKED for ${targetDate} at ${newApp.appointment_time}. Double booking is blocked.`);
+      alert(`⚠️ Cannot book appointment: Staff member is ALREADY BOOKED for ${targetDate} at ${targetTime}. Double booking is blocked.`);
       return null;
     }
 
@@ -1004,22 +1179,26 @@ export default function App() {
       created_by_admin_id: newApp.created_by_admin_id || curAdminId,
       created_by_user_id: currentUser?.id
     };
-    let newItem = null;
+
     try {
-      const res = await Admin_Create_Appointment(appWithAdmin).catch(() => null);
-      if (res?.data?.status === 'error' || res?.status === 400) {
-        alert(res?.data?.message || 'Double booking error');
+      const res = await Admin_Create_Appointment(appWithAdmin);
+      if (res?.data?.status === 'error') {
+        alert(`⚠️ ${res.data.message || 'Double booking error'}`);
         return null;
       }
-      newItem = res?.data?.data || res?.data || { id: Date.now(), ...appWithAdmin, status: appWithAdmin.status || 'Confirmed' };
-      if (!newItem.admin_id && curAdminId) newItem.admin_id = curAdminId;
-      if (!newItem.created_by_admin_id && curAdminId) newItem.created_by_admin_id = curAdminId;
+      const newItem = res?.data?.data || res?.data;
+      if (newItem) {
+        if (!newItem.admin_id && curAdminId) newItem.admin_id = curAdminId;
+        if (!newItem.created_by_admin_id && curAdminId) newItem.created_by_admin_id = curAdminId;
+        setAppointments(prev => [newItem, ...prev.filter(a => String(a.id) !== String(newItem.id))]);
+        return newItem;
+      }
     } catch (e) {
-      console.error(e);
-      newItem = { id: Date.now(), ...appWithAdmin, status: appWithAdmin.status || 'Confirmed' };
+      console.error("Create Appointment Error:", e);
+      const errDetail = e?.data?.message || e?.response?.data?.message || e?.message || 'Failed to create appointment';
+      alert(`⚠️ Cannot create appointment: ${errDetail}`);
+      return null;
     }
-    setAppointments(prev => [newItem, ...prev]);
-    return newItem;
   };
 
   const handleUpdateAppointment = async (id, appData) => {
@@ -1320,11 +1499,11 @@ export default function App() {
             {canAccess('manage_appointments') && (
               <div style={{ marginTop: '4px' }}>
                 <button
-                  className={`nav-dropdown-toggle ${isBookingOpen ? 'open' : ''} ${['appointments'].includes(activeTab) ? 'active' : ''}`}
+                  className={`nav-dropdown-toggle ${isBookingOpen ? 'open' : ''} ${['appointments', 'stylists', 'time_slots'].includes(activeTab) ? 'active' : ''}`}
                   onClick={() => setIsBookingOpen(!isBookingOpen)}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Calendar size={17} style={{ color: ['appointments'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
+                    <Calendar size={17} style={{ color: ['appointments', 'stylists', 'time_slots'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
                     <span>Booking & Calendar</span>
                   </div>
                   {isBookingOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
@@ -1334,6 +1513,12 @@ export default function App() {
                   <div className="nav-dropdown-menu">
                     <button className={`sub-nav-btn ${activeTab === 'appointments' ? 'active' : ''}`} onClick={() => setActiveTab('appointments')}>
                       <Calendar size={14} /> Booking Calendar ({appointments.length})
+                    </button>
+                    <button className={`sub-nav-btn ${activeTab === 'stylists' ? 'active' : ''}`} onClick={() => setActiveTab('stylists')}>
+                      <UserCheck size={14} /> Stylists & Staff ({filterByBranch(combinedStylists).length})
+                    </button>
+                    <button className={`sub-nav-btn ${activeTab === 'time_slots' ? 'active' : ''}`} onClick={() => setActiveTab('time_slots')}>
+                      <Clock size={14} /> Time Slots & Schedule ({filterByBranch(timeSlots).length})
                     </button>
                   </div>
                 )}
@@ -1571,6 +1756,8 @@ export default function App() {
               {activeTab === 'leads' && 'Lead Management Pipeline'}
               {activeTab === 'services_packages' && 'Salon Service & Package Management'}
               {activeTab === 'appointments' && 'Appointment & Calendar Booking'}
+              {activeTab === 'stylists' && 'Stylist & Staff Management'}
+              {activeTab === 'time_slots' && 'Salon Time Slots & Schedule Setup'}
               {activeTab === 'reception_checkin' && 'Receptionist — Walk-in Check-in Counter'}
               {activeTab === 'pos_billing' && `POS Billing — ${posCustomer?.name || 'Customer'}`}
               {activeTab === 'billing_history' && 'POS Billing History & Invoices'}
@@ -1860,6 +2047,7 @@ export default function App() {
               customers={filterByBranch(customers)}
               stylists={filterByBranch(combinedStylists)}
               services={filterByBranch(services)}
+              timeSlots={filterByBranch(timeSlots)}
               members={members}
               selectedBranchId={selectedBranchId}
               onDeductMemberCredit={handleDeductMemberCredit}
@@ -1868,6 +2056,41 @@ export default function App() {
               onUpdateAppointment={handleUpdateAppointment}
               onDeleteAppointment={handleDeleteAppointment}
               onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
+            />
+          ) : (
+            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+          )
+        )}
+
+        {activeTab === 'stylists' && (
+          canAccess(['manage_appointments', 'manage_users', 'all']) ? (
+            <StylistManagementView
+              stylists={filterByBranch(combinedStylists)}
+              branches={branches}
+              onAddStylist={handleAddStylist}
+              onUpdateStylist={handleUpdateStylist}
+              onDeleteStylist={handleDeleteStylist}
+              onToggleActive={handleToggleStylistActive}
+              currentUser={currentUser}
+              userBranch={branches.find(b => String(b.id) === String(currentUser?.branch_id))}
+            />
+          ) : (
+            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+          )
+        )}
+
+        {activeTab === 'time_slots' && (
+          canAccess(['manage_appointments', 'all']) ? (
+            <TimeSlotsManagementView
+              timeSlots={filterByBranch(timeSlots)}
+              branches={branches}
+              onAddTimeSlot={handleAddTimeSlot}
+              onUpdateTimeSlot={handleUpdateTimeSlot}
+              onDeleteTimeSlot={handleDeleteTimeSlot}
+              onToggleActive={handleToggleTimeSlotActive}
+              onGenerateRange={handleGenerateTimeSlots}
+              currentUser={currentUser}
+              userBranch={branches.find(b => String(b.id) === String(currentUser?.branch_id))}
             />
           ) : (
             <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />

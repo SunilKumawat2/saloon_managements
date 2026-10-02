@@ -1,10 +1,6 @@
 import { pool } from '../config/db.js';
 
-let DEMO_APPOINTMENTS = [
-  { id: 101, branch_id: 1, customer_id: 1, customer_name: 'Rahul Kumar', stylist_id: 1, stylist_name: 'Rohan Sharma', service_id: 1, service_name: 'Classic Haircut & Styling', appointment_date: '2026-09-07', appointment_time: '14:30', status: 'Scheduled', total_amount: '350.00', notes: 'Classic Haircut slot' },
-  { id: 102, branch_id: 1, customer_id: 2, customer_name: 'Sneha Kapoor', stylist_id: 2, stylist_name: 'Amit Verma', service_id: 3, service_name: 'Royal Gold Facial & Clean-up', appointment_date: '2026-09-07', appointment_time: '16:00', status: 'In-Progress', total_amount: '1200.00', notes: 'Royal Gold Facial' },
-  { id: 103, branch_id: 2, customer_id: 3, customer_name: 'Karan Johar', stylist_id: 3, stylist_name: 'Priya Singh', service_id: 4, service_name: 'Keratin Hair Smoothing Treatment', appointment_date: '2026-09-08', appointment_time: '11:00', status: 'Completed', total_amount: '3500.00', notes: 'Keratin Hair Smoothing' }
-];
+let DEMO_APPOINTMENTS = [];
 
 export const AppointmentModel = {
   async findAll(options = {}) {
@@ -148,6 +144,8 @@ export const AppointmentModel = {
             ).catch(() => null);
           }
         }
+      }
+
       // BACKEND DOUBLE-BOOKING CONFLICT CHECK FOR STYLIST AT SAME DATE & TIME
       const targetDateStr = appointment_date || new Date().toISOString().split('T')[0];
       const targetTimeStr = appointment_time || '10:00';
@@ -159,10 +157,8 @@ export const AppointmentModel = {
          WHERE a.stylist_id = $1
            AND a.appointment_date = $2::date
            AND a.status != 'Cancelled'
-           AND (
-             a.appointment_time = $3::time OR
-             EXTRACT(HOUR FROM a.appointment_time) = EXTRACT(HOUR FROM $3::time)
-           )
+           AND EXTRACT(HOUR FROM a.appointment_time::time) = EXTRACT(HOUR FROM $3::time)
+           AND EXTRACT(MINUTE FROM a.appointment_time::time) = EXTRACT(MINUTE FROM $3::time)
          LIMIT 1`,
         [validStylistId, targetDateStr, targetTimeStr]
       ).catch(() => null);
