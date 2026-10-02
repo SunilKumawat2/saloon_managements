@@ -271,6 +271,15 @@ export default function App() {
   const [members, setMembers] = useState(() => getStoredData('saloon_enrolled_members', []));
   const [dbStatus, setDbStatus] = useState({ connected: false, checking: true });
 
+  const accessibleBranches = useMemo(() => {
+    if (!currentUser) return [];
+    if (isMasterAdmin(currentUser)) return branches;
+    return branches.filter(b => 
+      String(b.created_by_admin_id || b.admin_id || b.owner_id || b.created_by) === String(currentUser.id) ||
+      String(b.id) === String(currentUser.branch_id)
+    );
+  }, [branches, currentUser]);
+
   useEffect(() => {
     try {
       localStorage.setItem('saloon_enrolled_members', JSON.stringify(members));
@@ -491,37 +500,42 @@ export default function App() {
     const isScoped = isBranchScopedUser(currentUser);
     const isOwner = isSalonAdmin(currentUser) && !isMaster;
 
-    // Super Admin in 'all' view sees everything
-    if (isMaster && selectedBranchId === 'all') {
+    // 1. If specific branch is selected in dropdown (e.g. Branch #1), filter by branch_id
+    if (selectedBranchId !== 'all') {
+      return list.filter(item => item && String(item.branch_id) === String(selectedBranchId));
+    }
+
+    // 2. Super Admin in 'all' view sees everything
+    if (isMaster) {
       return list;
     }
 
-    // Branch Scoped Member (Manager, Receptionist, Staff):
+    // 3. Branch Scoped Member (Manager, Receptionist, Staff):
     // Strictly limited to their single assigned branch_id!
     if (isScoped) {
       return list.filter(item => item && String(item.branch_id) === String(currentUser.branch_id));
     }
 
-    // Salon Admin (Salon Owner):
+    // 4. Salon Admin (Salon Owner) in 'all' view:
+    // Only sees items belonging to their owned branches or created by themselves
     if (isOwner) {
       const myBranchIds = new Set(accessibleBranches.map(b => String(b.id)));
       return list.filter(item => {
         if (!item) return false;
-        // 1. Always show self
-        if (String(item.id) === String(currentUser.id) || item.email === currentUser.email) return true;
+        const itemAdminId = item.created_by_admin_id || item.admin_id || item.created_by;
+        if (itemAdminId && String(itemAdminId) === String(currentUser.id)) return true;
 
-        // 2. Hide Super Admin
+        // Hide Super Admin
         if (item.is_super_admin || item.email === 'admin@saloon.com' || item.id === 1) return false;
-        if (String(item.role || item.role_name).toLowerCase().includes('super')) return false;
+        const itemRole = String(item.role || item.role_name || '').toLowerCase();
+        if (itemRole.includes('super')) return false;
 
-        // 3. Hide other Salon Admins
-        const itemRole = String(item.role || item.role_name).toLowerCase();
-        if (itemRole.includes('admin') || itemRole.includes('owner')) {
+        // Check if item belongs to one of owner's branches
+        if (item.branch_id) {
           return myBranchIds.has(String(item.branch_id));
         }
 
-        // 4. Default: check branch
-        return myBranchIds.has(String(item.branch_id));
+        return true;
       });
     }
 
