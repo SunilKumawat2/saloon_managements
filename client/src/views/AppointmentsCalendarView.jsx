@@ -54,6 +54,31 @@ function AppointmentsCalendarView({
   onDeleteAppointment,
   onUpdateAppointmentStatus
 }) {
+  // Calendar View Mode: 'dayGrid' | 'weekGrid' | 'tableList'
+  const [viewMode, setViewMode] = useState('dayGrid');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+
+  // Modals State
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingApp, setEditingApp] = useState(null);
+  const [reschedulingApp, setReschedulingApp] = useState(null);
+  const [deletingApp, setDeletingApp] = useState(null);
+  const [reminderApp, setReminderApp] = useState(null);
+  const [reminderToast, setReminderToast] = useState('');
+
+  // New Booking State
+  const [newApp, setNewApp] = useState({
+    customer_id: customers[0]?.id || '',
+    stylist_id: stylists[0]?.id || '',
+    service_id: services[0]?.id || '',
+    appointment_date: new Date().toISOString().split('T')[0],
+    appointment_time: '11:00',
+    source: 'Online Self-Booking',
+    notes: ''
+  });
+
   const getDayNameFromDateStr = (dateStr) => {
     if (!dateStr) return '';
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -104,30 +129,6 @@ function AppointmentsCalendarView({
     }
     return slotItem;
   };
-  // Calendar View Mode: 'dayGrid' | 'weekGrid' | 'tableList'
-  const [viewMode, setViewMode] = useState('dayGrid');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
-
-  // Modals State
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingApp, setEditingApp] = useState(null);
-  const [reschedulingApp, setReschedulingApp] = useState(null);
-  const [deletingApp, setDeletingApp] = useState(null);
-  const [reminderApp, setReminderApp] = useState(null);
-  const [reminderToast, setReminderToast] = useState('');
-
-  // New Booking State
-  const [newApp, setNewApp] = useState({
-    customer_id: customers[0]?.id || '',
-    stylist_id: stylists[0]?.id || '',
-    service_id: services[0]?.id || '',
-    appointment_date: new Date().toISOString().split('T')[0],
-    appointment_time: '11:00',
-    source: 'Online Self-Booking',
-    notes: ''
-  });
 
   // Sync default IDs when stylists, customers, or services load
   React.useEffect(() => {
