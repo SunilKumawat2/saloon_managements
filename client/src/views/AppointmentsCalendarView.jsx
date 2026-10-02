@@ -384,9 +384,13 @@ function AppointmentsCalendarView({
                 {/* Stylist Columns for this Time Slot */}
                 {stylists.map((st, idx) => {
                   const matched = filteredAppointments.filter(a => {
-                    const isStylistMatch = String(a.stylist_id) === String(st.id) ||
-                      (a.stylist_name && st.name && String(a.stylist_name).toLowerCase().trim() === String(st.name).toLowerCase().trim()) ||
-                      (!a.stylist_id && !a.stylist_name && idx === 0);
+                    const isDirectMatch = String(a.stylist_id) === String(st.id) ||
+                      (a.stylist_name && st.name && String(a.stylist_name).toLowerCase().trim() === String(st.name).toLowerCase().trim());
+                    const isLegacyOrUnassigned = idx === 0 && !stylists.some(s => 
+                      String(s.id) === String(a.stylist_id) || 
+                      (s.name && a.stylist_name && String(s.name).toLowerCase().trim() === String(a.stylist_name).toLowerCase().trim())
+                    );
+                    const isStylistMatch = isDirectMatch || isLegacyOrUnassigned;
                     const appHour = a.appointment_time ? String(a.appointment_time).split(':')[0] : '';
                     const targetHour = time.split(':')[0];
                     return isStylistMatch && appHour === targetHour;
