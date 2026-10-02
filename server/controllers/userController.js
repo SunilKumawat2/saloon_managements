@@ -36,7 +36,7 @@ export const createUser = async (req, res) => {
     }
 
     const reqUser = req.user;
-    const isMaster = reqUser?.is_super_admin || reqUser?.email === 'admin@saloon.com' || reqUser?.id === 1 || String(reqUser?.role || reqUser?.role_name || '').toLowerCase().includes('super');
+    const isMaster = Boolean(reqUser?.is_super_admin === true || reqUser?.email === 'admin@saloon.com' || String(reqUser?.role || reqUser?.role_name || '').toLowerCase() === 'super admin' || String(reqUser?.role || reqUser?.role_name || '').toLowerCase() === 'superadmin');
 
     if (!isMaster && (parseInt(role_id) === 1 || String(role_id) === '1')) {
       return res.status(403).json({ status: 'error', message: 'Forbidden: Only Super Admin can create Admin accounts.' });
@@ -75,7 +75,7 @@ export const updateUser = async (req, res) => {
     const { name, email, phone, role_id, branch_id } = req.body;
 
     const reqUser = req.user;
-    const isMaster = reqUser?.is_super_admin || reqUser?.email === 'admin@saloon.com' || reqUser?.id === 1 || String(reqUser?.role || reqUser?.role_name || '').toLowerCase().includes('super');
+    const isMaster = Boolean(reqUser?.is_super_admin === true || reqUser?.email === 'admin@saloon.com' || String(reqUser?.role || reqUser?.role_name || '').toLowerCase() === 'super admin' || String(reqUser?.role || reqUser?.role_name || '').toLowerCase() === 'superadmin');
 
     if (!isMaster && (parseInt(role_id) === 1 || String(role_id) === '1')) {
       return res.status(403).json({ status: 'error', message: 'Forbidden: Only Super Admin can assign Admin accounts.' });

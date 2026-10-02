@@ -143,7 +143,7 @@ function AccessDeniedView({ role, onGoHome }) {
 
 export const isMasterAdmin = (user) => {
   if (!user) return false;
-  if (user.is_super_admin === true || user.email === 'admin@saloon.com' || user.id === 1) return true;
+  if (user.is_super_admin === true || user.email === 'admin@saloon.com') return true;
   const role = String(user.role || user.role_name || '').toLowerCase();
   return role === 'super admin' || role === 'superadmin';
 };

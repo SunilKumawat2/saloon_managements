@@ -365,7 +365,7 @@ function UsersManagementView({ users: initialUsers, branches, roles, onAddUser, 
       if (isSelf) return true;
 
       // 1. Hide Super Admin
-      if (user.is_super_admin || user.email === 'admin@saloon.com' || user.id === 1 || String(user.role || user.role_name || '').toLowerCase().includes('super')) {
+      if (user.is_super_admin || user.email === 'admin@saloon.com' || String(user.role || user.role_name || '').toLowerCase().includes('super')) {
         return false;
       }
 

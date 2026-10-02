@@ -20,7 +20,7 @@ export const BranchModel = {
       // Filter by role / user scope
       if (currentUser) {
         const roleStr = String(currentUser.role || currentUser.role_name || '').trim().toLowerCase();
-        const isSuper = currentUser.is_super_admin === true || currentUser.email === 'admin@saloon.com' || currentUser.id === 1 || roleStr.includes('super');
+        const isSuper = currentUser.is_super_admin === true || currentUser.email === 'admin@saloon.com' || roleStr === 'super admin' || roleStr === 'superadmin';
         const isSalonOwner = !isSuper && (roleStr === 'admin' || roleStr === 'owner' || roleStr === 'salon admin' || currentUser.role_id === 1);
 
         if (isSalonOwner) {

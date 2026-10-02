@@ -450,7 +450,7 @@ function ServicesPackagesView({
 
   const isMatchBranch = (itemBranchId) => {
     if (!currentUser) return false;
-    const isMaster = currentUser.is_super_admin === true || currentUser.email === 'admin@saloon.com' || currentUser.id === 1 || String(currentUser.role || '').toLowerCase().includes('super');
+    const isMaster = Boolean(currentUser.is_super_admin === true || currentUser.email === 'admin@saloon.com' || String(currentUser.role || '').toLowerCase() === 'super admin' || String(currentUser.role || '').toLowerCase() === 'superadmin');
     if (isMaster) {
       if (selectedBranchId === 'all' || !selectedBranchId) return true;
       return String(itemBranchId) === String(selectedBranchId);

@@ -29,7 +29,7 @@ export const loginUser = async (req, res) => {
       permissions = [];
     }
 
-    const isSuperAdmin = user.id === 1 || user.email === 'admin@saloon.com' || String(user.role_name || '').toLowerCase().includes('super');
+    const isSuperAdmin = Boolean(user.is_super_admin === true || user.email === 'admin@saloon.com' || String(user.role_name || user.role || '').toLowerCase() === 'super admin' || String(user.role_name || user.role || '').toLowerCase() === 'superadmin');
 
     // Generate real JWT token
     const payload = {
@@ -87,7 +87,7 @@ export const getMe = async (req, res) => {
     }
 
     const freshUser = rows[0];
-    const isSuperAdmin = freshUser.id === 1 || freshUser.email === 'admin@saloon.com' || String(freshUser.role || '').toLowerCase().includes('super');
+    const isSuperAdmin = Boolean(freshUser.is_super_admin === true || freshUser.email === 'admin@saloon.com' || String(freshUser.role || freshUser.role_name || '').toLowerCase() === 'super admin' || String(freshUser.role || freshUser.role_name || '').toLowerCase() === 'superadmin');
     return res.json({
       status: 'success',
       data: {

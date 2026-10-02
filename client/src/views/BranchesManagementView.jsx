@@ -12,7 +12,7 @@ function BranchesManagementView({
   onSelectBranch,
   currentUser
 }) {
-  const isSuperAdmin = currentUser?.is_super_admin || currentUser?.role === 'Super Admin' || currentUser?.email === 'admin@saloon.com' || currentUser?.id === 1;
+  const isSuperAdmin = Boolean(currentUser?.is_super_admin === true || currentUser?.email === 'admin@saloon.com' || String(currentUser?.role || currentUser?.role_name || '').toLowerCase() === 'super admin' || String(currentUser?.role || currentUser?.role_name || '').toLowerCase() === 'superadmin');
   const [branches, setBranches] = useState(initialBranches);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingBranch, setEditingBranch] = useState(null);

@@ -20,7 +20,7 @@ export const getBranches = async (req, res) => {
 export const createBranch = async (req, res) => {
   try {
     const user = req.user;
-    if (user && (user.is_super_admin || user.email === 'admin@saloon.com' || user.id === 1 || String(user.role || user.role_name).toLowerCase().includes('super'))) {
+    if (user && (user.is_super_admin || user.email === 'admin@saloon.com' || String(user.role || user.role_name || '').toLowerCase() === 'super admin' || String(user.role || user.role_name || '').toLowerCase() === 'superadmin')) {
       return res.status(400).json({
         status: 'error',
         message: 'Super Admin cannot create branches directly. Branches must be created by Salon Admins.'

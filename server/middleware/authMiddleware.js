@@ -62,7 +62,7 @@ export const requirePermission = (permKey) => {
     }
 
     const roleName = String(req.user.role || req.user.role_name || '').toLowerCase();
-    const isMaster = req.user.is_super_admin || req.user.email === 'admin@saloon.com' || req.user.id === 1 || roleName.includes('super') || roleName === 'admin' || roleName === 'owner';
+    const isMaster = req.user.is_super_admin || req.user.email === 'admin@saloon.com' || roleName.includes('super') || roleName === 'admin' || roleName === 'owner';
     if (isMaster) return next();
 
     let userPerms = req.user.permissions || [];
