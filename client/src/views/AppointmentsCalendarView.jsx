@@ -126,10 +126,18 @@ function AppointmentsCalendarView({
     return str;
   };
 
+  // Normalize time to HH:MM — handles "11:00", "11:00:00", "11:00 AM", etc.
   const normalizeHour = (t) => {
     if (!t) return '';
-    const match = String(t).match(/(\d{1,2})/);
-    return match ? match[1].padStart(2, '0') : '';
+    const str = String(t).trim();
+    // Match HH:MM from any format like "11:00:00", "11:00", "9:30 AM"
+    const match = str.match(/(\d{1,2}):(\d{2})/);
+    if (match) {
+      return match[1].padStart(2, '0') + ':' + match[2];
+    }
+    // Fallback: just hour number
+    const hourOnly = str.match(/(\d{1,2})/);
+    return hourOnly ? hourOnly[1].padStart(2, '0') + ':00' : '';
   };
 
   const checkDoubleBooking = (dateStr, timeStr, stylistId, excludeAppId = null) => {

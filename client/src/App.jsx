@@ -172,6 +172,10 @@ export const mergeLists = (apiList = [], localList = []) => {
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
+    // Only restore user if a JWT token exists — prevents auto-login after logout/cache clear
+    const savedToken = localStorage.getItem('saloon_jwt_token');
+    if (!savedToken) return null;
+
     const savedUser = localStorage.getItem('saloon_user_cache') || localStorage.getItem('saloon_user');
     if (savedUser) {
       try {
@@ -182,11 +186,12 @@ export default function App() {
         return u;
       } catch(e) {}
     }
-    return MOCK_USERS[1];
+    return null;
   });
 
   const [authToken, setAuthToken] = useState(() => localStorage.getItem('saloon_jwt_token') || null);
-  const [authLoading, setAuthLoading] = useState(false);
+  // Start with authLoading=true if token exists so we validate it before rendering anything
+  const [authLoading, setAuthLoading] = useState(() => !!localStorage.getItem('saloon_jwt_token'));
 
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem('saloon_active_tab') || 'dashboard';
@@ -478,51 +483,46 @@ export default function App() {
   // ─── Restore user session on page refresh ───
   useEffect(() => {
     const savedToken = localStorage.getItem('saloon_jwt_token');
-    if (savedToken && !currentUser) {
-      setAuthLoading(true);
 
-      // STEP 1: Decode JWT locally — immediate, no network needed
-      const tokenPayload = decodeJWT(savedToken);
-
-      // STEP 2: Check token expiry
-      const now = Math.floor(Date.now() / 1000);
-      if (tokenPayload && tokenPayload.exp && tokenPayload.exp < now) {
-        // Token genuinely expired — clear and logout
-        localStorage.removeItem('saloon_jwt_token');
-        localStorage.removeItem('saloon_user_cache');
-        setAuthToken(null);
-        setAuthLoading(false);
-        return;
-      }
-
-      // STEP 3: Use localStorage cached user data as immediate fallback
-      // This ensures the user NEVER gets a blank screen on refresh
-      const cachedUser = (() => {
-        try { return JSON.parse(localStorage.getItem('saloon_user_cache') || 'null'); }
-        catch { return null; }
-      })();
-
-      if (cachedUser) {
-        setCurrentUser(cachedUser);
-      } else if (tokenPayload) {
-        setCurrentUser(tokenPayload);
-      }
-
-      Get_Admin_Profile()
-        .then(res => {
-          if (res?.data?.data) {
-            const freshUser = res.data.data;
-            setCurrentUser(freshUser);
-            localStorage.setItem('saloon_user_cache', JSON.stringify(freshUser));
-          }
-        })
-        .catch(() => {
-          console.warn('API unavailable on refresh — using cached session');
-        })
-        .finally(() => setAuthLoading(false));
-    } else {
+    if (!savedToken) {
+      // No token at all — user is definitely logged out, show login
+      setCurrentUser(null);
       setAuthLoading(false);
+      return;
     }
+
+    // STEP 1: Decode JWT locally — immediate, no network needed
+    const tokenPayload = decodeJWT(savedToken);
+
+    // STEP 2: Check token expiry
+    const now = Math.floor(Date.now() / 1000);
+    if (tokenPayload && tokenPayload.exp && tokenPayload.exp < now) {
+      // Token genuinely expired — force logout
+      localStorage.removeItem('saloon_jwt_token');
+      localStorage.removeItem('saloon_user_cache');
+      localStorage.removeItem('saloon_user');
+      localStorage.removeItem('saloon_active_tab');
+      setCurrentUser(null);
+      setAuthToken(null);
+      setAuthLoading(false);
+      return;
+    }
+
+    // STEP 3: Token is valid — use cached user data (already set in useState initializer)
+    // Now try to refresh from API in background
+    Get_Admin_Profile()
+      .then(res => {
+        if (res?.data?.data) {
+          const freshUser = res.data.data;
+          setCurrentUser(freshUser);
+          localStorage.setItem('saloon_user_cache', JSON.stringify(freshUser));
+        }
+      })
+      .catch(() => {
+        // API unavailable — cached session is already set from useState, keep it
+        console.warn('API unavailable on refresh — using cached session');
+      })
+      .finally(() => setAuthLoading(false));
   }, []);
 
   const filterByBranch = (list) => {
@@ -619,8 +619,11 @@ export default function App() {
   const handleLogout = () => {
     setCurrentUser(null);
     setAuthToken(null);
+    // Clear ALL auth-related keys so refresh always goes to login
     localStorage.removeItem('saloon_jwt_token');
     localStorage.removeItem('saloon_user_cache');
+    localStorage.removeItem('saloon_user');
+    localStorage.removeItem('saloon_active_tab');
   };
 
   const handleAddUser = async (newUser) => {
