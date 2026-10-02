@@ -349,7 +349,12 @@ function UsersManagementView({ users: initialUsers, branches, roles, onAddUser, 
 
   // ─── Source of Truth & Filter ───
   const baseList = (serverData?.data && Array.isArray(serverData.data)) ? serverData.data : users;
-  const isMaster = currentUser?.is_super_admin || currentUser?.email === 'admin@saloon.com' || currentUser?.id === 1 || String(currentUser?.role || currentUser?.role_name || '').toLowerCase().includes('super');
+  const isMaster = Boolean(
+    currentUser?.is_super_admin === true ||
+    currentUser?.email === 'admin@saloon.com' ||
+    String(currentUser?.role || currentUser?.role_name || '').toLowerCase() === 'super admin' ||
+    String(currentUser?.role || currentUser?.role_name || '').toLowerCase() === 'superadmin'
+  );
   const availableRoles = isMaster ? roles : roles.filter(r => r.id !== 1 && r.name !== 'Admin' && r.name !== 'Super Admin');
 
   const rawList = baseList.filter(user => {
