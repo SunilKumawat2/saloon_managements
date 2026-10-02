@@ -1197,6 +1197,10 @@ export default function App() {
     return <LoginView onLoginSuccess={handleLoginSuccess} theme={theme} onToggleTheme={toggleTheme} />;
   }
 
+  const activeBranchId = selectedBranchId !== 'all'
+    ? selectedBranchId
+    : (currentUser?.branch_id || (accessibleBranches && accessibleBranches[0]?.id) || (branches && branches[0]?.id) || 1);
+
   return (
     <div className="app-container">
       {/* Sidebar Navigation */}
@@ -1745,7 +1749,7 @@ export default function App() {
               roles={roles}
               selectedBranchId={selectedBranchId}
               currentUser={currentUser}
-              onAddUser={(u) => handleAddUser({ ...u, branch_id: u.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : 1) })}
+              onAddUser={(u) => handleAddUser({ ...u, branch_id: u.branch_id || activeBranchId })}
             />
           ) : (
             <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
@@ -1794,7 +1798,7 @@ export default function App() {
               customers={filterByBranch(customers)}
               selectedBranchId={selectedBranchId}
               currentUser={currentUser}
-              onAddCustomer={(c, file) => handleAddCustomer({ ...c, branch_id: c.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : 1) }, file)}
+              onAddCustomer={(c, file) => handleAddCustomer({ ...c, branch_id: c.branch_id || activeBranchId }, file)}
               onUpdateCustomer={handleUpdateCustomer}
               onDeleteCustomer={handleDeleteCustomer}
             />
@@ -1809,7 +1813,7 @@ export default function App() {
               leads={filterByBranch(leads)}
               selectedBranchId={selectedBranchId}
               currentUser={currentUser}
-              onAddLead={(l, file) => handleAddLead({ ...l, branch_id: l.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : 1) }, file)}
+              onAddLead={(l, file) => handleAddLead({ ...l, branch_id: l.branch_id || activeBranchId }, file)}
               onUpdateLead={handleUpdateLead}
               onDeleteLead={handleDeleteLead}
               onUpdateLeadStatus={handleUpdateLeadStatus}
@@ -1856,8 +1860,8 @@ export default function App() {
               members={members}
               selectedBranchId={selectedBranchId}
               onDeductMemberCredit={handleDeductMemberCredit}
-              onCreateBill={(b) => handleCreateBill({ ...b, branch_id: b.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : 1) })}
-              onAddAppointment={(a) => handleAddAppointment({ ...a, branch_id: a.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : 1) })}
+              onCreateBill={(b) => handleCreateBill({ ...b, branch_id: b.branch_id || activeBranchId })}
+              onAddAppointment={(a) => handleAddAppointment({ ...a, branch_id: a.branch_id || activeBranchId })}
               onUpdateAppointment={handleUpdateAppointment}
               onDeleteAppointment={handleDeleteAppointment}
               onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
@@ -1878,13 +1882,13 @@ export default function App() {
               members={members}
               selectedBranchId={selectedBranchId}
               onDeductMemberCredit={handleDeductMemberCredit}
-              onCreateBill={(b) => handleCreateBill({ ...b, branch_id: b.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : 1) })}
+              onCreateBill={(b) => handleCreateBill({ ...b, branch_id: b.branch_id || activeBranchId })}
               onCheckIn={handleCheckIn}
-              onAddAppointment={(a) => handleAddAppointment({ ...a, branch_id: a.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : 1) })}
+              onAddAppointment={(a) => handleAddAppointment({ ...a, branch_id: a.branch_id || activeBranchId })}
               onUpdateAppointment={handleUpdateAppointment}
               onDeleteAppointment={handleDeleteAppointment}
               onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
-              onAddCustomer={(c, file) => handleAddCustomer({ ...c, branch_id: c.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : 1) }, file)}
+              onAddCustomer={(c, file) => handleAddCustomer({ ...c, branch_id: c.branch_id || activeBranchId }, file)}
             />
           ) : (
             <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
@@ -1906,7 +1910,7 @@ export default function App() {
               members={members}
               selectedBranchId={selectedBranchId}
               onDeductMemberCredit={handleDeductMemberCredit}
-              onCreateBill={(b) => handleCreateBill({ ...b, branch_id: b.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : 1) })}
+              onCreateBill={(b) => handleCreateBill({ ...b, branch_id: b.branch_id || activeBranchId })}
               onBack={handlePOSBack}
               onViewHistory={() => setActiveTab('billing_history')}
             />
@@ -1943,7 +1947,7 @@ export default function App() {
               consumptions={consumptions}
               services={filterByBranch(services)}
               selectedBranchId={selectedBranchId}
-              onAddProduct={(p) => handleAddProduct({ ...p, branch_id: p.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : 1) })}
+              onAddProduct={(p) => handleAddProduct({ ...p, branch_id: p.branch_id || activeBranchId })}
               onUpdateProduct={handleUpdateProduct}
               onAdjustStock={handleAdjustStock}
               onDeleteProduct={handleDeleteProduct}
@@ -1969,7 +1973,7 @@ export default function App() {
               members={members}
               selectedBranchId={selectedBranchId}
               onUpdateMembers={setMembers}
-              onCreateBill={(b) => handleCreateBill({ ...b, branch_id: b.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : 1) })}
+              onCreateBill={(b) => handleCreateBill({ ...b, branch_id: b.branch_id || activeBranchId })}
             />
           ) : (
             <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />

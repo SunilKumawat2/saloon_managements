@@ -133,7 +133,10 @@ function AppointmentsCalendarView({
   };
 
   const checkDoubleBooking = (dateStr, timeStr, stylistId, excludeAppId = null) => {
-    if (!dateStr || !timeStr || !stylistId) return null;
+    if (!dateStr || !timeStr) return null;
+    const effectiveStylistId = stylistId || (stylists[0] && stylists[0].id);
+    if (!effectiveStylistId) return null;
+
     const normTargetDate = normalizeDate(dateStr);
     const normTargetHour = normalizeHour(timeStr);
     
@@ -147,9 +150,8 @@ function AppointmentsCalendarView({
       const appDateMatch = normAppDate === normTargetDate;
       const appTimeMatch = normAppHour === normTargetHour;
 
-      const isStylistMatch = String(app.stylist_id) === String(stylistId) ||
-        (app.stylist_name && stylists.some(s => String(s.id) === String(stylistId) && String(app.stylist_name).toLowerCase().trim() === String(s.name).toLowerCase().trim())) ||
-        (stylists.length === 1);
+      const isStylistMatch = String(app.stylist_id) === String(effectiveStylistId) ||
+        (app.stylist_name && stylists.some(s => String(s.id) === String(effectiveStylistId) && String(app.stylist_name).toLowerCase().trim() === String(s.name).toLowerCase().trim()));
 
       return appDateMatch && appTimeMatch && isStylistMatch;
     });
