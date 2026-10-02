@@ -9,10 +9,11 @@ const todayStr = (() => {
 })();
 
 export const MOCK_USERS = [
-  { id: 1, branch_id: 1, role_id: 1, name: 'Sunil Kumar (Admin)', email: 'admin@saloon.com', phone: '9876543210', role: 'Admin', branch_name: 'Connaught Place Main Salon' },
-  { id: 2, branch_id: 1, role_id: 2, name: 'Rohan Verma (Manager)', email: 'rohan.manager@saloon.com', phone: '9876543211', role: 'Manager', branch_name: 'Connaught Place Main Salon' },
-  { id: 3, branch_id: 1, role_id: 3, name: 'Priya Sharma (Receptionist)', email: 'priya.reception@saloon.com', phone: '9876543212', role: 'Receptionist', branch_name: 'Connaught Place Main Salon' },
-  { id: 4, branch_id: 2, role_id: 4, name: 'Amit Singh (Senior Stylist)', email: 'amit.stylist@saloon.com', phone: '9876543213', role: 'Staff', branch_name: 'Cyber Hub Luxury Branch' }
+  { id: 100, branch_id: null, role_id: 1, is_super_admin: true, name: 'Global Super Admin', email: 'admin@saloon.com', phone: '9999999999', role: 'Super Admin', branch_name: '🌐 Global SaaS System Master' },
+  { id: 1, branch_id: 1, role_id: 1, is_super_admin: false, name: 'Sunil Kumar (Admin)', email: 'sunil.admin@saloon.com', phone: '9876543210', role: 'Admin', branch_name: 'Connaught Place Main Salon' },
+  { id: 2, branch_id: 1, role_id: 2, is_super_admin: false, name: 'Rohan Verma (Manager)', email: 'rohan.manager@saloon.com', phone: '9876543211', role: 'Manager', branch_name: 'Connaught Place Main Salon' },
+  { id: 3, branch_id: 1, role_id: 3, is_super_admin: false, name: 'Priya Sharma (Receptionist)', email: 'priya.reception@saloon.com', phone: '9876543212', role: 'Receptionist', branch_name: 'Connaught Place Main Salon' },
+  { id: 4, branch_id: 2, role_id: 4, is_super_admin: false, name: 'Amit Singh (Senior Stylist)', email: 'amit.stylist@saloon.com', phone: '9876543213', role: 'Staff', branch_name: 'Cyber Hub Luxury Branch' }
 ];
 
 export const MOCK_BRANCHES = [

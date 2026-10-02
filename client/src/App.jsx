@@ -172,11 +172,17 @@ export const mergeLists = (apiList = [], localList = []) => {
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
-    const savedUser = localStorage.getItem('saloon_user');
+    const savedUser = localStorage.getItem('saloon_user_cache') || localStorage.getItem('saloon_user');
     if (savedUser) {
-      try { return JSON.parse(savedUser); } catch(e) {}
+      try {
+        const u = JSON.parse(savedUser);
+        if (u && u.email !== 'admin@saloon.com' && !String(u.role || u.role_name || '').toLowerCase().includes('super')) {
+          u.is_super_admin = false;
+        }
+        return u;
+      } catch(e) {}
     }
-    return MOCK_USERS[0];
+    return MOCK_USERS[1];
   });
 
   const [authToken, setAuthToken] = useState(() => localStorage.getItem('saloon_jwt_token') || null);
