@@ -63,6 +63,7 @@ import {
 import { uploadUserAvatar, removeUserAvatar, uploadCustomerAvatar, removeCustomerAvatar, uploadLeadAvatar, removeLeadAvatar } from '../controllers/uploadController.js';
 import uploadAvatar, { handleUploadAvatar } from '../middleware/uploadMiddleware.js';
 import { getHealth, checkDatabaseStatus } from '../controllers/healthController.js';
+import { getAssets, getAssetById, createAsset, updateAsset, deleteAsset, transferAsset } from '../controllers/assetController.js';
 import { getStaffTracking, getCustomerTracking } from '../controllers/trackingController.js';
 
 const router = express.Router();
@@ -244,7 +245,12 @@ router.post('/settings/backups/create', authenticateToken, requirePermission('al
 router.get('/payment/gateway-config', authenticateToken, getGatewaySettings);
 router.put('/payment/gateway-config', authenticateToken, requirePermission('all'), updateGatewaySettings);
 router.post('/payment/create-order', authenticateToken, createOrder);
-router.post('/payment/verify-signature', authenticateToken, verifyPayment);
-
+// -------------------- Salon Assets & Equipment Tracking Routes --------------------
+router.get('/assets', authenticateToken, getAssets);
+router.get('/assets/:id', authenticateToken, getAssetById);
+router.post('/assets/create', authenticateToken, createAsset);
+router.put('/assets/:id', authenticateToken, updateAsset);
+router.delete('/assets/:id', authenticateToken, deleteAsset);
+router.patch('/assets/:id/transfer', authenticateToken, transferAsset);
 
 export default router;

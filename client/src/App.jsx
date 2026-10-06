@@ -23,7 +23,8 @@ import {
   BarChart3,
   User,
   Lock,
-  Clock
+  Clock,
+  Package
 } from 'lucide-react';
 
 
@@ -46,6 +47,7 @@ import StaffCustomerTrackingView from './views/StaffCustomerTrackingView';
 import AdminSecuritySettingsView from './views/AdminSecuritySettingsView';
 import StylistManagementView from './views/StylistManagementView';
 import TimeSlotsManagementView from './views/TimeSlotsManagementView';
+import AssetsTrackingManagementView from './views/AssetsTrackingManagementView';
 import UserProfileModal from './views/UserProfileModal';
 
 import {
@@ -118,6 +120,11 @@ import {
   Admin_Create_Consumption,
   Admin_Update_Consumption,
   Admin_Delete_Consumption,
+  Admin_Get_Assets,
+  Admin_Create_Asset,
+  Admin_Update_Asset,
+  Admin_Delete_Asset,
+  Admin_Transfer_Asset,
   Admin_Update_Enrolled_Member,
   Get_Admin_Profile
 } from './services/apiService';
@@ -294,6 +301,7 @@ export default function App() {
   const [suppliers, setSuppliers] = useState([]);
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [consumptions, setConsumptions] = useState([]);
+  const [assets, setAssets] = useState([]);
   const [members, setMembers] = useState(() => getStoredData('saloon_enrolled_members', []));
   const [dbStatus, setDbStatus] = useState({ connected: false, checking: true });
 
@@ -477,6 +485,9 @@ export default function App() {
 
       const consRes = await Admin_Get_Consumptions().catch(() => null);
       if (consRes?.data?.data && Array.isArray(consRes.data.data)) setConsumptions(consRes.data.data);
+
+      const assetsRes = await Admin_Get_Assets().catch(() => null);
+      if (assetsRes?.data?.data && Array.isArray(assetsRes.data.data)) setAssets(assetsRes.data.data);
 
     } catch (err) {
       console.error('API Fetch Error:', err);
@@ -1366,6 +1377,60 @@ export default function App() {
     } catch (e) { console.error('Delete Consumption Error:', e); }
   };
 
+  // Asset Management Handlers
+  const handleAddAsset = async (assetData) => {
+    const curAdminId = currentUser ? String(currentUser.admin_id || currentUser.id) : null;
+    const payload = {
+      ...assetData,
+      branch_id: assetData.branch_id || currentUser?.branch_id || (branches && branches[0]?.id ? branches[0].id : null),
+      admin_id: curAdminId,
+      created_by_admin_id: currentUser?.admin_id || currentUser?.id
+    };
+    try {
+      const res = await Admin_Create_Asset(payload);
+      const created = res?.data?.data || { id: Date.now(), ...payload };
+      setAssets(prev => [created, ...prev]);
+      return created;
+    } catch (e) {
+      console.error("Create Asset Error:", e);
+      throw e;
+    }
+  };
+
+  const handleUpdateAsset = async (id, assetData) => {
+    try {
+      const res = await Admin_Update_Asset(id, assetData);
+      const updated = res?.data?.data || { id, ...assetData };
+      setAssets(prev => prev.map(a => String(a.id) === String(id) ? { ...a, ...updated } : a));
+      return updated;
+    } catch (e) {
+      console.error("Update Asset Error:", e);
+      throw e;
+    }
+  };
+
+  const handleDeleteAsset = async (id) => {
+    try {
+      await Admin_Delete_Asset(id);
+      setAssets(prev => prev.filter(a => String(a.id) !== String(id)));
+    } catch (e) {
+      console.error("Delete Asset Error:", e);
+      throw e;
+    }
+  };
+
+  const handleTransferAsset = async (id, transferData) => {
+    try {
+      const res = await Admin_Transfer_Asset(id, transferData);
+      const updated = res?.data?.data || { id, ...transferData };
+      setAssets(prev => prev.map(a => String(a.id) === String(id) ? { ...a, ...updated } : a));
+      return updated;
+    } catch (e) {
+      console.error("Transfer Asset Error:", e);
+      throw e;
+    }
+  };
+
   if (authLoading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--bg-dark)', color: 'var(--text-main)', fontFamily: 'sans-serif' }}>
@@ -1565,11 +1630,11 @@ export default function App() {
             {canAccess(['manage_inventory', 'all']) && (
               <div style={{ marginTop: '4px' }}>
                 <button
-                  className={`nav-dropdown-toggle ${isInventoryOpen ? 'open' : ''} ${['inventory'].includes(activeTab) ? 'active' : ''}`}
+                  className={`nav-dropdown-toggle ${isInventoryOpen ? 'open' : ''} ${['inventory', 'assets_tracking'].includes(activeTab) ? 'active' : ''}`}
                   onClick={() => setIsInventoryOpen(!isInventoryOpen)}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Database size={17} style={{ color: ['inventory'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
+                    <Database size={17} style={{ color: ['inventory', 'assets_tracking'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
                     <span>Inventory & Stock</span>
                   </div>
                   {isInventoryOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
@@ -1579,6 +1644,9 @@ export default function App() {
                   <div className="nav-dropdown-menu">
                     <button className={`sub-nav-btn ${activeTab === 'inventory' ? 'active' : ''}`} onClick={() => setActiveTab('inventory')}>
                       <Database size={14} /> Stock & Suppliers ({products.length})
+                    </button>
+                    <button className={`sub-nav-btn ${activeTab === 'assets_tracking' ? 'active' : ''}`} onClick={() => setActiveTab('assets_tracking')}>
+                      <Package size={14} /> Salon Assets & Tracking ({assets.length})
                     </button>
                   </div>
                 )}
@@ -1762,6 +1830,7 @@ export default function App() {
               {activeTab === 'pos_billing' && `POS Billing — ${posCustomer?.name || 'Customer'}`}
               {activeTab === 'billing_history' && 'POS Billing History & Invoices'}
               {activeTab === 'inventory' && 'Inventory & Product Stock Management'}
+              {activeTab === 'assets_tracking' && 'Salon Assets & Equipment Tracking'}
               {activeTab === 'loyalty' && 'Loyalty & Membership Program'}
               {activeTab === 'marketing' && 'Marketing Automation & Communication'}
               {activeTab === 'analytics' && 'Reports & Executive Analytics'}
@@ -2185,6 +2254,23 @@ export default function App() {
               onAddConsumption={handleAddConsumption}
               onUpdateConsumption={handleUpdateConsumption}
               onDeleteConsumption={handleDeleteConsumption}
+            />
+          ) : (
+            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+          )
+        )}
+
+        {activeTab === 'assets_tracking' && (
+          canAccess(['manage_inventory', 'all']) ? (
+            <AssetsTrackingManagementView
+              assets={filterByBranch(assets)}
+              branches={branches}
+              staff={users}
+              selectedBranchId={selectedBranchId}
+              onAddAsset={(a) => handleAddAsset({ ...a, branch_id: a.branch_id || activeBranchId })}
+              onUpdateAsset={handleUpdateAsset}
+              onDeleteAsset={handleDeleteAsset}
+              onTransferAsset={handleTransferAsset}
             />
           ) : (
             <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />

@@ -1251,6 +1251,48 @@ export const Admin_Get_Customer_Tracking = async (search = '') => {
   } catch (error) { throw error.response || error; }
 };
 
+// <----------------  Salon Assets & Equipment Tracking APIs ---------------->
+export const Admin_Get_Assets = async (params = {}) => {
+  try {
+    const token = getToken();
+    let query = [];
+    if (params.branch_id) query.push(`branch_id=${params.branch_id}`);
+    if (params.category) query.push(`category=${encodeURIComponent(params.category)}`);
+    if (params.condition_status) query.push(`condition_status=${encodeURIComponent(params.condition_status)}`);
+    const qStr = query.length > 0 ? `?${query.join('&')}` : '';
+    return await axios.get(`${API_BASE_URL}/assets${qStr}`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Create_Asset = async (assetData) => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/assets/create`, assetData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Update_Asset = async (id, assetData) => {
+  try {
+    const token = getToken();
+    return await axios.put(`${API_BASE_URL}/assets/${id}`, assetData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Delete_Asset = async (id) => {
+  try {
+    const token = getToken();
+    return await axios.delete(`${API_BASE_URL}/assets/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Transfer_Asset = async (id, transferData) => {
+  try {
+    const token = getToken();
+    return await axios.patch(`${API_BASE_URL}/assets/${id}/transfer`, transferData, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+
 
 
 
