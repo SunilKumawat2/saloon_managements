@@ -30,7 +30,7 @@ export const getRoles = async (req, res) => {
 
 export const createUser = async (req, res) => {
   try {
-    const { name, email, phone, role_id, branch_id, password } = req.body;
+    const { name, email, phone, role_id, branch_id, password, allowed_branch_ids } = req.body;
     if (!name || !email || !role_id) {
       return res.status(400).json({ status: 'error', message: 'Name, email and role are required' });
     }
@@ -50,6 +50,18 @@ export const createUser = async (req, res) => {
     const adminId = isMaster ? null : reqUser?.id;
     const createdByUserId = reqUser?.id || null;
 
+    let parsedAllowed = [];
+    if (Array.isArray(allowed_branch_ids)) {
+      parsedAllowed = allowed_branch_ids.map(Number).filter(n => !isNaN(n));
+    } else if (typeof allowed_branch_ids === 'string') {
+      try {
+        const p = JSON.parse(allowed_branch_ids);
+        if (Array.isArray(p)) parsedAllowed = p.map(Number).filter(n => !isNaN(n));
+      } catch (e) {
+        parsedAllowed = [];
+      }
+    }
+
     const newUser = await UserModel.create({
       name,
       email,
@@ -58,7 +70,8 @@ export const createUser = async (req, res) => {
       branch_id,
       password,
       admin_id: adminId,
-      created_by_user_id: createdByUserId
+      created_by_user_id: createdByUserId,
+      allowed_branch_ids: parsedAllowed
     });
     return res.status(201).json({ status: 'success', message: 'User created successfully', data: newUser });
   } catch (error) {
@@ -72,7 +85,7 @@ export const createUser = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { name, email, phone, role_id, branch_id } = req.body;
+    const { name, email, phone, role_id, branch_id, allowed_branch_ids } = req.body;
 
     const reqUser = req.user;
     const isMaster = Boolean(reqUser?.is_super_admin === true || reqUser?.email === 'admin@saloon.com' || String(reqUser?.role || reqUser?.role_name || '').toLowerCase() === 'super admin' || String(reqUser?.role || reqUser?.role_name || '').toLowerCase() === 'superadmin');
@@ -85,7 +98,31 @@ export const updateUser = async (req, res) => {
     if (phone && cleanPhone.length !== 10) {
       return res.status(400).json({ status: 'error', message: 'Phone number must be exactly 10 digits' });
     }
-    const updated = await UserModel.update(id, { name, email, phone: cleanPhone || phone, role_id, branch_id });
+
+    let parsedAllowed = undefined;
+    if (allowed_branch_ids !== undefined) {
+      if (Array.isArray(allowed_branch_ids)) {
+        parsedAllowed = allowed_branch_ids.map(Number).filter(n => !isNaN(n));
+      } else if (typeof allowed_branch_ids === 'string') {
+        try {
+          const p = JSON.parse(allowed_branch_ids);
+          if (Array.isArray(p)) parsedAllowed = p.map(Number).filter(n => !isNaN(n));
+        } catch (e) {
+          parsedAllowed = [];
+        }
+      } else {
+        parsedAllowed = [];
+      }
+    }
+
+    const updated = await UserModel.update(id, {
+      name,
+      email,
+      phone: cleanPhone || phone,
+      role_id,
+      branch_id,
+      allowed_branch_ids: parsedAllowed
+    });
     if (!updated) return res.status(404).json({ status: 'error', message: 'User not found' });
     return res.json({ status: 'success', message: 'User updated successfully', data: updated });
   } catch (error) {

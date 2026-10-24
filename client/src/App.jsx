@@ -174,12 +174,19 @@ export const isSalonAdmin = (user) => {
   if (!user) return false;
   if (isMasterAdmin(user)) return true;
   const role = String(user.role || user.role_name || '').toLowerCase();
-  return role.includes('admin') || role.includes('owner');
+  return role.includes('admin') || role.includes('owner') || user.role_id === 1;
+};
+
+export const isManager = (user) => {
+  if (!user) return false;
+  if (isSalonAdmin(user)) return false;
+  const role = String(user.role || user.role_name || '').toLowerCase();
+  return role.includes('manager') || user.role_id === 2;
 };
 
 export const isBranchScopedUser = (user) => {
   if (!user) return false;
-  if (isMasterAdmin(user) || isSalonAdmin(user)) return false;
+  if (isMasterAdmin(user) || isSalonAdmin(user) || isManager(user)) return false;
   return true;
 };
 
@@ -317,6 +324,33 @@ export default function App() {
   const accessibleBranches = useMemo(() => {
     if (!currentUser) return [];
     if (isMasterAdmin(currentUser)) return branches;
+
+    if (isManager(currentUser)) {
+      const adminOwnerId = currentUser.admin_id || currentUser.created_by_user_id;
+      // Get all branches created by / belonging to the manager's admin
+      const adminBranches = branches.filter(b => 
+        String(b.created_by_admin_id || b.admin_id || b.owner_id || b.created_by) === String(adminOwnerId)
+      );
+
+      // Check allowed_branch_ids
+      let allowed = currentUser.allowed_branch_ids;
+      if (typeof allowed === 'string') {
+        try { allowed = JSON.parse(allowed); } catch (e) { allowed = []; }
+      }
+      if (Array.isArray(allowed) && allowed.length > 0) {
+        const allowedSet = new Set(allowed.map(String));
+        const filtered = adminBranches.filter(b => allowedSet.has(String(b.id)));
+        if (filtered.length > 0) return filtered;
+      }
+
+      // If allowed is empty or not specified, Manager gets ALL branches created by their Admin
+      if (adminBranches.length > 0) return adminBranches;
+
+      // Fallback to assigned branch
+      return branches.filter(b => String(b.id) === String(currentUser.branch_id));
+    }
+
+    // Salon Admin (Salon Owner)
     return branches.filter(b => 
       String(b.created_by_admin_id || b.admin_id || b.owner_id || b.created_by) === String(currentUser.id) ||
       String(b.id) === String(currentUser.branch_id)
@@ -570,6 +604,7 @@ export default function App() {
     const isMaster = isMasterAdmin(currentUser);
     const isScoped = isBranchScopedUser(currentUser);
     const isOwner = isSalonAdmin(currentUser) && !isMaster;
+    const isMgr = isManager(currentUser);
 
     // 1. Super Admin sees everything
     if (isMaster) {
@@ -579,19 +614,48 @@ export default function App() {
       return list;
     }
 
-    // 2. Branch-Scoped User (Manager, Receptionist, Staff)
+    // 2. Branch-Scoped User (Receptionist, Staff)
     if (isScoped) {
       const userBranchId = String(currentUser.branch_id || '');
       return list.filter(item => {
         if (!item) return false;
-        if (selectedBranchId !== 'all' && String(item.branch_id) !== String(selectedBranchId)) {
-          return false;
-        }
         return String(item.branch_id) === userBranchId;
       });
     }
 
-    // 3. Salon Admin (Salon Owner)
+    // 3. Manager (Multi-Branch Access scoped to their Admin's permitted branches)
+    if (isMgr) {
+      const myBranchIds = new Set(accessibleBranches.map(b => String(b.id)));
+      const currentAdminId = String(currentUser.admin_id || currentUser.created_by_user_id || '');
+
+      return list.filter(item => {
+        if (!item) return false;
+
+        // Hide Super Admin items / accounts
+        if (item.is_super_admin || item.email === 'admin@saloon.com') return false;
+
+        // 1. If item has branch_id, check if it belongs to one of manager's permitted branches
+        if (item.branch_id && myBranchIds.has(String(item.branch_id))) {
+          if (selectedBranchId !== 'all' && String(item.branch_id) !== String(selectedBranchId)) {
+            return false;
+          }
+          return true;
+        }
+
+        // 2. Check explicit admin creator ID matching manager's admin
+        const itemAdminId = item.created_by_admin_id || item.admin_id || item.created_by_user_id || item.created_by;
+        if (itemAdminId && currentAdminId && String(itemAdminId) === currentAdminId) {
+          if (selectedBranchId !== 'all' && item.branch_id && String(item.branch_id) !== String(selectedBranchId)) {
+            return false;
+          }
+          return true;
+        }
+
+        return false;
+      });
+    }
+
+    // 4. Salon Admin (Salon Owner)
     if (isOwner) {
       const currentAdminId = String(currentUser.id);
       const myBranchIds = new Set(accessibleBranches.map(b => String(b.id)));
@@ -1911,7 +1975,7 @@ export default function App() {
               <Building size={16} style={{ color: 'var(--accent-gold)', flexShrink: 0 }} />
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {isMasterAdmin(currentUser) ? 'SaaS Platform Control' : 'Branch Access'}
+                  {isMasterAdmin(currentUser) ? 'SaaS Platform Control' : (isManager(currentUser) ? 'Manager Branch Access' : 'Branch Access')}
                 </span>
                 {(() => {
                   if (isMasterAdmin(currentUser)) {
@@ -1920,7 +1984,7 @@ export default function App() {
                         👑 Global Super Admin (All Salons)
                       </div>
                     );
-                  } else if (isSalonAdmin(currentUser)) {
+                  } else if (isSalonAdmin(currentUser) || isManager(currentUser)) {
                     return (
                       <select
                         value={selectedBranchId || 'all'}
@@ -1939,7 +2003,9 @@ export default function App() {
                           paddingRight: '4px'
                         }}
                       >
-                        <option value="all" style={{ background: '#1a1a1a', color: '#fff' }}>🌐 All My Branches</option>
+                        <option value="all" style={{ background: '#1a1a1a', color: '#fff' }}>
+                          🌐 {isManager(currentUser) ? 'All Permitted Branches' : 'All My Branches'}
+                        </option>
                         {accessibleBranches.map(b => (
                           <option key={b.id} value={b.id} style={{ background: '#1a1a1a', color: '#fff' }}>
                             🏢 {b.name} ({b.code || `ID:${b.id}`})

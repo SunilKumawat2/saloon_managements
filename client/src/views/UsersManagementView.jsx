@@ -163,7 +163,16 @@ function UsersManagementView({ users: initialUsers, branches, roles, onAddUser, 
   const [deleteUser, setDeleteUser] = useState(null);   // user to confirm delete
 
   // Add form state
-  const [newUser, setNewUser] = useState({ name: '', email: '', phone: '', role_id: 2, branch_id: 1, password: 'password123' });
+  const [newUser, setNewUser] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    role_id: 2,
+    branch_id: 1,
+    password: 'password123',
+    manager_access_mode: 'all',
+    allowed_branch_ids: []
+  });
   const [avatarFile, setAvatarFile] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addPhoneError, setAddPhoneError] = useState('');
@@ -247,11 +256,22 @@ function UsersManagementView({ users: initialUsers, branches, roles, onAddUser, 
     setAddPhoneError('');
     setIsSubmitting(true);
     try {
+      const isMgr = (parseInt(newUser.role_id) === 2 || roles.find(r => r.id === parseInt(newUser.role_id))?.name === 'Manager');
+      let allowedBranches = [];
+      if (isMgr) {
+        if (newUser.manager_access_mode === 'all') {
+          allowedBranches = [];
+        } else {
+          allowedBranches = (newUser.allowed_branch_ids || []).map(Number).filter(n => !isNaN(n));
+        }
+      }
+
       const payload = {
         ...newUser,
         phone: cleanPhone,
         role_id: parseInt(newUser.role_id),
-        branch_id: (parseInt(newUser.role_id) === 1 || newUser.role_id === '1') ? null : (newUser.branch_id ? parseInt(newUser.branch_id) : null)
+        branch_id: (parseInt(newUser.role_id) === 1 || newUser.role_id === '1') ? null : (isMgr && allowedBranches.length > 0 ? allowedBranches[0] : (newUser.branch_id ? parseInt(newUser.branch_id) : (branches[0]?.id || 1))),
+        allowed_branch_ids: allowedBranches
       };
       const created = await onAddUser(payload);
       if (created) {
@@ -283,7 +303,7 @@ function UsersManagementView({ users: initialUsers, branches, roles, onAddUser, 
         }
       }
       setShowAddModal(false);
-      setNewUser({ name: '', email: '', phone: '', role_id: 2, branch_id: 1, password: 'password123' });
+      setNewUser({ name: '', email: '', phone: '', role_id: 2, branch_id: 1, password: 'password123', manager_access_mode: 'all', allowed_branch_ids: [] });
       setAvatarFile(null);
       fetchBackendUsers();
     } catch (err) {
@@ -304,19 +324,31 @@ function UsersManagementView({ users: initialUsers, branches, roles, onAddUser, 
     setEditPhoneError('');
     setIsSubmitting(true);
     try {
+      const isMgr = (parseInt(editUser.role_id) === 2 || roles.find(r => r.id === parseInt(editUser.role_id))?.name === 'Manager');
+      let allowedBranches = [];
+      if (isMgr) {
+        if (editUser.manager_access_mode === 'all') {
+          allowedBranches = [];
+        } else {
+          allowedBranches = (editUser.allowed_branch_ids || []).map(Number).filter(n => !isNaN(n));
+        }
+      }
+
       const res = await Admin_Update_User(editUser.id, {
         name: editUser.name,
         email: editUser.email,
         phone: cleanPhone,
         role_id: editUser.role_id,
-        branch_id: editUser.branch_id,
+        branch_id: (parseInt(editUser.role_id) === 1 || editUser.role_id === '1') ? null : (isMgr && allowedBranches.length > 0 ? allowedBranches[0] : (editUser.branch_id || branches[0]?.id || 1)),
+        allowed_branch_ids: allowedBranches
       }).catch(() => null);
       if (res?.data?.data) {
-        setUsers(prev => prev.map(u => u.id === editUser.id ? { ...u, ...res.data.data } : u));
+        setUsers(prev => prev.map(u => u.id === editUser.id ? { ...u, ...res.data.data, allowed_branch_ids: allowedBranches } : u));
       } else {
-        setUsers(prev => prev.map(u => u.id === editUser.id ? { ...u, ...editUser, phone: cleanPhone } : u));
+        setUsers(prev => prev.map(u => u.id === editUser.id ? { ...u, ...editUser, phone: cleanPhone, allowed_branch_ids: allowedBranches } : u));
       }
       setEditUser(null);
+      fetchBackendUsers();
     } finally {
       setIsSubmitting(false);
     }
@@ -512,9 +544,47 @@ function UsersManagementView({ users: initialUsers, branches, roles, onAddUser, 
                   </span>
                 </td>
                 <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.78rem' }}>
-                    <Building size={12} style={{ color: 'var(--accent-gold)' }} /> {user.branch_name || 'Main Salon'}
-                  </div>
+                  {(() => {
+                    const isAdm = roles.find(r => r.id === user.role_id)?.name === 'Admin' || user.role_id === 1;
+                    const isMgr = roles.find(r => r.id === user.role_id)?.name === 'Manager' || user.role_id === 2;
+                    if (isAdm) {
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.78rem', color: 'var(--accent-gold)', fontWeight: '700' }}>
+                          <Building size={12} /> 🌐 Master Owner
+                        </div>
+                      );
+                    }
+                    if (isMgr) {
+                      let allowed = user.allowed_branch_ids;
+                      if (typeof allowed === 'string') {
+                        try { allowed = JSON.parse(allowed); } catch (e) { allowed = []; }
+                      }
+                      if (Array.isArray(allowed) && allowed.length > 0) {
+                        const matchedBranches = branches.filter(b => allowed.map(String).includes(String(b.id)));
+                        const names = matchedBranches.map(b => b.name).join(', ');
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }} title={names || 'Selected Branches'}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.78rem', color: '#38bdf8', fontWeight: '700' }}>
+                              <Building size={12} /> 🏢 {matchedBranches.length} Permitted {matchedBranches.length === 1 ? 'Branch' : 'Branches'}
+                            </span>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', maxWidth: '170px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {names || `Branches: ${allowed.join(', ')}`}
+                            </span>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.78rem', color: '#38bdf8', fontWeight: '700' }}>
+                          <Building size={12} /> 🌐 All Salon Branches
+                        </div>
+                      );
+                    }
+                    return (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.78rem' }}>
+                        <Building size={12} style={{ color: 'var(--accent-gold)' }} /> {user.branch_name || 'Main Salon'}
+                      </div>
+                    );
+                  })()}
                 </td>
                 <td style={{ fontSize: '0.78rem' }}>{user.phone || 'N/A'}</td>
                 <td style={{ fontSize: '0.78rem' }}>
@@ -567,7 +637,18 @@ function UsersManagementView({ users: initialUsers, branches, roles, onAddUser, 
                     {/* Icon Buttons with Tooltips */}
                     <button
                       className="action-icon-btn edit"
-                      onClick={() => setEditUser({ ...user })}
+                      onClick={() => {
+                        let allowed = user.allowed_branch_ids;
+                        if (typeof allowed === 'string') {
+                          try { allowed = JSON.parse(allowed); } catch (e) { allowed = []; }
+                        }
+                        const hasSpecific = Array.isArray(allowed) && allowed.length > 0;
+                        setEditUser({
+                          ...user,
+                          manager_access_mode: hasSpecific ? 'specific' : 'all',
+                          allowed_branch_ids: hasSpecific ? allowed : []
+                        });
+                      }}
                       title="Edit User"
                     >
                       <Edit3 size={14} />
@@ -849,6 +930,22 @@ function UsersManagementView({ users: initialUsers, branches, roles, onAddUser, 
                     }}>
                       🌐 Master Owner (No Branch Needed)
                     </div>
+                  ) : ((roles.find(r => r.id === newUser.role_id)?.name === 'Manager') || newUser.role_id === 2) ? (
+                    <div style={{
+                      padding: '8px 12px',
+                      background: 'rgba(56, 189, 248, 0.08)',
+                      border: '1px solid rgba(56, 189, 248, 0.25)',
+                      borderRadius: '8px',
+                      fontSize: '0.76rem',
+                      color: '#38bdf8',
+                      fontWeight: '700',
+                      height: '42px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      👑 Multi-Branch Manager (Set Below)
+                    </div>
                   ) : (
                     <select
                       value={newUser.branch_id == null ? (branches[0]?.id || '') : newUser.branch_id}
@@ -859,6 +956,79 @@ function UsersManagementView({ users: initialUsers, branches, roles, onAddUser, 
                   )}
                 </div>
               </div>
+
+              {/* Manager Multi-Branch Permission Scope Selector */}
+              {((roles.find(r => r.id === newUser.role_id)?.name === 'Manager') || newUser.role_id === 2) && (
+                <div style={{
+                  marginTop: '12px',
+                  padding: '12px 14px',
+                  background: 'rgba(56, 189, 248, 0.05)',
+                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                  borderRadius: '10px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: '800', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                      <Building size={14} /> Manager Branch Access Control
+                    </label>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      Branch Permission Scope
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '16px', marginBottom: newUser.manager_access_mode === 'specific' ? '10px' : '4px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '700', color: newUser.manager_access_mode === 'all' ? 'var(--accent-gold)' : 'var(--text-sub)' }}>
+                      <input
+                        type="radio"
+                        name="add_manager_branch_mode"
+                        checked={newUser.manager_access_mode === 'all'}
+                        onChange={() => setNewUser({ ...newUser, manager_access_mode: 'all', allowed_branch_ids: [] })}
+                      />
+                      <span>🌐 All Branches (Full Access)</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '700', color: newUser.manager_access_mode === 'specific' ? 'var(--accent-gold)' : 'var(--text-sub)' }}>
+                      <input
+                        type="radio"
+                        name="add_manager_branch_mode"
+                        checked={newUser.manager_access_mode === 'specific'}
+                        onChange={() => {
+                          const initialBranches = branches.slice(0, 1).map(b => b.id);
+                          setNewUser({ ...newUser, manager_access_mode: 'specific', allowed_branch_ids: initialBranches, branch_id: initialBranches[0] || null });
+                        }}
+                      />
+                      <span>🏢 Specific Branches Only</span>
+                    </label>
+                  </div>
+
+                  {newUser.manager_access_mode === 'specific' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', maxHeight: '130px', overflowY: 'auto' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '2px' }}>
+                        Check which branches this manager is permitted to access:
+                      </span>
+                      {branches.map(b => {
+                        const isChecked = (newUser.allowed_branch_ids || []).map(String).includes(String(b.id));
+                        return (
+                          <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', cursor: 'pointer', padding: '2px 0' }}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                const currentSet = new Set((newUser.allowed_branch_ids || []).map(String));
+                                if (e.target.checked) currentSet.add(String(b.id));
+                                else currentSet.delete(String(b.id));
+                                const newArr = Array.from(currentSet).map(Number);
+                                setNewUser({ ...newUser, allowed_branch_ids: newArr, branch_id: newArr[0] || null });
+                              }}
+                            />
+                            <span style={{ fontWeight: isChecked ? '700' : '500', color: isChecked ? 'var(--text-main)' : 'var(--text-sub)' }}>
+                              🏢 {b.name} <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>({b.code || `ID:${b.id}`})</span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '16px' }}>
                 <button type="button" onClick={() => { setShowAddModal(false); setAvatarFile(null); }} className="glass-card" style={{ padding: '8px 16px', cursor: 'pointer', color: 'var(--text-sub)', fontSize: '0.8rem' }}>Cancel</button>
@@ -985,6 +1155,22 @@ function UsersManagementView({ users: initialUsers, branches, roles, onAddUser, 
                     }}>
                       🌐 Master Owner (No Branch Needed)
                     </div>
+                  ) : ((roles.find(r => r.id === editUser.role_id)?.name === 'Manager') || editUser.role_id === 2) ? (
+                    <div style={{
+                      padding: '8px 12px',
+                      background: 'rgba(56, 189, 248, 0.08)',
+                      border: '1px solid rgba(56, 189, 248, 0.25)',
+                      borderRadius: '8px',
+                      fontSize: '0.76rem',
+                      color: '#38bdf8',
+                      fontWeight: '700',
+                      height: '42px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      👑 Multi-Branch Manager (Set Below)
+                    </div>
                   ) : (
                     <select
                       value={editUser.branch_id || ''}
@@ -995,6 +1181,81 @@ function UsersManagementView({ users: initialUsers, branches, roles, onAddUser, 
                   )}
                 </div>
               </div>
+
+              {/* Manager Multi-Branch Permission Scope Selector for Edit */}
+              {((roles.find(r => r.id === editUser.role_id)?.name === 'Manager') || editUser.role_id === 2) && (
+                <div style={{
+                  marginTop: '12px',
+                  padding: '12px 14px',
+                  background: 'rgba(56, 189, 248, 0.05)',
+                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                  borderRadius: '10px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: '800', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                      <Building size={14} /> Manager Branch Access Control
+                    </label>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      Branch Permission Scope
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '16px', marginBottom: editUser.manager_access_mode === 'specific' ? '10px' : '4px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '700', color: editUser.manager_access_mode === 'all' ? 'var(--accent-gold)' : 'var(--text-sub)' }}>
+                      <input
+                        type="radio"
+                        name="edit_manager_branch_mode"
+                        checked={editUser.manager_access_mode === 'all'}
+                        onChange={() => setEditUser({ ...editUser, manager_access_mode: 'all', allowed_branch_ids: [] })}
+                      />
+                      <span>🌐 All Branches (Full Access)</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '700', color: editUser.manager_access_mode === 'specific' ? 'var(--accent-gold)' : 'var(--text-sub)' }}>
+                      <input
+                        type="radio"
+                        name="edit_manager_branch_mode"
+                        checked={editUser.manager_access_mode === 'specific'}
+                        onChange={() => {
+                          const initialBranches = (editUser.allowed_branch_ids && editUser.allowed_branch_ids.length > 0)
+                            ? editUser.allowed_branch_ids
+                            : (editUser.branch_id ? [editUser.branch_id] : branches.slice(0, 1).map(b => b.id));
+                          setEditUser({ ...editUser, manager_access_mode: 'specific', allowed_branch_ids: initialBranches, branch_id: initialBranches[0] || null });
+                        }}
+                      />
+                      <span>🏢 Specific Branches Only</span>
+                    </label>
+                  </div>
+
+                  {editUser.manager_access_mode === 'specific' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', maxHeight: '130px', overflowY: 'auto' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '2px' }}>
+                        Check which branches this manager is permitted to access:
+                      </span>
+                      {branches.map(b => {
+                        const isChecked = (editUser.allowed_branch_ids || []).map(String).includes(String(b.id));
+                        return (
+                          <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', cursor: 'pointer', padding: '2px 0' }}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                const currentSet = new Set((editUser.allowed_branch_ids || []).map(String));
+                                if (e.target.checked) currentSet.add(String(b.id));
+                                else currentSet.delete(String(b.id));
+                                const newArr = Array.from(currentSet).map(Number);
+                                setEditUser({ ...editUser, allowed_branch_ids: newArr, branch_id: newArr[0] || null });
+                              }}
+                            />
+                            <span style={{ fontWeight: isChecked ? '700' : '500', color: isChecked ? 'var(--text-main)' : 'var(--text-sub)' }}>
+                              🏢 {b.name} <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>({b.code || `ID:${b.id}`})</span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '16px' }}>
                 <button type="button" onClick={() => setEditUser(null)} className="glass-card" style={{ padding: '8px 16px', cursor: 'pointer', color: 'var(--text-sub)', fontSize: '0.8rem' }}>Cancel</button>
                 <button

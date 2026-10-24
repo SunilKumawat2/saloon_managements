@@ -22,10 +22,34 @@ export const BranchModel = {
         const roleStr = String(currentUser.role || currentUser.role_name || '').trim().toLowerCase();
         const isSuper = currentUser.is_super_admin === true || currentUser.email === 'admin@saloon.com' || roleStr === 'super admin' || roleStr === 'superadmin';
         const isSalonOwner = !isSuper && (roleStr === 'admin' || roleStr === 'owner' || roleStr === 'salon admin' || currentUser.role_id === 1);
+        const isManager = !isSuper && !isSalonOwner && (roleStr.includes('manager') || currentUser.role_id === 2);
 
         if (isSalonOwner) {
           queryParams.push(currentUser.id);
           whereConditions.push(`(b.admin_id = $${queryParams.length} OR b.created_by_user_id = $${queryParams.length})`);
+        } else if (isManager) {
+          const adminOwnerId = currentUser.admin_id || currentUser.created_by_user_id;
+          let allowedBranches = [];
+          if (Array.isArray(currentUser.allowed_branch_ids) && currentUser.allowed_branch_ids.length > 0) {
+            allowedBranches = currentUser.allowed_branch_ids.map(Number).filter(n => !isNaN(n));
+          } else if (typeof currentUser.allowed_branch_ids === 'string') {
+            try {
+              const parsed = JSON.parse(currentUser.allowed_branch_ids);
+              if (Array.isArray(parsed)) allowedBranches = parsed.map(Number).filter(n => !isNaN(n));
+            } catch (e) {}
+          }
+
+          if (allowedBranches.length > 0) {
+            queryParams.push(allowedBranches);
+            whereConditions.push(`b.id = ANY($${queryParams.length}::int[])`);
+          } else if (adminOwnerId) {
+            // Manager has access to all branches created by their Admin
+            queryParams.push(adminOwnerId);
+            whereConditions.push(`(b.admin_id = $${queryParams.length} OR b.created_by_user_id = $${queryParams.length})`);
+          } else if (currentUser.branch_id) {
+            queryParams.push(currentUser.branch_id);
+            whereConditions.push(`b.id = $${queryParams.length}`);
+          }
         } else if (!isSuper) {
           if (currentUser.branch_id) {
             queryParams.push(currentUser.branch_id);

@@ -25,6 +25,7 @@ export const UserModel = {
         const roleStr = String(currentUser.role || currentUser.role_name || '').trim().toLowerCase();
         const isSuper = currentUser.is_super_admin === true || currentUser.email === 'admin@saloon.com' || roleStr === 'super admin' || roleStr === 'superadmin';
         const isOwner = !isSuper && (roleStr === 'admin' || roleStr === 'owner' || roleStr === 'salon admin' || currentUser.role_id === 1);
+        const isManager = !isSuper && !isOwner && (roleStr.includes('manager') || currentUser.role_id === 2);
 
         if (isOwner) {
           queryParams.push(currentUser.id);
@@ -35,6 +36,20 @@ export const UserModel = {
           )`);
           // Hide Super Admin and other Salon Admins
           whereConditions.push(`(u.id = ${uidParam} OR (u.id != 1 AND u.email != 'admin@saloon.com' AND u.role_id != 1))`);
+        } else if (isManager) {
+          const adminOwnerId = currentUser.admin_id || currentUser.created_by_user_id;
+          if (adminOwnerId) {
+            queryParams.push(adminOwnerId);
+            const uidParam = `$${queryParams.length}`;
+            whereConditions.push(`(
+              u.id = ${currentUser.id} OR 
+              (u.admin_id = ${uidParam} OR u.created_by_user_id = ${uidParam} OR b.admin_id = ${uidParam} OR b.created_by_user_id = ${uidParam})
+            )`);
+            whereConditions.push(`(u.id != 1 AND u.email != 'admin@saloon.com' AND u.role_id != 1)`);
+          } else if (currentUser.branch_id) {
+            queryParams.push(currentUser.branch_id);
+            whereConditions.push(`u.branch_id = $${queryParams.length}`);
+          }
         } else if (!isSuper) {
           if (currentUser.branch_id) {
             queryParams.push(currentUser.branch_id);
@@ -124,7 +139,7 @@ export const UserModel = {
     }
   },
 
-  async create({ name, email, phone, role_id, branch_id, password, admin_id, created_by_user_id }) {
+  async create({ name, email, phone, role_id, branch_id, password, admin_id, created_by_user_id, allowed_branch_ids = [] }) {
     let safeBranchId = (branch_id && !isNaN(parseInt(branch_id)) && parseInt(branch_id) > 0) ? parseInt(branch_id) : null;
     const safeRoleId = parseInt(role_id) || 1;
     const cleanPhone = phone ? String(phone).replace(/\D/g, '') : null;
@@ -150,8 +165,8 @@ export const UserModel = {
 
     const query = `
       WITH inserted AS (
-        INSERT INTO users (name, email, phone, role_id, branch_id, password, admin_id, created_by_user_id)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO users (name, email, phone, role_id, branch_id, password, admin_id, created_by_user_id, allowed_branch_ids)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *
       )
       SELECT u.*, r.name as role_name, b.name as branch_name
@@ -159,11 +174,15 @@ export const UserModel = {
       LEFT JOIN roles r ON u.role_id = r.id
       LEFT JOIN branches b ON u.branch_id = b.id
     `;
-    const { rows } = await pool.query(query, [name, email, cleanPhone, safeRoleId, safeBranchId, password || 'default123', admin_id || null, created_by_user_id || null]);
+    const { rows } = await pool.query(query, [
+      name, email, cleanPhone, safeRoleId, safeBranchId, password || 'default123',
+      admin_id || null, created_by_user_id || null,
+      JSON.stringify(Array.isArray(allowed_branch_ids) ? allowed_branch_ids : [])
+    ]);
     return rows[0];
   },
 
-  async update(id, { name, email, phone, role_id, branch_id }) {
+  async update(id, { name, email, phone, role_id, branch_id, allowed_branch_ids }) {
     try {
       const query = `
         WITH updated AS (
@@ -172,8 +191,9 @@ export const UserModel = {
               email = COALESCE($2, email),
               phone = COALESCE($3, phone),
               role_id = COALESCE($4, role_id),
-              branch_id = COALESCE($5, branch_id)
-          WHERE id = $6
+              branch_id = COALESCE($5, branch_id),
+              allowed_branch_ids = COALESCE($6, allowed_branch_ids)
+          WHERE id = $7
           RETURNING *
         )
         SELECT u.*, r.name as role_name, b.name as branch_name
@@ -181,11 +201,19 @@ export const UserModel = {
         LEFT JOIN roles r ON u.role_id = r.id
         LEFT JOIN branches b ON u.branch_id = b.id
       `;
-      const { rows } = await pool.query(query, [name, email, phone, role_id ? parseInt(role_id) : null, branch_id ? parseInt(branch_id) : null, id]);
+      const { rows } = await pool.query(query, [
+        name,
+        email,
+        phone,
+        role_id ? parseInt(role_id) : null,
+        branch_id ? parseInt(branch_id) : null,
+        allowed_branch_ids !== undefined ? JSON.stringify(allowed_branch_ids) : null,
+        id
+      ]);
       return rows[0];
     } catch (err) {
       console.error('UserModel.update DB error:', err);
-      DEMO_USERS = DEMO_USERS.map(u => u.id === id ? { ...u, name, email, phone, role_id, branch_id } : u);
+      DEMO_USERS = DEMO_USERS.map(u => u.id === id ? { ...u, name, email, phone, role_id, branch_id, allowed_branch_ids } : u);
       return DEMO_USERS.find(u => u.id === id);
     }
   },

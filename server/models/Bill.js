@@ -10,7 +10,24 @@ const Bill = {
     if (currentUser) {
       const currentAdminId = parseInt(currentUser.admin_id || currentUser.id);
       params.push(currentAdminId);
-      whereClause = `WHERE (COALESCE(b.admin_id, br.admin_id, 1) = $1 OR br.admin_id = $1 OR br.created_by_user_id = $1)`;
+      const conditions = [`(COALESCE(b.admin_id, br.admin_id, 1) = $1 OR br.admin_id = $1 OR br.created_by_user_id = $1)`];
+
+      let allowedBranches = [];
+      if (Array.isArray(currentUser.allowed_branch_ids) && currentUser.allowed_branch_ids.length > 0) {
+        allowedBranches = currentUser.allowed_branch_ids.map(Number).filter(n => !isNaN(n));
+      } else if (typeof currentUser.allowed_branch_ids === 'string') {
+        try {
+          const parsed = JSON.parse(currentUser.allowed_branch_ids);
+          if (Array.isArray(parsed)) allowedBranches = parsed.map(Number).filter(n => !isNaN(n));
+        } catch (e) {}
+      }
+
+      if (allowedBranches.length > 0) {
+        params.push(allowedBranches);
+        conditions.push(`b.branch_id = ANY($${params.length}::int[])`);
+      }
+
+      whereClause = `WHERE ` + conditions.join(' AND ');
     }
 
     const result = await pool.query(`

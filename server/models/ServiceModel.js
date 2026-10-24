@@ -20,9 +20,11 @@ class ServiceModel {
         const roleStr = String(currentUser.role || currentUser.role_name || '').trim().toLowerCase();
         const isSuper = currentUser.is_super_admin === true || currentUser.email === 'admin@saloon.com' || roleStr === 'super admin' || roleStr === 'superadmin';
         const isOwner = !isSuper && (roleStr === 'admin' || roleStr === 'owner' || roleStr === 'salon admin' || currentUser.role_id === 1);
+        const isManager = !isSuper && !isOwner && (roleStr.includes('manager') || currentUser.role_id === 2);
+        const ownerId = isOwner ? currentUser.id : (isManager ? (currentUser.admin_id || currentUser.created_by_user_id) : null);
 
-        if (isOwner) {
-          queryParams.push(currentUser.id);
+        if (ownerId) {
+          queryParams.push(ownerId);
           const uidParam = `$${queryParams.length}`;
           whereConditions.push(`(b.admin_id = ${uidParam} OR b.created_by_user_id = ${uidParam} OR s.branch_id IN (SELECT id FROM branches WHERE admin_id = ${uidParam} OR created_by_user_id = ${uidParam}))`);
         } else if (!isSuper) {
@@ -167,9 +169,11 @@ class ServiceModel {
         const roleStr = String(currentUser.role || currentUser.role_name || '').trim().toLowerCase();
         const isSuper = currentUser.is_super_admin === true || currentUser.email === 'admin@saloon.com' || roleStr === 'super admin' || roleStr === 'superadmin';
         const isOwner = !isSuper && (roleStr === 'admin' || roleStr === 'owner' || roleStr === 'salon admin' || currentUser.role_id === 1);
+        const isManager = !isSuper && !isOwner && (roleStr.includes('manager') || currentUser.role_id === 2);
+        const ownerId = isOwner ? currentUser.id : (isManager ? (currentUser.admin_id || currentUser.created_by_user_id) : null);
 
-        if (isOwner) {
-          queryParams.push(currentUser.id);
+        if (ownerId) {
+          queryParams.push(ownerId);
           const uidParam = `$${queryParams.length}`;
           whereConditions.push(`(b.admin_id = ${uidParam} OR b.created_by_user_id = ${uidParam} OR p.branch_id IN (SELECT id FROM branches WHERE admin_id = ${uidParam} OR created_by_user_id = ${uidParam}))`);
         } else if (!isSuper) {

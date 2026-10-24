@@ -31,6 +31,13 @@ export const loginUser = async (req, res) => {
 
     const isSuperAdmin = Boolean(user.is_super_admin === true || user.email === 'admin@saloon.com' || String(user.role_name || user.role || '').toLowerCase() === 'super admin' || String(user.role_name || user.role || '').toLowerCase() === 'superadmin');
 
+    let parsedAllowedBranches = [];
+    if (Array.isArray(user.allowed_branch_ids)) {
+      parsedAllowedBranches = user.allowed_branch_ids;
+    } else if (typeof user.allowed_branch_ids === 'string') {
+      try { parsedAllowedBranches = JSON.parse(user.allowed_branch_ids); } catch (e) { parsedAllowedBranches = []; }
+    }
+
     // Generate real JWT token
     const payload = {
       id: user.id,
@@ -39,6 +46,9 @@ export const loginUser = async (req, res) => {
       role: isSuperAdmin ? 'Super Admin' : (user.role_name || 'Staff'),
       role_id: user.role_id,
       is_super_admin: isSuperAdmin,
+      admin_id: isSuperAdmin ? null : (user.admin_id || user.created_by_user_id || null),
+      created_by_user_id: user.created_by_user_id || null,
+      allowed_branch_ids: parsedAllowedBranches,
       branch_id: isSuperAdmin ? null : user.branch_id,
       branch_name: isSuperAdmin ? '🌐 Global SaaS System Master' : (user.branch_name || 'Main Salon'),
       permissions: isSuperAdmin ? ['all', 'manage_permissions', 'manage_users', 'manage_branches', 'manage_services', 'manage_appointments', 'manage_billing'] : permissions
@@ -71,7 +81,7 @@ export const getMe = async (req, res) => {
     // Fetch fresh user data from DB
     const query = `
       SELECT u.id, u.name, u.email, u.phone, u.avatar_url, u.is_active,
-             u.role_id, u.branch_id,
+             u.role_id, u.branch_id, u.admin_id, u.created_by_user_id, u.allowed_branch_ids,
              r.name as role, r.permissions,
              b.name as branch_name
       FROM users u
@@ -88,6 +98,14 @@ export const getMe = async (req, res) => {
 
     const freshUser = rows[0];
     const isSuperAdmin = Boolean(freshUser.is_super_admin === true || freshUser.email === 'admin@saloon.com' || String(freshUser.role || freshUser.role_name || '').toLowerCase() === 'super admin' || String(freshUser.role || freshUser.role_name || '').toLowerCase() === 'superadmin');
+    
+    let parsedAllowed = [];
+    if (Array.isArray(freshUser.allowed_branch_ids)) {
+      parsedAllowed = freshUser.allowed_branch_ids;
+    } else if (typeof freshUser.allowed_branch_ids === 'string') {
+      try { parsedAllowed = JSON.parse(freshUser.allowed_branch_ids); } catch (e) { parsedAllowed = []; }
+    }
+
     return res.json({
       status: 'success',
       data: {
@@ -100,6 +118,9 @@ export const getMe = async (req, res) => {
         role: isSuperAdmin ? 'Super Admin' : freshUser.role,
         role_id: freshUser.role_id,
         is_super_admin: isSuperAdmin,
+        admin_id: isSuperAdmin ? null : (freshUser.admin_id || freshUser.created_by_user_id || null),
+        created_by_user_id: freshUser.created_by_user_id || null,
+        allowed_branch_ids: parsedAllowed,
         branch_id: isSuperAdmin ? null : freshUser.branch_id,
         branch_name: isSuperAdmin ? '🌐 Global SaaS System Master' : (freshUser.branch_name || 'Main Salon'),
         permissions: isSuperAdmin ? ['all', 'manage_permissions', 'manage_users', 'manage_branches', 'manage_services', 'manage_appointments', 'manage_billing'] : (Array.isArray(freshUser.permissions) ? freshUser.permissions : [])
