@@ -3,7 +3,7 @@ import Bill from '../models/Bill.js';
 // GET /api/v1/billing — All bills
 export const getBills = async (req, res) => {
   try {
-    const bills = await Bill.getAll();
+    const bills = await Bill.getAll(req.user);
     res.json({ success: true, data: bills });
   } catch (err) {
     console.error('getBills error:', err);
@@ -35,10 +35,12 @@ export const createBill = async (req, res) => {
     if (!items || items.length === 0) {
       return res.status(400).json({ success: false, message: 'At least one service item is required.' });
     }
+    const resolvedAdminId = req.user?.admin_id || req.user?.id || null;
     const bill = await Bill.create({
       branch_id, customer_id, stylist_id, items, payment_mode,
       discount_code, discount_amount, tax_rate, tip_amount,
-      commission_amount, split_details, notes
+      commission_amount, split_details, notes,
+      admin_id: resolvedAdminId
     });
     res.status(201).json({ success: true, data: bill, message: 'Bill created successfully!' });
   } catch (err) {

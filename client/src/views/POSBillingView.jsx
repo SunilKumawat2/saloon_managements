@@ -196,16 +196,24 @@ function POSBillingView({
   // ─── Payment Gateway Config ───
   const [gatewayConfig, setGatewayConfig] = useState(null);
 
-  // Load backend gateway config on mount
+  // Load backend gateway config on mount & reactive to branch selection
   useEffect(() => {
-    Admin_Get_Gateway_Config()
+    const params = {};
+    if (selectedBranchId && selectedBranchId !== 'all') {
+      params.branch_id = selectedBranchId;
+    }
+    Admin_Get_Gateway_Config(params)
       .then(res => {
         if (res?.data?.data) {
           setGatewayConfig(res.data.data);
+        } else {
+          setGatewayConfig(null);
         }
       })
-      .catch(() => {});
-  }, []);
+      .catch(() => {
+        setGatewayConfig(null);
+      });
+  }, [selectedBranchId]);
 
   // Load backend coupons on mount
   useEffect(() => {
@@ -450,91 +458,107 @@ function POSBillingView({
 
     setIsSubmitting(true);
     try {
-      // 1. Fetch Order Data from Backend API
+      // 1. Fetch Order Data from Backend API (Branch & Admin Scoped)
+      const branchIdParam = (selectedBranchId && selectedBranchId !== 'all') ? parseInt(selectedBranchId) : undefined;
+      const gatewayNameParam = gatewayConfig?.gateway_name || 'razorpay';
+
       const orderRes = await Admin_Create_Razorpay_Order({
         amount: grandTotal,
-        receipt: `bill_${Date.now()}`
-      }).catch(() => null);
+        receipt: `bill_${Date.now()}`,
+        branch_id: branchIdParam,
+        gateway_name: gatewayNameParam
+      }).catch((err) => {
+        console.error('Order creation error:', err);
+        return null;
+      });
 
       const orderData = orderRes?.data?.data || orderRes?.data || {};
-      const orderId = orderData.order_id || `order_${Math.floor(100000 + Math.random() * 900000)}`;
-      const isCustomKey = Boolean(
-        orderData.is_custom_key || 
-        (orderData.key_id && orderData.key_id.startsWith('rzp_')) ||
-        true
-      );
-      const keyToUse = orderData.key_id || 'rzp_test_TfutS2M3FiTSWG';
+      const orderId = orderData.order_id || orderData.id;
+      const keyToUse = orderData.key_id;
 
-      // If merchant configured a Razorpay Key ID, launch Official Razorpay Cloud SDK popup
-      if (keyToUse) {
-        const loadSdk = () => new Promise((resolve) => {
-          if (window.Razorpay) return resolve(true);
-          const script = document.createElement('script');
-          script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-          script.onload = () => resolve(true);
-          script.onerror = () => resolve(false);
-          document.body.appendChild(script);
+      if (!keyToUse) {
+        setCustomAlert({
+          title: 'Gateway Not Configured',
+          message: 'No active payment gateway credentials configured for this branch. Please collect payment via Counter Cash or Card Terminal.',
+          type: 'warning'
         });
-
-        const sdkLoaded = await loadSdk();
-        if (sdkLoaded && window.Razorpay) {
-          let rawPhone = String(selectedCustomer?.phone || walkInPhone || '9876543210').replace(/\D/g, '');
-          const cleanPhone = rawPhone.length >= 10 ? rawPhone.slice(-10) : ('9876543210' + rawPhone).slice(-10);
-          const options = {
-            key: keyToUse,
-            amount: Math.round(grandTotal * 100),
-            currency: 'INR',
-            name: 'Salon & Spa POS Checkout',
-            description: `Payment for ${cartItems.length} Salon Services (Total: ₹${grandTotal.toFixed(2)})`,
-            image: 'https://cdn-icons-png.flaticon.com/512/2830/2830284.png',
-            order_id: (orderId && !orderId.includes('rcpt') && orderId.length > 14) ? orderId : undefined,
-            prefill: {
-              name: selectedCustomer?.name || walkInName || 'Walk-in Guest',
-              contact: cleanPhone,
-              email: selectedCustomer?.email || 'customer@salon.com'
-            },
-            theme: { color: '#2563eb' },
-            handler: async function (response) {
-              const payId = response.razorpay_payment_id || `pay_${Date.now()}`;
-              const rzpOrderId = response.razorpay_order_id || orderId;
-              const signature = response.razorpay_signature || 'verified_signature';
-
-              await Admin_Verify_Razorpay_Payment({
-                razorpay_order_id: rzpOrderId,
-                razorpay_payment_id: payId,
-                razorpay_signature: signature
-              }).catch(() => null);
-
-              await executeFinalCheckout({
-                rzpPayId: payId,
-                rzpOrderId: rzpOrderId,
-                paymentModeOverride: preferredMode || 'Razorpay Gateway'
-              });
-            },
-            modal: {
-              ondismiss: function () {
-                setIsSubmitting(false);
-              }
-            }
-          };
-
-          const rzp = new window.Razorpay(options);
-          rzp.on('payment.failed', function (response) {
-            console.warn('Razorpay SDK Payment Notice:', response);
-            setIsSubmitting(false);
-          });
-          rzp.open();
-          return;
-        }
+        setIsSubmitting(false);
+        return;
       }
 
-      // Default Mode (when no custom key is configured in DB): Launch built-in Razorpay Gateway Sandbox Modal
+      // Launch Official Razorpay Cloud SDK popup
+      const loadSdk = () => new Promise((resolve) => {
+        if (window.Razorpay) return resolve(true);
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+      });
+
+      const sdkLoaded = await loadSdk();
+      if (sdkLoaded && window.Razorpay) {
+        let rawPhone = String(selectedCustomer?.phone || walkInPhone || '9876543210').replace(/\D/g, '');
+        const cleanPhone = rawPhone.length >= 10 ? rawPhone.slice(-10) : ('9876543210' + rawPhone).slice(-10);
+        const options = {
+          key: keyToUse,
+          amount: Math.round(grandTotal * 100),
+          currency: gatewayConfig?.currency || 'INR',
+          name: 'Salon & Spa POS Checkout',
+          description: `Payment for ${cartItems.length} Salon Services (Total: ₹${grandTotal.toFixed(2)})`,
+          image: 'https://cdn-icons-png.flaticon.com/512/2830/2830284.png',
+          order_id: (orderId && !orderId.includes('rcpt') && orderId.length > 14) ? orderId : undefined,
+          prefill: {
+            name: selectedCustomer?.name || walkInName || 'Walk-in Guest',
+            contact: cleanPhone,
+            email: selectedCustomer?.email || 'customer@salon.com'
+          },
+          theme: { color: '#2563eb' },
+          handler: async function (response) {
+            const payId = response.razorpay_payment_id || `pay_${Date.now()}`;
+            const rzpOrderId = response.razorpay_order_id || orderId;
+            const signature = response.razorpay_signature || 'verified_signature';
+
+            await Admin_Verify_Razorpay_Payment({
+              razorpay_order_id: rzpOrderId,
+              razorpay_payment_id: payId,
+              razorpay_signature: signature,
+              branch_id: branchIdParam,
+              gateway_name: gatewayNameParam
+            }).catch(() => null);
+
+            await executeFinalCheckout({
+              rzpPayId: payId,
+              rzpOrderId: rzpOrderId,
+              paymentModeOverride: preferredMode || 'Razorpay Gateway'
+            });
+          },
+          modal: {
+            ondismiss: function () {
+              setIsSubmitting(false);
+            }
+          }
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.on('payment.failed', function (response) {
+          console.warn('Razorpay SDK Payment Notice:', response);
+          setIsSubmitting(false);
+        });
+        rzp.open();
+        return;
+      }
+
+      // Fallback sandbox simulation if SDK blocked
       setRazorpayOrder({ order_id: orderId, amount: grandTotal });
       setActiveCheckoutModal('RAZORPAY_SANDBOX');
     } catch (err) {
       console.error('Razorpay Gateway Launch Notice:', err);
-      setRazorpayOrder({ order_id: `order_${Date.now()}`, amount: grandTotal });
-      setActiveCheckoutModal('RAZORPAY_SANDBOX');
+      setCustomAlert({
+        title: 'Checkout Error',
+        message: err.message || 'Unable to open payment gateway window.',
+        type: 'error'
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -1730,29 +1754,46 @@ function POSBillingView({
               </>
             )}
 
-            {/* Primary Direct Official Razorpay SDK Popup Button */}
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => triggerRazorpayOfficialCheckout('Razorpay Gateway')}
-              disabled={cartItems.length === 0 || isSubmitting}
-              style={{
-                width: '100%',
-                fontSize: '0.96rem',
-                padding: '14px',
-                opacity: cartItems.length === 0 ? 0.5 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                background: '#2563eb',
-                boxShadow: '0 4px 20px rgba(37, 99, 235, 0.4)',
-                cursor: 'pointer'
-              }}
-            >
-              <Sparkles size={18} />
-              {isSubmitting ? 'Opening Razorpay Gateway SDK...' : `Proceed to Pay ₹${grandTotal.toFixed(2)} via Razorpay Gateway`}
-            </button>
+            {/* Primary Direct Official Payment Gateway SDK Popup Button */}
+            {Boolean(gatewayConfig?.has_keys && gatewayConfig?.is_enabled) ? (
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => triggerRazorpayOfficialCheckout('Online Gateway')}
+                disabled={cartItems.length === 0 || isSubmitting}
+                style={{
+                  width: '100%',
+                  fontSize: '0.96rem',
+                  padding: '14px',
+                  opacity: cartItems.length === 0 ? 0.5 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  background: '#2563eb',
+                  boxShadow: '0 4px 20px rgba(37, 99, 235, 0.4)',
+                  cursor: 'pointer'
+                }}
+              >
+                <Sparkles size={18} />
+                {isSubmitting ? 'Opening Payment Gateway SDK...' : `Proceed to Pay ₹${grandTotal.toFixed(2)} via ${(gatewayConfig?.gateway_name || 'Razorpay').toUpperCase()} Gateway`}
+              </button>
+            ) : (
+              <div style={{
+                padding: '12px 14px',
+                background: 'rgba(255, 255, 255, 0.04)',
+                border: '1px dashed rgba(255, 255, 255, 0.15)',
+                borderRadius: '10px',
+                color: '#94a3b8',
+                fontSize: '0.78rem',
+                marginBottom: '10px',
+                textAlign: 'center',
+                lineHeight: '1.4'
+              }}>
+                💳 <strong>Online Gateway Not Configured</strong> for this branch.<br />
+                Please bill the customer using <strong>Counter Cash</strong> or <strong>Card Terminal</strong>.
+              </div>
+            )}
 
             {/* Counter Cash Payment Button */}
             <button
@@ -1786,7 +1827,7 @@ function POSBillingView({
             </button>
 
             <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-              🔒 Secured SSL Payment Transaction via Official Razorpay SDK
+              🔒 Secured POS Billing Transaction · Multi-Tenant Branch Scoped
             </div>
           </div>
 
@@ -1921,36 +1962,42 @@ function POSBillingView({
             {/* Step 1: CARD DETAILS INPUT & INTERACTIVE VIRTUAL CARD */}
             {cardStep === 'DETAILS' && (
               <div>
-                {/* Official Razorpay Gateway Popup Trigger inside Card Modal */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveCheckoutModal(null);
-                    triggerRazorpayOfficialCheckout('card');
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    marginBottom: '16px',
-                    borderRadius: '12px',
-                    background: '#2563eb',
-                    color: '#ffffff',
-                    border: 'none',
-                    fontWeight: '800',
-                    fontSize: '0.88rem',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    boxShadow: '0 4px 15px rgba(2, 132, 199, 0.4)'
-                  }}
-                >
-                  <Sparkles size={18} /> Open Official Razorpay Gateway Window (Real Bank Deposit)
-                </button>
+                {/* Official Gateway Popup Trigger inside Card Modal */}
+                {Boolean(gatewayConfig?.has_keys && gatewayConfig?.is_enabled) ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveCheckoutModal(null);
+                      triggerRazorpayOfficialCheckout('card');
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      marginBottom: '16px',
+                      borderRadius: '12px',
+                      background: '#2563eb',
+                      color: '#ffffff',
+                      border: 'none',
+                      fontWeight: '800',
+                      fontSize: '0.88rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      boxShadow: '0 4px 15px rgba(2, 132, 199, 0.4)'
+                    }}
+                  >
+                    <Sparkles size={18} /> Open Official {(gatewayConfig?.gateway_name || 'Gateway').toUpperCase()} Window (Online Bank Deposit)
+                  </button>
+                ) : (
+                  <div style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', fontSize: '0.75rem', color: '#94a3b8', textAlign: 'center', marginBottom: '14px' }}>
+                    💳 Online Gateway not connected for this branch. Use Terminal entry below.
+                  </div>
+                )}
 
                 <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
-                  — OR USE POS SANDBOX COUNTER TERMINAL BELOW —
+                  — SWIPE / INSERT CARD IN STORE TERMINAL —
                 </div>
 
                 {/* Sandbox Quick Test Card Fill Chips */}

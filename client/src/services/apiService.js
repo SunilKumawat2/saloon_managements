@@ -969,10 +969,10 @@ export const Admin_Delete_Consumption = async (id) => {
 };
 
 // <----------------  Module 7 Loyalty & Membership Program APIs ---------------->
-export const Admin_Get_Membership_Tiers = async () => {
+export const Admin_Get_Membership_Tiers = async (params = {}) => {
   try {
     const token = getToken();
-    return await axios.get(`${API_BASE_URL}/loyalty/memberships`, { headers: { Authorization: `Bearer ${token}` } });
+    return await axios.get(`${API_BASE_URL}/loyalty/memberships`, { headers: { Authorization: `Bearer ${token}` }, params });
   } catch (error) { throw error.response || error; }
 };
 
@@ -990,10 +990,17 @@ export const Admin_Update_Membership_Tier = async (id, tierData) => {
   } catch (error) { throw error.response || error; }
 };
 
-export const Admin_Get_Enrolled_Members = async () => {
+export const Admin_Delete_Membership_Tier = async (id) => {
   try {
     const token = getToken();
-    return await axios.get(`${API_BASE_URL}/loyalty/members`, { headers: { Authorization: `Bearer ${token}` } });
+    return await axios.delete(`${API_BASE_URL}/loyalty/memberships/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Get_Enrolled_Members = async (params = {}) => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/loyalty/members`, { headers: { Authorization: `Bearer ${token}` }, params });
   } catch (error) { throw error.response || error; }
 };
 
@@ -1025,24 +1032,24 @@ export const Admin_Reactivate_Enrolled_Member = async (id) => {
   } catch (error) { throw error.response || error; }
 };
 
-export const Admin_Get_Customer_Loyalty_Profile = async (customerId) => {
+export const Admin_Get_Customer_Loyalty_Profile = async (customerId, params = {}) => {
   try {
     const token = getToken();
-    return await axios.get(`${API_BASE_URL}/loyalty/customer/${customerId}`, { headers: { Authorization: `Bearer ${token}` } });
+    return await axios.get(`${API_BASE_URL}/loyalty/customer/${customerId}`, { headers: { Authorization: `Bearer ${token}` }, params });
   } catch (error) { throw error.response || error; }
 };
 
-export const Admin_Get_Loyalty_Ledger = async () => {
+export const Admin_Get_Loyalty_Ledger = async (params = {}) => {
   try {
     const token = getToken();
-    return await axios.get(`${API_BASE_URL}/loyalty/ledger`, { headers: { Authorization: `Bearer ${token}` } });
+    return await axios.get(`${API_BASE_URL}/loyalty/ledger`, { headers: { Authorization: `Bearer ${token}` }, params });
   } catch (error) { throw error.response || error; }
 };
 
-export const Admin_Get_Referrals = async () => {
+export const Admin_Get_Referrals = async (params = {}) => {
   try {
     const token = getToken();
-    return await axios.get(`${API_BASE_URL}/loyalty/referrals`, { headers: { Authorization: `Bearer ${token}` } });
+    return await axios.get(`${API_BASE_URL}/loyalty/referrals`, { headers: { Authorization: `Bearer ${token}` }, params });
   } catch (error) { throw error.response || error; }
 };
 
@@ -1205,10 +1212,20 @@ export const Admin_Create_Database_Backup = async () => {
 };
 
 // <----------------  Razorpay Payment Gateway Integration APIs ---------------->
-export const Admin_Get_Gateway_Config = async () => {
+export const Admin_Get_Gateway_Config = async (params = {}) => {
   try {
     const token = getToken();
-    return await axios.get(`${API_BASE_URL}/payment/gateway-config`, { headers: { Authorization: `Bearer ${token}` } });
+    return await axios.get(`${API_BASE_URL}/payment/gateway-config`, {
+      params,
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Admin_Get_Gateway_List = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/payment/gateway-list`, { headers: { Authorization: `Bearer ${token}` } });
   } catch (error) { throw error.response || error; }
 };
 

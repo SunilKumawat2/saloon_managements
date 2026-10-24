@@ -28,7 +28,7 @@ import { getStylists, createStylist, updateStylist, deleteStylist, toggleStylist
 import { getTimeSlots, createTimeSlot, updateTimeSlot, deleteTimeSlot, toggleTimeSlotActive, generateTimeSlotRange } from '../controllers/timeSlotController.js';
 import { getCoupons, validateCoupon } from '../controllers/couponController.js';
 import {
-  getMembershipTiers, createMembershipTier, updateMembershipTier,
+  getMembershipTiers, createMembershipTier, updateMembershipTier, deleteMembershipTier,
   getEnrolledMembers, enrollCustomer, getCustomerLoyaltyProfile,
   getLoyaltyLedger, getReferralList, applyReferralCode, redeemCustomerCredit,
   updateCustomerEnrollment, deleteCustomerEnrollment, reactivateCustomerEnrollment
@@ -47,7 +47,7 @@ import {
   getDatabaseBackups, createDatabaseBackup
 } from '../controllers/settingsController.js';
 import {
-  getGatewaySettings, updateGatewaySettings, createOrder, verifyPayment
+  getGatewaySettings, getAdminGatewayList, updateGatewaySettings, createOrder, verifyPayment
 } from '../controllers/paymentController.js';
 
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '../controllers/customerController.js';
@@ -200,6 +200,7 @@ router.delete('/leads/:id/avatar', authenticateToken, removeLeadAvatar);
 router.get('/loyalty/memberships', authenticateToken, getMembershipTiers);
 router.post('/loyalty/memberships', authenticateToken, createMembershipTier);
 router.put('/loyalty/memberships/:id', authenticateToken, updateMembershipTier);
+router.delete('/loyalty/memberships/:id', authenticateToken, deleteMembershipTier);
 
 router.get('/loyalty/members', authenticateToken, getEnrolledMembers);
 router.post('/loyalty/enroll', authenticateToken, enrollCustomer);
@@ -243,8 +244,10 @@ router.post('/settings/backups/create', authenticateToken, requirePermission('al
 
 // -------------------- Razorpay Payment Gateway Routes --------------------
 router.get('/payment/gateway-config', authenticateToken, getGatewaySettings);
-router.put('/payment/gateway-config', authenticateToken, requirePermission('all'), updateGatewaySettings);
+router.get('/payment/gateway-list', authenticateToken, getAdminGatewayList);
+router.put('/payment/gateway-config', authenticateToken, updateGatewaySettings);
 router.post('/payment/create-order', authenticateToken, createOrder);
+router.post('/payment/verify-signature', authenticateToken, verifyPayment);
 // -------------------- Salon Assets & Equipment Tracking Routes --------------------
 router.get('/assets', authenticateToken, getAssets);
 router.get('/assets/:id', authenticateToken, getAssetById);

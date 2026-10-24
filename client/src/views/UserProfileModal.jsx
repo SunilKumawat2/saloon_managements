@@ -158,7 +158,7 @@ function UserProfileModal({ currentUser, onClose, onProfileUpdated }) {
                 </span>
               </div>
               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Building size={12} /> {(!currentUser?.branch_id || currentUser?.role === 'Admin' || currentUser?.is_super_admin) ? '🌐 System Master Super Admin (All Branches Control)' : (currentUser?.branch_name || 'Main Salon Branch')}
+                <Building size={12} /> {(currentUser?.is_super_admin || currentUser?.email === 'admin@saloon.com') ? '🌐 System Master Super Admin (All Branches Control)' : (currentUser?.branch_name || 'Salon Owner / Admin')}
               </div>
               <div style={{ fontSize: '0.72rem', color: 'var(--accent-gold)', marginTop: '4px', fontWeight: '600' }}>
                 Click camera icon to change profile photo

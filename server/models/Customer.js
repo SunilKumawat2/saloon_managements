@@ -1,3 +1,5 @@
+import { pool } from '../config/db.js';
+
 const parseValidDate = (val) => {
   if (!val || typeof val !== 'string') return null;
   const trimmed = val.trim();
@@ -32,12 +34,6 @@ const parseValidDate = (val) => {
   return null;
 };
 
-let DEMO_CUSTOMERS = [
-  { id: 1, branch_id: 1, name: 'Rahul Kumar', phone: '9988776655', email: 'rahul.k@gmail.com', gender: 'Male', dob: '1995-08-15', loyalty_points: 120, notes: 'Prefers Rohan Sharma for haircut' },
-  { id: 2, branch_id: 1, name: 'Sneha Kapoor', phone: '9988776656', email: 'sneha.k@outlook.com', gender: 'Female', dob: '1998-11-22', loyalty_points: 250, notes: 'Regular facial client, sensitive skin' },
-  { id: 3, branch_id: 2, name: 'Karan Johar', phone: '9988776657', email: 'karan@media.com', gender: 'Male', dob: '1990-03-10', loyalty_points: 80, notes: 'Prefers weekend morning slots' }
-];
-
 export const CustomerModel = {
   async findAll(options = {}) {
     try {
@@ -65,22 +61,17 @@ export const CustomerModel = {
       if (branchId && branchId !== 'all') {
         queryParams.push(parseInt(branchId));
         whereConditions.push(`c.branch_id = $${queryParams.length}`);
-      } else if (currentUser) {
-        const roleStr = String(currentUser.role || currentUser.role_name || '').trim().toLowerCase();
-        const isSuper = currentUser.is_super_admin === true || currentUser.email === 'admin@saloon.com' || roleStr === 'super admin' || roleStr === 'superadmin';
-        const isOwner = !isSuper && (roleStr === 'admin' || roleStr === 'owner' || roleStr === 'salon admin' || currentUser.role_id === 1);
+      }
 
-        if (isOwner) {
-          queryParams.push(currentUser.id);
+      if (currentUser) {
+        const roleStr = String(currentUser.role || currentUser.role_name || '').trim().toLowerCase();
+        const isSuper = currentUser.is_super_admin === true || currentUser.email === 'admin@saloon.com' || roleStr.includes('super');
+
+        if (!isSuper) {
+          const ownerAdminId = currentUser.admin_id || currentUser.id;
+          queryParams.push(ownerAdminId);
           const uidParam = `$${queryParams.length}`;
-          whereConditions.push(`(b.admin_id = ${uidParam} OR b.created_by_user_id = ${uidParam} OR c.branch_id IN (SELECT id FROM branches WHERE admin_id = ${uidParam} OR created_by_user_id = ${uidParam}) OR c.branch_id IS NOT NULL)`);
-        } else if (!isSuper) {
-          if (currentUser.branch_id) {
-            queryParams.push(currentUser.branch_id);
-            whereConditions.push(`c.branch_id = $${queryParams.length}`);
-          } else {
-            whereConditions.push(`1 = 0`);
-          }
+          whereConditions.push(`(c.admin_id = ${uidParam} OR (c.admin_id IS NULL AND (c.created_by_admin_id = ${uidParam} OR b.admin_id = ${uidParam} OR b.created_by_user_id = ${uidParam} OR c.branch_id IN (SELECT id FROM branches WHERE admin_id = ${uidParam} OR created_by_user_id = ${uidParam}))))`);
         }
       }
 
@@ -130,54 +121,53 @@ export const CustomerModel = {
       }
 
       const dataRes = await pool.query(selectSql, queryParams);
-      let rows = (dataRes.rows && dataRes.rows.length > 0) ? dataRes.rows : DEMO_CUSTOMERS;
+      let rows = dataRes.rows || [];
       rows = rows.map(c => typeof c.name === 'number' || c.name === '1' || !c.name ? { ...c, name: String(c.category || c.phone || 'Customer') } : c);
       return rows;
     } catch (err) {
-      let cleaned = DEMO_CUSTOMERS;
-      if (options.search) {
-        const s = String(options.search).toLowerCase();
-        cleaned = cleaned.filter(c => String(c.name || '').toLowerCase().includes(s) || String(c.phone || '').includes(s));
-      }
-      if (options.limit && options.limit > 0 && options.limit !== 'all') {
-        const page = options.page || 1;
-        const total = cleaned.length;
-        const start = (page - 1) * options.limit;
-        return {
-          data: cleaned.slice(start, start + options.limit),
-          pagination: { total, page, limit: options.limit, totalPages: Math.ceil(total / options.limit) || 1 }
-        };
-      }
-      return cleaned;
+      console.error('CustomerModel.findAll error:', err);
+      return [];
     }
   },
 
   async findById(id) {
     try {
       const { rows } = await pool.query('SELECT * FROM customers WHERE id = $1', [id]);
-      return rows[0] || DEMO_CUSTOMERS.find(c => String(c.id) === String(id));
+      return rows[0] || null;
     } catch (err) {
-      return DEMO_CUSTOMERS.find(c => String(c.id) === String(id));
+      console.error('CustomerModel.findById error:', err);
+      return null;
     }
   },
 
-  async create({ branch_id, name, phone, email, gender, dob, anniversary, notes, loyalty_points }) {
+  async create({ branch_id, name, phone, email, gender, dob, anniversary, notes, loyalty_points, admin_id, created_by_admin_id }) {
     const points = (loyalty_points !== undefined && loyalty_points !== null && loyalty_points !== '') ? parseInt(loyalty_points) : 0;
     const safeDob = parseValidDate(dob);
     const safeAnniversary = parseValidDate(anniversary);
 
+    let validBranchId = branch_id ? parseInt(branch_id) : null;
+    if (validBranchId) {
+      try {
+        const checkBranch = await pool.query('SELECT id FROM branches WHERE id = $1', [validBranchId]);
+        if (!checkBranch.rows || checkBranch.rows.length === 0) validBranchId = null;
+      } catch (e) {
+        validBranchId = null;
+      }
+    }
+
     try {
       const query = `
-        INSERT INTO customers (branch_id, name, phone, email, gender, dob, anniversary, notes, loyalty_points)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        INSERT INTO customers (branch_id, name, phone, email, gender, dob, anniversary, notes, loyalty_points, admin_id, created_by_admin_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         ON CONFLICT (phone) DO UPDATE 
         SET name = EXCLUDED.name,
             notes = COALESCE(NULLIF(EXCLUDED.notes, ''), customers.notes),
-            loyalty_points = EXCLUDED.loyalty_points
+            loyalty_points = EXCLUDED.loyalty_points,
+            admin_id = COALESCE(EXCLUDED.admin_id, customers.admin_id)
         RETURNING *
       `;
       const { rows } = await pool.query(query, [
-        branch_id ? parseInt(branch_id) : null,
+        validBranchId,
         name,
         phone,
         email || null,
@@ -185,42 +175,19 @@ export const CustomerModel = {
         safeDob,
         safeAnniversary,
         notes || '',
-        points
+        points,
+        admin_id ? parseInt(admin_id) : null,
+        created_by_admin_id ? parseInt(created_by_admin_id) : (admin_id ? parseInt(admin_id) : null)
       ]);
-      if (rows && rows[0] && typeof rows[0].name === 'string' && rows[0].name !== '1') {
-        return rows[0];
-      }
-      throw new Error('Fallback customer creation');
+      return rows[0];
     } catch (err) {
-      console.error('Customer DB Insert Fallback:', err.message);
-      const existingDemo = DEMO_CUSTOMERS.find(c => String(c.phone) === String(phone));
-      if (existingDemo) {
-        existingDemo.name = name || existingDemo.name;
-        existingDemo.loyalty_points = points;
-        return existingDemo;
-      }
-      const maxId = DEMO_CUSTOMERS.length > 0 ? Math.max(...DEMO_CUSTOMERS.map(c => Number(c.id) || 0)) + 1 : 1;
-      const newCustomer = {
-        id: maxId,
-        branch_id: branch_id ? parseInt(branch_id) : null,
-        name: String(name || 'New Customer'),
-        phone: String(phone || ''),
-        email: String(email || ''),
-        gender: gender || 'Female',
-        dob: safeDob || dob || null,
-        anniversary: safeAnniversary || anniversary || null,
-        loyalty_points: points,
-        notes: notes || '',
-        created_at: new Date().toISOString()
-      };
-      DEMO_CUSTOMERS.unshift(newCustomer);
-      return newCustomer;
+      console.error('Customer DB Insert error:', err.message);
+      throw err;
     }
   },
 
   updateAvatar(id, avatarUrl) {
-    const demo = DEMO_CUSTOMERS.find(c => String(c.id) === String(id));
-    if (demo) demo.avatar_url = avatarUrl;
+    pool.query('UPDATE customers SET avatar_url = $1 WHERE id = $2', [avatarUrl, id]).catch(() => null);
   },
 
   async update(id, { name, phone, email, gender, dob, anniversary, notes, loyalty_points }) {
@@ -251,10 +218,8 @@ export const CustomerModel = {
       ]);
       return rows[0];
     } catch (err) {
-      DEMO_CUSTOMERS = DEMO_CUSTOMERS.map(c =>
-        c.id === id ? { ...c, name, phone, email, gender, dob, anniversary, notes, loyalty_points } : c
-      );
-      return DEMO_CUSTOMERS.find(c => c.id === id);
+      console.error('CustomerModel.update error:', err);
+      throw err;
     }
   },
 
@@ -263,8 +228,8 @@ export const CustomerModel = {
       await pool.query('DELETE FROM customers WHERE id = $1', [id]);
       return { deleted: true };
     } catch (err) {
-      DEMO_CUSTOMERS = DEMO_CUSTOMERS.filter(c => c.id !== id);
-      return { deleted: true };
+      console.error('CustomerModel.delete error:', err);
+      throw err;
     }
   }
 };

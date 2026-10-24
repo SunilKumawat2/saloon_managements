@@ -48,7 +48,9 @@ export const createCustomer = async (req, res) => {
       dob,
       anniversary,
       notes,
-      loyalty_points
+      loyalty_points,
+      admin_id: req.user ? (req.user.admin_id || req.user.id) : null,
+      created_by_admin_id: req.user ? req.user.id : null
     });
     return res.status(201).json({ status: 'success', message: 'Customer created successfully', data: newCustomer });
   } catch (error) {

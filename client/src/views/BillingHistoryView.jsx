@@ -1,26 +1,56 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Receipt, Search, Printer, CheckCircle2, X,
   Banknote, Smartphone, CreditCard, DollarSign,
   TrendingUp, Users, Calendar, Filter, Eye, Tag, Award, Sparkles, Crown,
-  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Trash2
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Trash2,
+  Building, User
 } from 'lucide-react';
 
-function BillingHistoryView({ bills = [], customers = [], stylists = [], members = [], onDeleteBill, onClearAllBills, selectedBranchId = 'all' }) {
+function BillingHistoryView({
+  bills = [],
+  customers = [],
+  stylists = [],
+  members = [],
+  branches = [],
+  admins = [],
+  currentUser = null,
+  onDeleteBill,
+  onClearAllBills,
+  selectedBranchId = 'all'
+}) {
   const [searchQuery, setSearchQuery] = useState('');
   const [paymentFilter, setPaymentFilter] = useState('All');
+  const [branchFilter, setBranchFilter] = useState('all');
   const [selectedBill, setSelectedBill] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const printRef = useRef();
 
+  // Extract unique branches accessible to this admin
+  const allBranches = useMemo(() => {
+    const map = new Map();
+    (branches || []).forEach(br => {
+      if (br && br.id) map.set(String(br.id), { id: String(br.id), name: br.name || `Branch #${br.id}`, code: br.code || '' });
+    });
+    (bills || []).forEach(b => {
+      if (b.branch_id) {
+        const bId = String(b.branch_id);
+        if (!map.has(bId)) {
+          map.set(bId, { id: bId, name: b.branch_name || `Branch #${bId}`, code: '' });
+        }
+      }
+    });
+    return Array.from(map.values());
+  }, [branches, bills]);
+
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, paymentFilter, pageSize]);
+  }, [searchQuery, paymentFilter, branchFilter, pageSize]);
 
   // Helper for robust financial & meta calculations per bill
   const getBillCalculations = (b) => {
-    if (!b) return { subtotal: 0, discount: 0, tax: 0, total: 0, tip: 0, taxRate: 18, custName: 'Walk-in Guest', stylistName: '—', items: [] };
+    if (!b) return { subtotal: 0, discount: 0, tax: 0, total: 0, tip: 0, taxRate: 18, custName: 'Walk-in Guest', stylistName: '—', branchName: 'Main Salon', items: [] };
     
     const itemsList = Array.isArray(b.items) ? b.items : [];
     let itemsSubtotal = itemsList.reduce((sum, item) => sum + (parseFloat(item.price || 0) * (parseInt(item.qty) || 1)), 0);
@@ -59,7 +89,10 @@ function BillingHistoryView({ bills = [], customers = [], stylists = [], members
     const matchedStylist = stylists.find(s => String(s.id) === String(b.stylist_id));
     const stylistName = b.stylist_name || matchedStylist?.name || (b.stylist?.name) || '—';
 
-    return { subtotal, discount, tax, total, tip, taxRate, custName, stylistName, membershipName, isMemberMode, items: itemsList };
+    const matchedBranch = allBranches.find(br => String(br.id) === String(b.branch_id));
+    const branchName = b.branch_name || matchedBranch?.name || (b.branch_id ? `Branch #${b.branch_id}` : 'Main Salon');
+
+    return { subtotal, discount, tax, total, tip, taxRate, custName, stylistName, membershipName, isMemberMode, branchName, adminName: currentUser?.name || b.admin_name || 'Admin', items: itemsList };
   };
 
   // Financial Metrics Calculation
@@ -73,18 +106,25 @@ function BillingHistoryView({ bills = [], customers = [], stylists = [], members
   const cardTotal = bills.filter(b => b.payment_mode === 'Card').reduce((sum, b) => sum + getBillCalculations(b).total, 0);
   const splitTotal = bills.filter(b => b.payment_mode === 'Split').reduce((sum, b) => sum + getBillCalculations(b).total, 0);
 
-  // Filtered bills
+  // Filtered bills for this isolated admin
   const filteredBills = bills.filter(b => {
     const calc = getBillCalculations(b);
     const matchesPayment = paymentFilter === 'All' || b.payment_mode === paymentFilter;
+    
+    const matchesBranch = branchFilter === 'all' || branchFilter === 'All' ||
+      String(b.branch_id || '') === String(branchFilter) ||
+      calc.branchName.toLowerCase().includes(branchFilter.toLowerCase());
+
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch = !searchQuery.trim() ||
       String(b.id).includes(searchQuery) ||
       calc.custName.toLowerCase().includes(searchLower) ||
       calc.stylistName.toLowerCase().includes(searchLower) ||
+      calc.branchName.toLowerCase().includes(searchLower) ||
       b.discount_code?.toLowerCase().includes(searchLower) ||
       b.payment_mode?.toLowerCase().includes(searchLower);
-    return matchesPayment && matchesSearch;
+
+    return matchesPayment && matchesBranch && matchesSearch;
   });
 
   // Pagination Math
@@ -146,6 +186,10 @@ function BillingHistoryView({ bills = [], customers = [], stylists = [], members
       <div>
         <div class="info-label">Customer Details</div>
         <div class="info-val">${calc.custName}</div>
+      </div>
+      <div>
+        <div class="info-label">Salon Branch</div>
+        <div class="info-val">${calc.branchName}</div>
       </div>
       <div>
         <div class="info-label">Stylist Tagged</div>
@@ -261,8 +305,8 @@ function BillingHistoryView({ bills = [], customers = [], stylists = [], members
 
       {/* ─── Search & Filter Bar ─── */}
       <div className="controls-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flex: 1, minWidth: '280px' }}>
-          <div style={{ position: 'relative', flex: 1 }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', flex: 1, minWidth: '280px' }}>
+          <div style={{ position: 'relative', flex: '1 1 240px', minWidth: '220px' }}>
             <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
               type="text"
@@ -276,11 +320,39 @@ function BillingHistoryView({ bills = [], customers = [], stylists = [], members
             />
           </div>
 
+          {/* Salon Branch Selector (if multi-branch) */}
+          {allBranches.length > 1 && (
+            <select
+              className="select-filter"
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+              style={{
+                background: 'var(--input-bg)',
+                border: branchFilter !== 'all' && branchFilter !== 'All' ? '1px solid #38bdf8' : '1px solid var(--border)',
+                borderRadius: '10px',
+                padding: '8px 12px',
+                color: branchFilter !== 'all' && branchFilter !== 'All' ? '#38bdf8' : 'var(--text-main)',
+                fontSize: '0.85rem',
+                fontWeight: '700',
+                cursor: 'pointer'
+              }}
+              title="Filter by Salon Branch"
+            >
+              <option value="all">🏢 All Branches</option>
+              {allBranches.map(br => (
+                <option key={br.id} value={br.id}>
+                  🏢 {br.name} {br.code ? `(${br.code})` : ''}
+                </option>
+              ))}
+            </select>
+          )}
+
           <select className="select-filter" value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value)}>
             <option value="All">All Payment Modes</option>
             <option value="Cash">Cash</option>
             <option value="UPI">UPI / QR Code</option>
             <option value="Card">Card Checkout</option>
+            <option value="Online Gateway">Online Gateway</option>
             <option value="Membership Wallet Credit">👑 Membership Wallet Credit</option>
             <option value="Split">Split Payment</option>
           </select>
@@ -374,6 +446,11 @@ function BillingHistoryView({ bills = [], customers = [], stylists = [], members
                             gap: '3px'
                           }}>
                             <Crown size={10} /> {calc.membershipName}
+                          </div>
+                        )}
+                        {calc.branchName && calc.branchName !== 'Main Salon' && (
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                            <Building size={10} /> {calc.branchName}
                           </div>
                         )}
                       </td>
@@ -648,6 +725,11 @@ function BillingHistoryView({ bills = [], customers = [], stylists = [], members
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                     <span>Customer:</span> <strong>{calc.custName}</strong>
                   </div>
+                  {calc.branchName && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span>Salon Branch:</span> <strong style={{ color: '#0f172a' }}>{calc.branchName}</strong>
+                    </div>
+                  )}
                   {calc.stylistName && calc.stylistName !== '—' && (
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span>Stylist Tagged:</span> <strong>{calc.stylistName}</strong>

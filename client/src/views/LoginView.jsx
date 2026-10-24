@@ -32,7 +32,7 @@ function LoginView({ users = [], onLoginSuccess, theme = 'dark', onToggleTheme }
         // Master super admin account fallback
         if (cleanEmail === 'admin@saloon.com') {
           onLoginSuccess({
-            token: `demo_jwt_token_${Date.now()}`,
+            token: `demo_jwt_token_1_${Date.now()}`,
             user: {
               id: 1,
               name: 'Sunil Kumar (Super Admin)',
@@ -51,7 +51,7 @@ function LoginView({ users = [], onLoginSuccess, theme = 'dark', onToggleTheme }
 
         if (matchedUser && matchedUser.is_active !== false) {
           onLoginSuccess({
-            token: `demo_jwt_token_${Date.now()}`,
+            token: `demo_jwt_token_${matchedUser.id}_${Date.now()}`,
             user: {
               ...matchedUser,
               role: matchedUser.role || matchedUser.role_name || 'Staff'

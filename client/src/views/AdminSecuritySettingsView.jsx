@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck, Sliders, Database, Users, Lock, Key, RefreshCw, Save,
-  Plus, Edit2, Trash2, CheckCircle, AlertCircle, FileText, Download,
-  Clock, Server, Globe, DollarSign, Percent, Shield, Eye, CreditCard
+  Plus, Edit2, Trash2, CheckCircle, CheckCircle2, AlertCircle, FileText, Download,
+  Clock, Server, Globe, DollarSign, Percent, Shield, Eye, CreditCard, Building
 } from 'lucide-react';
 import {
   Admin_Get_System_Settings,
@@ -15,11 +15,12 @@ import {
   Admin_Get_Branches,
   Admin_Get_Roles,
   Admin_Get_Gateway_Config,
+  Admin_Get_Gateway_List,
   Admin_Update_Gateway_Config
 } from '../services/apiService';
 
-const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
-  const [activeTab, setActiveTab] = useState('settings'); // 'settings', 'users', 'audit', 'backups', 'gateway'
+const AdminSecuritySettingsView = ({ onNavigateToMatrix, currentUser, branches: propBranches = [], selectedBranchId = 'all', initialTab = 'settings' }) => {
+  const [activeTab, setActiveTab] = useState(initialTab || 'settings'); // 'settings', 'users', 'audit', 'backups', 'gateway'
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState({});
   const [auditLogs, setAuditLogs] = useState([]);
@@ -30,15 +31,24 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [backupProcessing, setBackupProcessing] = useState(false);
 
-  // Payment Gateway Configuration State
+  // Multi-Tenant Payment Gateway Configuration State
+  const [selectedGatewayBranch, setSelectedGatewayBranch] = useState(() => (selectedBranchId !== 'all' ? String(selectedBranchId) : ''));
+  const [gatewayList, setGatewayList] = useState([]);
+  const [supportedGateways, setSupportedGateways] = useState([
+    { id: 'razorpay', name: 'Razorpay Payment Gateway (UPI, Cards, Netbanking)' },
+    { id: 'stripe', name: 'Stripe Payments (Credit/Debit & International)' }
+  ]);
   const [gatewayForm, setGatewayForm] = useState({
     gateway_name: 'razorpay',
-    key_id: 'rzp_test_Sandbox_SalonPulse',
+    key_id: '',
     key_secret: '',
     mode: 'test',
-    is_enabled: true
+    is_enabled: true,
+    currency: 'INR',
+    has_keys: false
   });
   const [gatewaySaving, setGatewaySaving] = useState(false);
+  const displayBranches = (branches && branches.length > 0) ? branches : (propBranches || []);
 
   // User creation modal
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -52,16 +62,60 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  const effectiveBranches = propBranches && propBranches.length > 0 ? propBranches : branches;
+
+  const fetchGatewayConfigForBranch = async (branchId, gwName = gatewayForm.gateway_name) => {
+    try {
+      const res = await Admin_Get_Gateway_Config({
+        branch_id: branchId || undefined,
+        gateway_name: gwName
+      });
+      if (res?.data?.data) {
+        const d = res.data.data;
+        setGatewayForm({
+          gateway_name: d.gateway_name || gwName || 'razorpay',
+          key_id: d.key_id || '',
+          key_secret: '',
+          mode: d.mode || 'test',
+          is_enabled: d.is_enabled ?? true,
+          currency: d.currency || 'INR',
+          has_keys: Boolean(d.has_keys)
+        });
+      }
+      if (res?.data?.supported_gateways) {
+        setSupportedGateways(res.data.supported_gateways);
+      }
+    } catch (e) {
+      console.error('Error loading gateway for branch:', e);
+    }
+  };
+
+  const fetchGatewayList = async () => {
+    try {
+      const res = await Admin_Get_Gateway_List();
+      if (res?.data?.data) {
+        setGatewayList(res.data.data);
+      }
+    } catch (e) {}
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [settRes, auditRes, backRes, userRes, branchRes, gwRes] = await Promise.all([
+      const [settRes, auditRes, backRes, userRes, branchRes, gwRes, gwListRes] = await Promise.all([
         Admin_Get_System_Settings().catch(() => null),
         Admin_Get_Audit_Logs().catch(() => null),
         Admin_Get_Database_Backups().catch(() => null),
         Admin_Get_Users().catch(() => null),
         Admin_Get_Branches().catch(() => null),
-        Admin_Get_Gateway_Config().catch(() => null)
+        Admin_Get_Gateway_Config({ branch_id: selectedGatewayBranch || undefined }).catch(() => null),
+        Admin_Get_Gateway_List().catch(() => null)
       ]);
 
       if (settRes?.data?.success) setSettings(settRes.data.settings);
@@ -69,15 +123,22 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
       if (backRes?.data?.success) setBackups(backRes.data.backups);
       if (userRes?.data?.users) setUsers(userRes.data.users);
       if (branchRes?.data?.branches) setBranches(branchRes.data.branches);
+      if (gwListRes?.data?.data) setGatewayList(gwListRes.data.data);
+
       if (gwRes?.data?.data) {
         const d = gwRes.data.data;
         setGatewayForm({
           gateway_name: d.gateway_name || 'razorpay',
-          key_id: d.key_id || 'rzp_test_Sandbox_SalonPulse',
+          key_id: d.key_id || '',
           key_secret: '',
           mode: d.mode || 'test',
-          is_enabled: d.is_enabled ?? true
+          is_enabled: d.is_enabled ?? true,
+          currency: d.currency || 'INR',
+          has_keys: Boolean(d.has_keys)
         });
+      }
+      if (gwRes?.data?.supported_gateways) {
+        setSupportedGateways(gwRes.data.supported_gateways);
       }
     } catch (err) {
       console.error('Error fetching settings:', err);
@@ -87,13 +148,23 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
     }
   };
 
+  const handleBranchSelect = (branchVal) => {
+    setSelectedGatewayBranch(branchVal);
+    fetchGatewayConfigForBranch(branchVal, gatewayForm.gateway_name);
+  };
+
   const handleSaveGatewayConfig = async (e) => {
     e.preventDefault();
     setGatewaySaving(true);
     try {
-      const res = await Admin_Update_Gateway_Config(gatewayForm);
+      const payload = {
+        ...gatewayForm,
+        branch_id: selectedGatewayBranch ? parseInt(selectedGatewayBranch) : null
+      };
+      const res = await Admin_Update_Gateway_Config(payload);
       showFeedback('success', res?.data?.message || 'Payment Gateway Configuration Saved & Activated!');
-      fetchData();
+      fetchGatewayConfigForBranch(selectedGatewayBranch, gatewayForm.gateway_name);
+      fetchGatewayList();
     } catch (err) {
       showFeedback('error', err?.data?.message || err.message || 'Failed to update payment gateway config.');
     } finally {
@@ -313,36 +384,86 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
       {/* TAB: PAYMENT GATEWAY & SANDBOX SETUP */}
       {activeTab === 'gateway' && (
         <div className="glass-panel" style={{ padding: '28px', borderRadius: '16px', background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <CreditCard size={22} color="#3b82f6" /> Payment Gateway Integration (Razorpay & Stripe Sandbox)
+                <CreditCard size={22} color="#3b82f6" /> Payment Gateway Integration (Multi-Tenant & Branch Scoped)
               </h3>
               <p style={{ fontSize: '0.8rem', color: '#90A4AE', marginTop: '4px', margin: 0 }}>
-                Configure live or test sandbox credentials for instant card, UPI QR, and netbanking POS payments.
+                Connect your salon's Razorpay or Stripe merchant credentials. Each admin and branch manages their own payment accounts independently.
               </p>
             </div>
-            <span style={{
-              fontSize: '0.75rem', padding: '4px 12px', borderRadius: '12px', fontWeight: '800',
-              background: gatewayForm.mode === 'test' ? 'rgba(245, 158, 11, 0.18)' : 'rgba(37, 99, 235, 0.18)',
-              color: gatewayForm.mode === 'test' ? '#F59E0B' : '#3b82f6',
-              border: `1px solid ${gatewayForm.mode === 'test' ? 'rgba(245, 158, 11, 0.4)' : 'rgba(37, 99, 235, 0.4)'}`
-            }}>
-              ⚡ Mode: {gatewayForm.mode === 'test' ? 'Sandbox / Test Mode' : 'Live Production'}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{
+                fontSize: '0.75rem', padding: '4px 12px', borderRadius: '12px', fontWeight: '800',
+                background: gatewayForm.mode === 'test' ? 'rgba(245, 158, 11, 0.18)' : 'rgba(37, 99, 235, 0.18)',
+                color: gatewayForm.mode === 'test' ? '#F59E0B' : '#3b82f6',
+                border: `1px solid ${gatewayForm.mode === 'test' ? 'rgba(245, 158, 11, 0.4)' : 'rgba(37, 99, 235, 0.4)'}`
+              }}>
+                ⚡ Mode: {gatewayForm.mode === 'test' ? 'Sandbox / Test Mode' : 'Live Production'}
+              </span>
+              <span style={{
+                fontSize: '0.75rem', padding: '4px 12px', borderRadius: '12px', fontWeight: '800',
+                background: gatewayForm.has_keys ? (gatewayForm.is_enabled ? 'rgba(16, 185, 129, 0.18)' : 'rgba(245, 158, 11, 0.18)') : 'rgba(239, 68, 68, 0.18)',
+                color: gatewayForm.has_keys ? (gatewayForm.is_enabled ? '#10b981' : '#f59e0b') : '#ef4444',
+                border: `1px solid ${gatewayForm.has_keys ? (gatewayForm.is_enabled ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)') : 'rgba(239, 68, 68, 0.4)'}`
+              }}>
+                {gatewayForm.has_keys ? (gatewayForm.is_enabled ? '● Active & Connected' : '⏸️ Disabled') : '⚠️ No Keys Configured'}
+              </span>
+            </div>
           </div>
 
           <form onSubmit={handleSaveGatewayConfig}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+            {/* Scope / Branch Selection Card */}
+            <div style={{ marginBottom: '22px', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                <div style={{ flex: '1', minWidth: '260px' }}>
+                  <label style={{ fontSize: '13px', color: '#90A4AE', display: 'block', marginBottom: '6px', fontWeight: '700' }}>
+                    🏢 Target Branch / Gateway Configuration Scope:
+                  </label>
+                  <select
+                    value={selectedGatewayBranch}
+                    onChange={e => handleBranchSelect(e.target.value)}
+                    style={{ width: '100%', padding: '10px 14px', background: '#0F172A', border: '1px solid #3b82f6', borderRadius: '8px', color: '#fff', fontWeight: '700' }}
+                  >
+                    <option value="">🏢 All My Branches (Default / Account-Wide Settings)</option>
+                    {displayBranches.map(b => (
+                      <option key={b.id} value={String(b.id)}>
+                        📍 Branch #{b.id}: {b.name} ({b.city || 'Active Branch'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#94a3b8', maxWidth: '420px', lineHeight: '1.4' }}>
+                  {selectedGatewayBranch ? (
+                    <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                      <strong style={{ color: '#60a5fa' }}>Branch Override Mode:</strong> You are setting dedicated credentials for this branch. POS checkouts at this branch will deposit directly into this branch's gateway account.
+                    </div>
+                  ) : (
+                    <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                      <strong style={{ color: '#34d399' }}>Default Scope Mode:</strong> These credentials will apply to all your salon branches automatically, unless a branch has dedicated custom keys.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Provider, Mode, Status, Currency */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '20px' }}>
               <div>
                 <label style={{ fontSize: '13px', color: '#90A4AE', display: 'block', marginBottom: '6px' }}>Payment Provider</label>
                 <select
                   value={gatewayForm.gateway_name}
-                  onChange={e => setGatewayForm({ ...gatewayForm, gateway_name: e.target.value })}
+                  onChange={e => {
+                    const nextGw = e.target.value;
+                    setGatewayForm(prev => ({ ...prev, gateway_name: nextGw }));
+                    fetchGatewayConfigForBranch(selectedGatewayBranch, nextGw);
+                  }}
                   style={{ width: '100%', padding: '10px', background: '#0F172A', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }}
                 >
-                  <option value="razorpay">Razorpay Payment Gateway (UPI, Cards, Netbanking)</option>
-                  <option value="stripe">Stripe Payments (Credit/Debit & International)</option>
+                  {supportedGateways.map(gw => (
+                    <option key={gw.id} value={gw.id}>{gw.name}</option>
+                  ))}
                 </select>
               </div>
 
@@ -366,32 +487,48 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
                   style={{ width: '100%', padding: '10px', background: '#0F172A', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }}
                 >
                   <option value="true">Enabled (Active for POS Checkout)</option>
-                  <option value="false">Disabled</option>
+                  <option value="false">Disabled (Hide online payment in POS)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '13px', color: '#90A4AE', display: 'block', marginBottom: '6px' }}>Settlement Currency</label>
+                <select
+                  value={gatewayForm.currency || 'INR'}
+                  onChange={e => setGatewayForm({ ...gatewayForm, currency: e.target.value })}
+                  style={{ width: '100%', padding: '10px', background: '#0F172A', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }}
+                >
+                  <option value="INR">INR (₹ - Indian Rupee)</option>
+                  <option value="USD">USD ($ - US Dollar)</option>
+                  <option value="AED">AED (د.إ - UAE Dirham)</option>
+                  <option value="EUR">EUR (€ - Euro)</option>
+                  <option value="GBP">GBP (£ - British Pound)</option>
                 </select>
               </div>
             </div>
 
+            {/* API Credentials */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', marginBottom: '24px' }}>
               <div>
                 <label style={{ fontSize: '13px', color: '#90A4AE', display: 'block', marginBottom: '6px' }}>
-                  Merchant Key ID (rzp_test_... or rzp_live_...)
+                  Merchant Key ID {gatewayForm.gateway_name === 'razorpay' ? '(rzp_test_... or rzp_live_...)' : '(pk_test_... or pk_live_...)'}
                 </label>
                 <input
                   type="text"
-                  placeholder="rzp_test_YourKeyIDHere"
+                  placeholder={gatewayForm.gateway_name === 'razorpay' ? 'rzp_test_YourKeyIDHere' : 'pk_test_YourPublishableKey'}
                   value={gatewayForm.key_id}
                   onChange={e => setGatewayForm({ ...gatewayForm, key_id: e.target.value })}
-                  style={{ width: '100%', padding: '10px', background: '#0F172A', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }}
+                  style={{ width: '100%', padding: '10px', background: '#0F172A', border: '1px solid #334155', borderRadius: '8px', color: '#fff', fontFamily: 'monospace' }}
                 />
               </div>
 
               <div>
                 <label style={{ fontSize: '13px', color: '#90A4AE', display: 'block', marginBottom: '6px' }}>
-                  Secret Key (Keep secure)
+                  Secret Key (Encrypted & Kept Secure)
                 </label>
                 <input
                   type="password"
-                  placeholder="Enter Secret Key to update (or leave blank to keep existing)"
+                  placeholder={gatewayForm.has_keys ? '•••••••••••••••• (Leave blank to keep existing key)' : 'Enter Secret Key'}
                   value={gatewayForm.key_secret}
                   onChange={e => setGatewayForm({ ...gatewayForm, key_secret: e.target.value })}
                   style={{ width: '100%', padding: '10px', background: '#0F172A', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }}
@@ -401,11 +538,12 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
 
             <div style={{ background: 'rgba(37, 99, 235, 0.08)', border: '1px solid rgba(37, 99, 235, 0.25)', borderRadius: '12px', padding: '16px', marginBottom: '24px' }}>
               <div style={{ fontWeight: '800', fontSize: '0.86rem', color: '#3b82f6', marginBottom: '4px' }}>
-                💡 Sandbox Test Mode Instructions:
+                💡 Payment Gateway Setup & POS Checkout Rules:
               </div>
               <ul style={{ fontSize: '0.78rem', color: '#90A4AE', paddingLeft: '20px', lineHeight: '1.6', margin: 0 }}>
-                <li>Even without adding custom keys, the system includes an <strong>Interactive Real-time Sandbox Terminal</strong> for POS billing.</li>
-                <li>When you enter your own Razorpay Key ID (<code>rzp_test_...</code>), POS Checkout will launch official <strong>Razorpay Checkout SDK Modal Window</strong> automatically.</li>
+                <li>When credentials are saved and enabled, your POS Billing checkout screen will display the official <strong>Razorpay / Stripe Gateway Checkout SDK</strong> button.</li>
+                <li>If a branch has not configured API keys, online checkout is automatically hidden so customers can only be billed via <strong>Cash</strong> or <strong>Card Terminal</strong>.</li>
+                <li>All customer transactions, webhook signatures, and settlements are strictly isolated per admin and branch.</li>
               </ul>
             </div>
 
@@ -413,14 +551,152 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix }) => {
               type="submit"
               disabled={gatewaySaving}
               style={{
-                padding: '12px 24px', background: '#2563eb',
+                padding: '12px 28px', background: '#2563eb',
                 color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '700',
-                cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px'
+                cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px',
+                boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)'
               }}
             >
               <Save size={18} /> {gatewaySaving ? 'Saving Configuration...' : 'Save & Activate Payment Gateway'}
             </button>
           </form>
+
+          {/* Branch Payment Gateway Connections Overview Table */}
+          <div style={{ marginTop: '36px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+              <div>
+                <h4 style={{ fontSize: '1rem', fontWeight: '800', color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Building size={18} color="#3b82f6" /> Branch Payment Gateway Connections Overview
+                </h4>
+                <p style={{ fontSize: '0.78rem', color: '#90A4AE', margin: 0, marginTop: '2px' }}>
+                  Real-time status of configured payment gateway credentials across all your salon branches.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { fetchGatewayList(); fetchGatewayConfigForBranch(selectedGatewayBranch, gatewayForm.gateway_name); }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff', borderRadius: '8px', padding: '6px 12px', fontSize: '0.78rem', cursor: 'pointer' }}
+              >
+                <RefreshCw size={14} /> Refresh Overview
+              </button>
+            </div>
+
+            <div style={{ overflowX: 'auto', background: 'rgba(15, 23, 42, 0.5)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
+                <thead>
+                  <tr style={{ background: 'rgba(255,255,255,0.03)', color: '#94a3b8', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                    <th style={{ padding: '12px 14px' }}>Scope / Branch</th>
+                    <th style={{ padding: '12px 14px' }}>Gateway Provider</th>
+                    <th style={{ padding: '12px 14px' }}>Environment</th>
+                    <th style={{ padding: '12px 14px' }}>Key ID Preview</th>
+                    <th style={{ padding: '12px 14px' }}>Status</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'right' }}>Quick Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Default Row */}
+                  {(() => {
+                    const defaultCfg = gatewayList.find(g => !g.branch_id);
+                    const isSelected = selectedGatewayBranch === '';
+                    return (
+                      <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: isSelected ? 'rgba(59, 130, 246, 0.08)' : 'transparent' }}>
+                        <td style={{ padding: '12px 14px', fontWeight: '700', color: '#fff' }}>
+                          🏢 All Branches (Default)
+                        </td>
+                        <td style={{ padding: '12px 14px', color: '#cbd5e1' }}>
+                          {defaultCfg ? defaultCfg.gateway_name.toUpperCase() : 'RAZORPAY'}
+                        </td>
+                        <td style={{ padding: '12px 14px' }}>
+                          <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '6px', background: defaultCfg?.mode === 'live' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: defaultCfg?.mode === 'live' ? '#10b981' : '#f59e0b' }}>
+                            {defaultCfg ? (defaultCfg.mode === 'live' ? 'Live' : 'Sandbox') : 'Not Set'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 14px', fontFamily: 'monospace', color: '#94a3b8' }}>
+                          {defaultCfg?.key_id ? `${defaultCfg.key_id.slice(0, 8)}••••` : 'None'}
+                        </td>
+                        <td style={{ padding: '12px 14px' }}>
+                          {defaultCfg ? (
+                            defaultCfg.is_enabled ? (
+                              <span style={{ color: '#10b981', fontWeight: '700' }}>● Active Default</span>
+                            ) : (
+                              <span style={{ color: '#f59e0b' }}>⏸️ Disabled</span>
+                            )
+                          ) : (
+                            <span style={{ color: '#94a3b8' }}>⚪ Not Configured</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px 14px', textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleBranchSelect('')}
+                            style={{
+                              padding: '5px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '700',
+                              background: isSelected ? '#2563eb' : 'rgba(255,255,255,0.08)',
+                              color: '#fff', border: 'none', cursor: 'pointer'
+                            }}
+                          >
+                            {isSelected ? 'Editing' : 'Edit Default'}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })()}
+
+                  {/* Branch Rows */}
+                  {displayBranches.map(branch => {
+                    const branchCfg = gatewayList.find(g => g.branch_id === branch.id);
+                    const isSelected = selectedGatewayBranch === String(branch.id);
+                    return (
+                      <tr key={branch.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: isSelected ? 'rgba(59, 130, 246, 0.08)' : 'transparent' }}>
+                        <td style={{ padding: '12px 14px', fontWeight: '600', color: '#f1f5f9' }}>
+                          📍 {branch.name}
+                        </td>
+                        <td style={{ padding: '12px 14px', color: '#cbd5e1' }}>
+                          {branchCfg ? branchCfg.gateway_name.toUpperCase() : 'Inherit Default'}
+                        </td>
+                        <td style={{ padding: '12px 14px' }}>
+                          {branchCfg ? (
+                            <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '6px', background: branchCfg.mode === 'live' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: branchCfg.mode === 'live' ? '#10b981' : '#f59e0b' }}>
+                              {branchCfg.mode === 'live' ? 'Live' : 'Sandbox'}
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Inherited</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px 14px', fontFamily: 'monospace', color: '#94a3b8' }}>
+                          {branchCfg?.key_id ? `${branchCfg.key_id.slice(0, 8)}••••` : 'Default Key'}
+                        </td>
+                        <td style={{ padding: '12px 14px' }}>
+                          {branchCfg ? (
+                            branchCfg.is_enabled ? (
+                              <span style={{ color: '#10b981', fontWeight: '700' }}>● Dedicated Branch Key</span>
+                            ) : (
+                              <span style={{ color: '#f59e0b' }}>⏸️ Disabled</span>
+                            )
+                          ) : (
+                            <span style={{ color: '#94a3b8' }}>🔗 Uses Default</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px 14px', textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleBranchSelect(String(branch.id))}
+                            style={{
+                              padding: '5px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '700',
+                              background: isSelected ? '#2563eb' : 'rgba(255,255,255,0.08)',
+                              color: '#fff', border: 'none', cursor: 'pointer'
+                            }}
+                          >
+                            {isSelected ? 'Editing' : 'Configure Branch'}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 

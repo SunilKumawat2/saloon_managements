@@ -90,18 +90,9 @@ export const MOCK_PACKAGES = [
 
 export const MOCK_STYLISTS = [];
 
-export const MOCK_CUSTOMERS = [
-  { id: 1, branch_id: 1, name: 'Rahul Kumar', phone: '9988776655', email: 'rahul.k@gmail.com', gender: 'Male', dob: '1995-08-14', loyalty_points: 120, notes: 'Regular customer' },
-  { id: 2, branch_id: 1, name: 'Sneha Kapoor', phone: '9988776656', email: 'sneha.k@outlook.com', gender: 'Female', dob: '1998-11-20', loyalty_points: 250, notes: 'Regular facial client, sensitive skin' },
-  { id: 3, branch_id: 2, name: 'Karan Johar', phone: '9988776657', email: 'karan@media.com', gender: 'Male', dob: '1990-03-08', loyalty_points: 80, notes: 'Prefers weekend morning slots' },
-  { id: 4, branch_id: 1, name: 'Sunil', phone: '8574857485', email: 'N/A', gender: 'Unspecified', dob: 'N/A', loyalty_points: 50, notes: 'Walk-in Guest' }
-];
+export const MOCK_CUSTOMERS = [];
 
-export const MOCK_LEADS = [
-  { id: 1, branch_id: 1, name: 'Ananya Panday', phone: '9811223344', email: 'ananya@gmail.com', source: 'Instagram Ads', status: 'New', notes: 'Inquired about Keratin Hair Treatment', followup_date: todayStr },
-  { id: 2, branch_id: 1, name: 'Varun Dhawan', phone: '9811223345', email: 'varun@gmail.com', source: 'Walk-in', status: 'Contacted', notes: 'Scheduled call back for bridal package', followup_date: todayStr },
-  { id: 3, branch_id: 2, name: 'Kiara Advani', phone: '9811223346', email: 'kiara@gmail.com', source: 'Website Portal', status: 'Converted', notes: 'Booked Gold Facial appointment', followup_date: todayStr }
-];
+export const MOCK_LEADS = [];
 
 export const MOCK_APPOINTMENTS = [];
 

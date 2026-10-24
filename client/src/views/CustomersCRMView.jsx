@@ -317,6 +317,20 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
 
   const rawList = baseList.filter(c => {
     if (!c) return false;
+
+    // Admin Level Isolation Check on Frontend
+    if (currentUser) {
+      const roleStr = String(currentUser.role || currentUser.role_name || '').toLowerCase();
+      const isSuper = currentUser.is_super_admin === true || currentUser.email === 'admin@saloon.com' || roleStr.includes('super');
+      if (!isSuper) {
+        const curAdminId = String(currentUser.admin_id || currentUser.id);
+        const itemAdminId = c.admin_id || c.created_by_admin_id || c.created_by_user_id || c.created_by;
+        if (itemAdminId && String(itemAdminId) !== curAdminId) {
+          return false; // Belongs to another admin!
+        }
+      }
+    }
+
     if (isScopedUser) {
       return String(c.branch_id) === String(currentUser.branch_id);
     }

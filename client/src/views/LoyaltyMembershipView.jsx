@@ -8,6 +8,7 @@ import {
   Admin_Get_Membership_Tiers,
   Admin_Create_Membership_Tier,
   Admin_Update_Membership_Tier,
+  Admin_Delete_Membership_Tier,
   Admin_Get_Enrolled_Members,
   Admin_Enroll_Customer,
   Admin_Update_Enrolled_Member,
@@ -138,25 +139,26 @@ const LoyaltyMembershipView = ({ customers: propCustomers = [], bills: propBills
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [selectedBranchId]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
+      const params = { branch_id: selectedBranchId };
       const results = await Promise.allSettled([
-        Admin_Get_Membership_Tiers(),
-        Admin_Get_Enrolled_Members(),
-        Admin_Get_Customers({ limit: 'all' }),
-        Admin_Get_Loyalty_Ledger(),
-        Admin_Get_Referrals()
+        Admin_Get_Membership_Tiers(params),
+        Admin_Get_Enrolled_Members(params),
+        Admin_Get_Customers({ limit: 'all', branch_id: selectedBranchId }),
+        Admin_Get_Loyalty_Ledger(params),
+        Admin_Get_Referrals(params)
       ]);
 
       const [tiersRes, membersRes, custRes, ledgerRes, refRes] = results;
 
       // Process Membership Tiers
       if (tiersRes.status === 'fulfilled' && tiersRes.value?.data) {
-        const tiersData = tiersRes.value.data.tiers || (Array.isArray(tiersRes.value.data) ? tiersRes.value.data : []);
-        if (Array.isArray(tiersData) && tiersData.length > 0) {
+        const tiersData = tiersRes.value.data.tiers || (Array.isArray(tiersRes.value.data) ? tiersRes.value.data : null);
+        if (Array.isArray(tiersData)) {
           setTiers(tiersData);
         } else {
           setTiers(DEFAULT_MEMBERSHIP_TIERS);
@@ -267,7 +269,8 @@ const LoyaltyMembershipView = ({ customers: propCustomers = [], bills: propBills
       points_multiplier: parseFloat(tierForm.points_multiplier || 1.0),
       service_value_limit: parseFloat(tierForm.service_value_limit || 0),
       benefits: tierForm.benefits || '',
-      badge_color: tierForm.badge_color || '#00E676'
+      badge_color: tierForm.badge_color || '#00E676',
+      branch_id: selectedBranchId
     };
 
     try {
@@ -298,6 +301,21 @@ const LoyaltyMembershipView = ({ customers: propCustomers = [], bills: propBills
         showFeedback('success', `New tier "${payload.name}" created successfully!`);
       }
       setIsTierModalOpen(false);
+    }
+  };
+
+  const handleDeleteTier = async (tierId, tierName) => {
+    if (!window.confirm(`Are you sure you want to permanently delete the "${tierName}" membership plan?`)) return;
+    try {
+      const res = await Admin_Delete_Membership_Tier(tierId);
+      const msg = res?.data?.message || `Membership plan "${tierName}" deleted permanently!`;
+      showFeedback('success', msg);
+      setTiers(prev => prev.filter(t => t.id !== tierId));
+      if (isTierModalOpen) setIsTierModalOpen(false);
+      fetchData();
+    } catch (err) {
+      console.error('Delete tier error:', err);
+      showFeedback('error', err.data?.message || err.message || 'Failed to delete membership plan');
     }
   };
 
@@ -404,6 +422,7 @@ const LoyaltyMembershipView = ({ customers: propCustomers = [], bills: propBills
           try {
             await Admin_Enroll_Customer({
               ...enrollForm,
+              branch_id: selectedBranchId,
               amount_paid: totalAmt,
               payment_mode: 'Razorpay Online',
               razorpay_payment_id: payId
@@ -500,7 +519,7 @@ const LoyaltyMembershipView = ({ customers: propCustomers = [], bills: propBills
     };
 
     try {
-      await Admin_Enroll_Customer(enrollForm).catch(() => null);
+      await Admin_Enroll_Customer({ ...enrollForm, branch_id: selectedBranchId }).catch(() => null);
     } catch (err) { console.warn('Enroll API fallback:', err); }
 
     setMembers(prev => [newEnrollment, ...prev]);
@@ -1041,7 +1060,7 @@ const LoyaltyMembershipView = ({ customers: propCustomers = [], bills: propBills
           </div>
 
           {/* Pricing Tier Cards Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 360px))', gap: '20px' }}>
             {paginatedTiers.map(tier => {
               const color = tier.badge_color || '#3b82f6';
               const creditLimit = parseFloat(tier.service_value_limit || (tier.price * 1.5) || 1500);
@@ -1058,6 +1077,8 @@ const LoyaltyMembershipView = ({ customers: propCustomers = [], bills: propBills
                     display: 'flex',
                     flexDirection: 'column',
                     justify: 'space-between',
+                    maxWidth: '360px',
+                    width: '100%',
                     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
                     transition: 'all 0.2s ease'
                   }}
@@ -1082,29 +1103,82 @@ const LoyaltyMembershipView = ({ customers: propCustomers = [], bills: propBills
                       }}>
                         <Crown size={13} color={color} /> {tier.name}
                       </span>
-                      <button
-                        onClick={() => handleOpenTierModal(tier)}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: '#64748b',
-                          cursor: 'pointer',
-                          padding: '4px'
-                        }}
-                        title="Edit Plan Settings"
-                      >
-                        <Edit2 size={14} />
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <button
+                          onClick={() => handleOpenTierModal(tier)}
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.06)',
+                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            color: '#cbd5e1',
+                            cursor: 'pointer',
+                            padding: '5px 9px',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            transition: 'all 0.2s ease'
+                          }}
+                          title="Edit Plan Settings"
+                        >
+                          <Edit2 size={12} /> Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTier(tier.id, tier.name)}
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.12)',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            color: '#f87171',
+                            cursor: 'pointer',
+                            padding: '5px 9px',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            transition: 'all 0.2s ease'
+                          }}
+                          title="Delete Membership Plan"
+                        >
+                          <Trash2 size={12} color="#ef4444" /> Delete
+                        </button>
+                      </div>
                     </div>
 
                     {/* Price Header */}
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '12px' }}>
                       <span style={{ fontSize: '28px', fontWeight: '700', color: '#ffffff', letterSpacing: '-0.02em' }}>
                         ₹{parseFloat(tier.price).toLocaleString()}
                       </span>
                       <span style={{ color: '#94a3b8', fontSize: '12px', fontWeight: '400' }}>
                         / {tier.validity_days} days validity
                       </span>
+                    </div>
+
+                    {/* Creator & Branch Badge for Admin / Super Admin Audit */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justify: 'space-between',
+                      padding: '5px 10px',
+                      background: 'rgba(15, 23, 42, 0.6)',
+                      border: '1px solid rgba(255, 255, 255, 0.06)',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      color: '#94a3b8',
+                      marginBottom: '16px'
+                    }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <UserCheck size={12} color="#38bdf8" />
+                        <span>Created by: <strong style={{ color: '#e2e8f0' }}>{tier.creator_name || 'System Default'}</strong></span>
+                      </span>
+                      {tier.branch_name && (
+                        <span style={{ color: '#38bdf8', fontWeight: '600' }}>
+                          📍 {tier.branch_name}
+                        </span>
+                      )}
                     </div>
 
                     {/* Key Perks & Credit Wallet Badge */}
@@ -1773,6 +1847,15 @@ const LoyaltyMembershipView = ({ customers: propCustomers = [], bills: propBills
               </div>
 
               <div style={{ display: 'flex', gap: '12px', marginTop: '14px' }}>
+                {editingTier && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteTier(editingTier.id, editingTier.name)}
+                    style={{ padding: '12px 16px', background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Trash2 size={16} /> Delete Plan
+                  </button>
+                )}
                 <button
                   type="submit"
                   style={{ flex: 1, padding: '12px', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer' }}

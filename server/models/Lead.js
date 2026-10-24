@@ -84,27 +84,11 @@ export const LeadModel = {
       }
 
       const dataRes = await pool.query(selectSql, queryParams);
-      let rows = (dataRes.rows && dataRes.rows.length > 0) ? dataRes.rows : DEMO_LEADS;
+      let rows = dataRes.rows || [];
       return rows;
     } catch (err) {
-      let cleaned = DEMO_LEADS;
-      if (options.search) {
-        const s = String(options.search).toLowerCase();
-        cleaned = cleaned.filter(l => String(l.name || '').toLowerCase().includes(s) || String(l.phone || '').includes(s) || String(l.email || '').toLowerCase().includes(s) || String(l.source || '').toLowerCase().includes(s));
-      }
-      if (options.status && options.status !== 'All') {
-        cleaned = cleaned.filter(l => l.status === options.status);
-      }
-      if (options.limit && options.limit > 0 && options.limit !== 'all') {
-        const page = options.page || 1;
-        const total = cleaned.length;
-        const start = (page - 1) * options.limit;
-        return {
-          data: cleaned.slice(start, start + options.limit),
-          pagination: { total, page, limit: options.limit, totalPages: Math.ceil(total / options.limit) || 1 }
-        };
-      }
-      return cleaned;
+      console.error('LeadModel.findAll error:', err);
+      return [];
     }
   },
 

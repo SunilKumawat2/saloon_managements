@@ -24,7 +24,8 @@ import {
   User,
   Lock,
   Clock,
-  Package
+  Package,
+  CreditCard
 } from 'lucide-react';
 
 
@@ -241,21 +242,29 @@ export default function App() {
   };
 
 
-  // Accordion Dropdown States (Default Closed)
-  const [isRbacOpen, setIsRbacOpen] = useState(false);
-  const [isCrmOpen, setIsCrmOpen] = useState(false);
-  const [isServicesOpen, setIsServicesOpen] = useState(false);
-  const [isBookingOpen, setIsBookingOpen] = useState(false);
-  const [isReceptionOpen, setIsReceptionOpen] = useState(false);
-  const [isInventoryOpen, setIsInventoryOpen] = useState(false);
-  const [isLoyaltyOpen, setIsLoyaltyOpen] = useState(false);
-  const [isMarketingOpen, setIsMarketingOpen] = useState(false);
-  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  // Centralized Accordion State for Left Sidebar (Default ALL Closed, Only 1 Open at a time)
+  const [openSidebarDropdown, setOpenSidebarDropdown] = useState(null); // null = all closed by default
+  const [adminSettingsSubTab, setAdminSettingsSubTab] = useState('settings');
+
+  const toggleSidebarDropdown = (menuKey) => {
+    setOpenSidebarDropdown(prev => (prev === menuKey ? null : menuKey));
+  };
+
+  const isRbacOpen = openSidebarDropdown === 'rbac';
+  const isCrmOpen = openSidebarDropdown === 'crm';
+  const isServicesOpen = openSidebarDropdown === 'services';
+  const isBookingOpen = openSidebarDropdown === 'booking';
+  const isReceptionOpen = openSidebarDropdown === 'reception';
+  const isInventoryOpen = openSidebarDropdown === 'inventory';
+  const isLoyaltyOpen = openSidebarDropdown === 'loyalty';
+  const isMarketingOpen = openSidebarDropdown === 'marketing';
+  const isAnalyticsOpen = openSidebarDropdown === 'analytics';
+  const isSettingsOpen = openSidebarDropdown === 'settings';
 
   // Receptionist POS state — which customer is being billed
   const [posCustomer, setPosCustomer] = useState(null);
   const [posStylistId, setPosStylistId] = useState(null);
+  const [posInitialServices, setPosInitialServices] = useState([]);
 
   // Dynamic Permission Checker based on logged-in user and live role permissions
   const canAccess = (permKeys) => {
@@ -288,8 +297,8 @@ export default function App() {
   const [users, setUsers] = useState(MOCK_USERS);
   const [branches, setBranches] = useState(MOCK_BRANCHES);
   const [roles, setRoles] = useState(MOCK_ROLES);
-  const [customers, setCustomers] = useState(MOCK_CUSTOMERS);
-  const [leads, setLeads] = useState(MOCK_LEADS);
+  const [customers, setCustomers] = useState([]);
+  const [leads, setLeads] = useState([]);
   const [categories, setCategories] = useState(MOCK_CATEGORIES);
   const [services, setServices] = useState(() => getStoredData('saloon_services_custom', MOCK_SERVICES));
   const [packages, setPackages] = useState(() => getStoredData('saloon_packages_custom', MOCK_PACKAGES));
@@ -430,20 +439,20 @@ export default function App() {
 
       // 2. Fetch Module 1 Users, Roles, Branches Data
       const usersRes = await Admin_Get_Users().catch(() => null);
-      if (usersRes?.data?.data && usersRes.data.data.length > 0) setUsers(usersRes.data.data);
+      if (usersRes?.data?.data && Array.isArray(usersRes.data.data)) setUsers(usersRes.data.data);
 
       const branchesRes = await Admin_Get_Branches().catch(() => null);
-      if (branchesRes?.data?.data && branchesRes.data.data.length > 0) setBranches(branchesRes.data.data);
+      if (branchesRes?.data?.data && Array.isArray(branchesRes.data.data)) setBranches(branchesRes.data.data);
 
       const rolesRes = await Admin_Get_Roles().catch(() => null);
-      if (rolesRes?.data?.data && rolesRes.data.data.length > 0) setRoles(rolesRes.data.data);
+      if (rolesRes?.data?.data && Array.isArray(rolesRes.data.data)) setRoles(rolesRes.data.data);
 
       // 3. Fetch Module 2 CRM & Lead Data
       const custRes = await Admin_Get_Customers().catch(() => null);
-      if (custRes?.data?.data && custRes.data.data.length > 0) setCustomers(custRes.data.data);
+      if (custRes?.data?.data && Array.isArray(custRes.data.data)) setCustomers(custRes.data.data);
 
       const leadsRes = await Admin_Get_Leads().catch(() => null);
-      if (leadsRes?.data?.data && leadsRes.data.data.length > 0) setLeads(leadsRes.data.data);
+      if (leadsRes?.data?.data && Array.isArray(leadsRes.data.data)) setLeads(leadsRes.data.data);
 
       // 4. Fetch Module 4 Services, Packages & Categories Data (Sync with DB if API live)
       const catRes = await Admin_Get_Categories().catch(() => null);
@@ -468,10 +477,10 @@ export default function App() {
       if (tsRes?.data?.data && Array.isArray(tsRes.data.data)) setTimeSlots(tsRes.data.data);
 
       const appRes = await Admin_Get_Appointments().catch(() => null);
-      if (appRes?.data?.data && appRes.data.data.length > 0) setAppointments(appRes.data.data);
+      if (appRes?.data?.data && Array.isArray(appRes.data.data)) setAppointments(appRes.data.data);
 
       const billsRes = await Admin_Get_Bills().catch(() => null);
-      if (billsRes?.data?.data && billsRes.data.data.length > 0) setBills(billsRes.data.data);
+      if (billsRes?.data?.data && Array.isArray(billsRes.data.data)) setBills(billsRes.data.data);
 
       // 5. Fetch Module 6 Inventory, Suppliers, POs & Consumption Data
       const prodRes = await Admin_Get_Products().catch(() => null);
@@ -621,6 +630,33 @@ export default function App() {
     return list;
   };
 
+  // Strict Admin Isolation for Billing History
+  const filterBillsByAdmin = (billsList) => {
+    if (!billsList || !Array.isArray(billsList)) return [];
+    if (!currentUser) return billsList;
+
+    const currentAdminId = String(currentUser.admin_id || currentUser.id);
+    const myBranchIds = new Set((accessibleBranches || []).map(b => String(b.id)));
+
+    return billsList.filter(b => {
+      if (!b) return false;
+      const bAdminId = String(b.admin_id || 1);
+
+      // Strict Admin Isolation:
+      // Bill must belong to the logged-in admin OR one of their branches
+      const isMyBill = (bAdminId === currentAdminId) ||
+                       (b.branch_id && myBranchIds.has(String(b.branch_id)));
+
+      if (!isMyBill) return false;
+
+      // Filter by selected branch if a specific branch is chosen
+      if (selectedBranchId !== 'all' && b.branch_id && String(b.branch_id) !== String(selectedBranchId)) {
+        return false;
+      }
+      return true;
+    });
+  };
+
   useEffect(() => {
     if (currentUser) {
       if (isBranchScopedUser(currentUser) && currentUser.branch_id) {
@@ -629,6 +665,19 @@ export default function App() {
       fetchModuleData();
     }
   }, [authToken, currentUser]);
+
+  // Real-time re-fetch when navigating to billing_history to ensure all admins' bills appear
+  useEffect(() => {
+    if (activeTab === 'billing_history') {
+      Admin_Get_Bills()
+        .then(res => {
+          if (res?.data?.data && Array.isArray(res.data.data)) {
+            setBills(res.data.data);
+          }
+        })
+        .catch(err => console.error('Fetch bills error:', err));
+    }
+  }, [activeTab]);
 
   const handleLoginSuccess = (loginData) => {
     const user = loginData.user;
@@ -1235,15 +1284,18 @@ export default function App() {
   };
 
   // POS & Billing Handlers
-  const handleStartPOS = (customer, stylistId) => {
+  const handleCheckIn = (customer, stylistId, services) => {
     setPosCustomer(customer);
     setPosStylistId(stylistId || null);
+    setPosInitialServices(Array.isArray(services) ? services : []);
     setActiveTab('pos_billing');
   };
+  const handleStartPOS = handleCheckIn;
 
   const handlePOSBack = () => {
     setPosCustomer(null);
     setPosStylistId(null);
+    setPosInitialServices([]);
     setActiveTab('reception_checkin');
   };
 
@@ -1289,6 +1341,7 @@ export default function App() {
     localStorage.setItem('saloon_bills_cleared', 'true');
     localStorage.removeItem('saloon_bills_custom');
   };
+  const handleClearAllBills = handleClearBills;
 
   // Module 6 Inventory Handlers
   const handleAddProduct = async (productData) => {
@@ -1342,12 +1395,13 @@ export default function App() {
     } catch (e) { console.error('Delete Supplier Error:', e); }
   };
 
-  const handleAddPurchaseOrder = async (poData) => {
+  const handleCreatePO = async (poData) => {
     try {
       const res = await Admin_Create_Purchase_Order(poData);
       if (res?.data?.data) setPurchaseOrders(prev => [res.data.data, ...prev]);
     } catch (e) { console.error('Create PO Error:', e); }
   };
+  const handleAddPurchaseOrder = handleCreatePO;
 
   const handleUpdatePOStatus = async (id, status) => {
     try {
@@ -1479,7 +1533,7 @@ export default function App() {
               <div style={{ marginTop: '4px' }}>
                 <button
                   className={`nav-dropdown-toggle ${isRbacOpen ? 'open' : ''} ${['users', 'branches', 'matrix'].includes(activeTab) ? 'active' : ''}`}
-                  onClick={() => setIsRbacOpen(!isRbacOpen)}
+                  onClick={() => toggleSidebarDropdown('rbac')}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <ShieldCheck size={17} style={{ color: ['users', 'branches', 'matrix'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
@@ -1515,7 +1569,7 @@ export default function App() {
               <div style={{ marginTop: '4px' }}>
                 <button
                   className={`nav-dropdown-toggle ${isCrmOpen ? 'open' : ''} ${['customers', 'leads'].includes(activeTab) ? 'active' : ''}`}
-                  onClick={() => setIsCrmOpen(!isCrmOpen)}
+                  onClick={() => toggleSidebarDropdown('crm')}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <Contact size={17} style={{ color: ['customers', 'leads'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
@@ -1541,7 +1595,7 @@ export default function App() {
               <div style={{ marginTop: '4px' }}>
                 <button
                   className={`nav-dropdown-toggle ${isServicesOpen ? 'open' : ''} ${['services_packages'].includes(activeTab) ? 'active' : ''}`}
-                  onClick={() => setIsServicesOpen(!isServicesOpen)}
+                  onClick={() => toggleSidebarDropdown('services')}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <Scissors size={17} style={{ color: ['services_packages'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
@@ -1565,7 +1619,7 @@ export default function App() {
               <div style={{ marginTop: '4px' }}>
                 <button
                   className={`nav-dropdown-toggle ${isBookingOpen ? 'open' : ''} ${['appointments', 'stylists', 'time_slots'].includes(activeTab) ? 'active' : ''}`}
-                  onClick={() => setIsBookingOpen(!isBookingOpen)}
+                  onClick={() => toggleSidebarDropdown('booking')}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <Calendar size={17} style={{ color: ['appointments', 'stylists', 'time_slots'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
@@ -1595,7 +1649,7 @@ export default function App() {
               <div style={{ marginTop: '4px' }}>
                 <button
                   className={`nav-dropdown-toggle ${isReceptionOpen ? 'open' : ''} ${['reception_checkin', 'pos_billing', 'billing_history'].includes(activeTab) ? 'active' : ''}`}
-                  onClick={() => setIsReceptionOpen(!isReceptionOpen)}
+                  onClick={() => toggleSidebarDropdown('reception')}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <MonitorSmartphone size={17} style={{ color: ['reception_checkin', 'pos_billing', 'billing_history'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
@@ -1631,7 +1685,7 @@ export default function App() {
               <div style={{ marginTop: '4px' }}>
                 <button
                   className={`nav-dropdown-toggle ${isInventoryOpen ? 'open' : ''} ${['inventory', 'assets_tracking'].includes(activeTab) ? 'active' : ''}`}
-                  onClick={() => setIsInventoryOpen(!isInventoryOpen)}
+                  onClick={() => toggleSidebarDropdown('inventory')}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <Database size={17} style={{ color: ['inventory', 'assets_tracking'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
@@ -1658,7 +1712,7 @@ export default function App() {
               <div style={{ marginTop: '4px' }}>
                 <button
                   className={`nav-dropdown-toggle ${isLoyaltyOpen ? 'open' : ''} ${['loyalty'].includes(activeTab) ? 'active' : ''}`}
-                  onClick={() => setIsLoyaltyOpen(!isLoyaltyOpen)}
+                  onClick={() => toggleSidebarDropdown('loyalty')}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <Award size={17} style={{ color: ['loyalty'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
@@ -1682,7 +1736,7 @@ export default function App() {
               <div style={{ marginTop: '4px' }}>
                 <button
                   className={`nav-dropdown-toggle ${isMarketingOpen ? 'open' : ''} ${['marketing'].includes(activeTab) ? 'active' : ''}`}
-                  onClick={() => setIsMarketingOpen(!isMarketingOpen)}
+                  onClick={() => toggleSidebarDropdown('marketing')}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <Send size={17} style={{ color: ['marketing'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
@@ -1706,7 +1760,7 @@ export default function App() {
               <div style={{ marginTop: '4px' }}>
                 <button
                   className={`nav-dropdown-toggle ${isAnalyticsOpen ? 'open' : ''} ${['reports', 'tracking_records'].includes(activeTab) ? 'active' : ''}`}
-                  onClick={() => setIsAnalyticsOpen(!isAnalyticsOpen)}
+                  onClick={() => toggleSidebarDropdown('analytics')}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <BarChart3 size={17} style={{ color: ['reports', 'tracking_records'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
@@ -1729,11 +1783,11 @@ export default function App() {
             )}
 
             {/* Dropdown 10: Admin & Security Settings */}
-            {isMasterAdmin(currentUser) && (
+            {(isSalonAdmin(currentUser) || canAccess(['manage_permissions', 'all'])) && (
               <div style={{ marginTop: '4px' }}>
                 <button
                   className={`nav-dropdown-toggle ${isSettingsOpen ? 'open' : ''} ${['settings'].includes(activeTab) ? 'active' : ''}`}
-                  onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                  onClick={() => toggleSidebarDropdown('settings')}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <ShieldCheck size={17} style={{ color: ['settings'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
@@ -1744,8 +1798,17 @@ export default function App() {
 
                 {isSettingsOpen && (
                   <div className="nav-dropdown-menu">
-                    <button className={`sub-nav-btn ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
+                    <button
+                      className={`sub-nav-btn ${activeTab === 'settings' && adminSettingsSubTab !== 'gateway' ? 'active' : ''}`}
+                      onClick={() => { setActiveTab('settings'); setAdminSettingsSubTab('settings'); }}
+                    >
                       <ShieldCheck size={14} /> System Control & Backups
+                    </button>
+                    <button
+                      className={`sub-nav-btn ${activeTab === 'settings' && adminSettingsSubTab === 'gateway' ? 'active' : ''}`}
+                      onClick={() => { setActiveTab('settings'); setAdminSettingsSubTab('gateway'); }}
+                    >
+                      <CreditCard size={14} /> Payment Gateway Setup
                     </button>
                   </div>
                 )}
@@ -2219,10 +2282,12 @@ export default function App() {
         {activeTab === 'billing_history' && (
           canAccess(['manage_billing', 'all']) ? (
             <BillingHistoryView
-              bills={filterByBranch(bills)}
+              bills={filterBillsByAdmin(bills)}
               customers={filterByBranch(customers)}
               stylists={filterByBranch(combinedStylists)}
               members={members}
+              branches={accessibleBranches}
+              currentUser={currentUser}
               selectedBranchId={selectedBranchId}
               onDeleteBill={handleDeleteBill}
               onClearAllBills={handleClearAllBills}
@@ -2323,8 +2388,14 @@ export default function App() {
         )}
 
         {activeTab === 'settings' && (
-          canAccess(['manage_permissions', 'all']) ? (
-            <AdminSecuritySettingsView onNavigateToMatrix={() => setActiveTab('matrix')} />
+          (isSalonAdmin(currentUser) || canAccess(['manage_permissions', 'all'])) ? (
+            <AdminSecuritySettingsView
+              onNavigateToMatrix={() => setActiveTab('matrix')}
+              currentUser={currentUser}
+              branches={isMasterAdmin(currentUser) ? branches : accessibleBranches}
+              selectedBranchId={selectedBranchId}
+              initialTab={adminSettingsSubTab}
+            />
           ) : (
             <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
           )
