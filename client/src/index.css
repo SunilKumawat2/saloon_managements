@@ -48,15 +48,18 @@
 input[type="date"] {
   color-scheme: dark;
 }
+
 [data-theme="light"] input[type="date"] {
   color-scheme: light;
 }
+
 input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
   filter: invert(0.8) sepia(1) saturate(5) hue-rotate(190deg);
   opacity: 0.8;
   transition: opacity 0.2s ease;
 }
+
 input[type="date"]::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
 }
@@ -192,7 +195,8 @@ html {
   /* Global font scale reduction for sleek, compact UI */
 }
 
-html, body {
+html,
+body {
   height: 100vh;
   overflow: hidden;
 }
@@ -590,7 +594,7 @@ h4,
 
 .workspace-body {
   flex: 1;
-  padding: 24px 28px;
+  padding: 3px 11px;
   overflow-y: auto;
   overflow-x: hidden;
 }

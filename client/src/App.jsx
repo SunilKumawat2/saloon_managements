@@ -213,7 +213,7 @@ export default function App() {
           u.is_super_admin = false;
         }
         return u;
-      } catch(e) {}
+      } catch (e) { }
     }
     return null;
   });
@@ -328,7 +328,7 @@ export default function App() {
     if (isManager(currentUser)) {
       const adminOwnerId = currentUser.admin_id || currentUser.created_by_user_id;
       // Get all branches created by / belonging to the manager's admin
-      const adminBranches = branches.filter(b => 
+      const adminBranches = branches.filter(b =>
         String(b.created_by_admin_id || b.admin_id || b.owner_id || b.created_by) === String(adminOwnerId)
       );
 
@@ -351,7 +351,7 @@ export default function App() {
     }
 
     // Salon Admin (Salon Owner)
-    return branches.filter(b => 
+    return branches.filter(b =>
       String(b.created_by_admin_id || b.admin_id || b.owner_id || b.created_by) === String(currentUser.id) ||
       String(b.id) === String(currentUser.branch_id)
     );
@@ -377,7 +377,7 @@ export default function App() {
     const existingIds = new Set(staffUsers.map(s => String(s.id)));
     const existingNames = new Set(staffUsers.map(s => (s.name || '').toLowerCase()));
 
-    const extraStylists = (stylists || []).filter(st => 
+    const extraStylists = (stylists || []).filter(st =>
       st && !existingIds.has(String(st.id)) && !existingNames.has(String(st.name || '').toLowerCase())
     );
 
@@ -423,7 +423,7 @@ export default function App() {
           return m;
         });
 
-        try { localStorage.setItem('saloon_enrolled_members', JSON.stringify(nextMembers)); } catch (e) {}
+        try { localStorage.setItem('saloon_enrolled_members', JSON.stringify(nextMembers)); } catch (e) { }
         return nextMembers;
       }
       return prevMembers;
@@ -442,7 +442,7 @@ export default function App() {
         return c;
       });
 
-      try { localStorage.setItem('saloon_customers_custom', JSON.stringify(nextCusts)); } catch (e) {}
+      try { localStorage.setItem('saloon_customers_custom', JSON.stringify(nextCusts)); } catch (e) { }
       return nextCusts;
     });
   };
@@ -699,6 +699,12 @@ export default function App() {
     if (!billsList || !Array.isArray(billsList)) return [];
     if (!currentUser) return billsList;
 
+    // Scoped users (Receptionist, Staff) strictly see their assigned branch bills
+    if (isBranchScopedUser(currentUser)) {
+      const userBranchId = String(currentUser.branch_id || '');
+      return billsList.filter(b => b && String(b.branch_id) === userBranchId);
+    }
+
     const currentAdminId = String(currentUser.admin_id || currentUser.id);
     const myBranchIds = new Set((accessibleBranches || []).map(b => String(b.id)));
 
@@ -709,7 +715,7 @@ export default function App() {
       // Strict Admin Isolation:
       // Bill must belong to the logged-in admin OR one of their branches
       const isMyBill = (bAdminId === currentAdminId) ||
-                       (b.branch_id && myBranchIds.has(String(b.branch_id)));
+        (b.branch_id && myBranchIds.has(String(b.branch_id)));
 
       if (!isMyBill) return false;
 
@@ -1141,7 +1147,7 @@ export default function App() {
     }
     setServices(prev => {
       const updated = [newItem, ...prev];
-      try { localStorage.setItem('saloon_services_custom', JSON.stringify(updated)); } catch (e) {}
+      try { localStorage.setItem('saloon_services_custom', JSON.stringify(updated)); } catch (e) { }
       return updated;
     });
     return newItem;
@@ -1153,7 +1159,7 @@ export default function App() {
       const updatedItem = res?.data?.data || res?.data || serviceData;
       setServices(prev => {
         const updated = prev.map(s => String(s.id) === String(id) ? { ...s, ...updatedItem } : s);
-        try { localStorage.setItem('saloon_services_custom', JSON.stringify(updated)); } catch (e) {}
+        try { localStorage.setItem('saloon_services_custom', JSON.stringify(updated)); } catch (e) { }
         return updated;
       });
     } catch (e) {
@@ -1169,7 +1175,7 @@ export default function App() {
     }
     setServices(prev => {
       const updated = prev.filter(s => String(s.id) !== String(id));
-      try { localStorage.setItem('saloon_services_custom', JSON.stringify(updated)); } catch (e) {}
+      try { localStorage.setItem('saloon_services_custom', JSON.stringify(updated)); } catch (e) { }
       return updated;
     });
   };
@@ -1185,7 +1191,7 @@ export default function App() {
     }
     setPackages(prev => {
       const updated = [newItem, ...prev];
-      try { localStorage.setItem('saloon_packages_custom', JSON.stringify(updated)); } catch (e) {}
+      try { localStorage.setItem('saloon_packages_custom', JSON.stringify(updated)); } catch (e) { }
       return updated;
     });
     return newItem;
@@ -1197,7 +1203,7 @@ export default function App() {
       const updatedItem = res?.data?.data || res?.data || packageData;
       setPackages(prev => {
         const updated = prev.map(p => String(p.id) === String(id) ? { ...p, ...updatedItem } : p);
-        try { localStorage.setItem('saloon_packages_custom', JSON.stringify(updated)); } catch (e) {}
+        try { localStorage.setItem('saloon_packages_custom', JSON.stringify(updated)); } catch (e) { }
         return updated;
       });
     } catch (e) {
@@ -1213,7 +1219,7 @@ export default function App() {
     }
     setPackages(prev => {
       const updated = prev.filter(p => String(p.id) !== String(id));
-      try { localStorage.setItem('saloon_packages_custom', JSON.stringify(updated)); } catch (e) {}
+      try { localStorage.setItem('saloon_packages_custom', JSON.stringify(updated)); } catch (e) { }
       return updated;
     });
   };
@@ -1375,7 +1381,7 @@ export default function App() {
 
     setBills(prev => {
       const updated = [createdBill, ...prev];
-      try { localStorage.setItem('saloon_bills_custom', JSON.stringify(updated)); } catch (e) {}
+      try { localStorage.setItem('saloon_bills_custom', JSON.stringify(updated)); } catch (e) { }
       return updated;
     });
 
@@ -1736,7 +1742,7 @@ export default function App() {
                     )}
                     {canAccess(['manage_billing', 'view_reports', 'manage_finances']) && (
                       <button className={`sub-nav-btn ${activeTab === 'billing_history' ? 'active' : ''}`} onClick={() => setActiveTab('billing_history')}>
-                        <Receipt size={14} /> Billing History ({bills.length})
+                        <Receipt size={14} /> Billing History ({filterBillsByAdmin(bills).length})
                       </button>
                     )}
                   </div>
@@ -1944,7 +1950,7 @@ export default function App() {
           <div className="header-meta">
             <h1>
               {activeTab === 'dashboard' && 'Executive Admin Overview'}
-              {activeTab === 'users' && 'User & Staff Roles (RBAC)'}
+              {/* {activeTab === 'users' && 'User & Staff Roles (RBAC)'} */}
               {activeTab === 'branches' && 'Multi-Branch Control Center'}
               {activeTab === 'matrix' && 'Role & Permission Matrix'}
               {activeTab === 'customers' && 'Customer CRM Profiles'}
@@ -1964,66 +1970,66 @@ export default function App() {
               {activeTab === 'tracking_records' && 'Staff & Customer Tracking Records'}
               {activeTab === 'settings' && 'Admin Panel & Security Settings'}
             </h1>
-            <p style={{ marginTop: '2px' }}>
+            {/* <p style={{ marginTop: '2px' }}>
               Welcome back, <strong>{currentUser.name}</strong>! | Active Branch Context: <strong style={{ color: 'var(--accent-gold)' }}>{selectedBranchId === 'all' ? '🌐 All Branches (Master)' : (branches.find(b => String(b.id) === String(selectedBranchId))?.name || `Branch #${selectedBranchId}`)}</strong>
-            </p>
+            </p> */}
           </div>
 
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             {/* Global Multi-Branch Access Switcher */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border)', borderRadius: '10px', padding: '6px 12px' }}>
-              <Building size={16} style={{ color: 'var(--accent-gold)', flexShrink: 0 }} />
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+
+            {/* <Building size={16} style={{ color: 'var(--accent-gold)', flexShrink: 0 }} /> */}
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {/* <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   {isMasterAdmin(currentUser) ? 'SaaS Platform Control' : (isManager(currentUser) ? 'Manager Branch Access' : 'Branch Access')}
-                </span>
-                {(() => {
-                  if (isMasterAdmin(currentUser)) {
-                    return (
-                      <div style={{ fontSize: '0.84rem', fontWeight: '800', color: 'var(--accent-gold)', display: 'flex', alignItems: 'center', gap: '5px', padding: '2px 0' }}>
-                        👑 Global Super Admin (All Salons)
-                      </div>
-                    );
-                  } else if (isSalonAdmin(currentUser) || isManager(currentUser)) {
-                    return (
-                      <select
-                        value={selectedBranchId || 'all'}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setSelectedBranchId(val === 'all' ? 'all' : (isNaN(Number(val)) ? val : Number(val)));
-                        }}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: 'var(--text-main)',
-                          fontSize: '0.84rem',
-                          fontWeight: '800',
-                          cursor: 'pointer',
-                          outline: 'none',
-                          paddingRight: '4px'
-                        }}
-                      >
-                        <option value="all" style={{ background: '#1a1a1a', color: '#fff' }}>
-                          🌐 {isManager(currentUser) ? 'All Permitted Branches' : 'All My Branches'}
+                </span> */}
+              {(() => {
+                if (isMasterAdmin(currentUser)) {
+                  return (
+                    <div style={{ fontSize: '0.84rem', fontWeight: '800', color: 'var(--accent-gold)', display: 'flex', alignItems: 'center', gap: '5px', padding: '2px 0' }}>
+                      👑 Global Super Admin (All Salons)
+                    </div>
+                  );
+                } else if (isSalonAdmin(currentUser) || isManager(currentUser)) {
+                  return (
+                    <select
+                      value={selectedBranchId || 'all'}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSelectedBranchId(val === 'all' ? 'all' : (isNaN(Number(val)) ? val : Number(val)));
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-main)',
+                        fontSize: '0.84rem',
+                        fontWeight: '800',
+                        cursor: 'pointer',
+                        outline: 'none',
+                        paddingRight: '4px'
+                      }}
+                    >
+                      <option value="all" style={{ background: '#1a1a1a', color: '#fff' }}>
+                        🌐 {isManager(currentUser) ? 'All Permitted Branches' : 'All My Branches'}
+                      </option>
+                      {accessibleBranches.map(b => (
+                        <option key={b.id} value={b.id} style={{ background: '#1a1a1a', color: '#fff' }}>
+                          🏢 {b.name} ({b.code || `ID:${b.id}`})
                         </option>
-                        {accessibleBranches.map(b => (
-                          <option key={b.id} value={b.id} style={{ background: '#1a1a1a', color: '#fff' }}>
-                            🏢 {b.name} ({b.code || `ID:${b.id}`})
-                          </option>
-                        ))}
-                      </select>
-                    );
-                  } else {
-                    const myBranch = branches.find(b => String(b.id) === String(currentUser?.branch_id)) || { name: `Branch #${currentUser?.branch_id || 1}` };
-                    return (
-                      <div style={{ fontSize: '0.84rem', fontWeight: '800', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '5px', padding: '2px 0' }}>
-                        <Lock size={12} style={{ color: '#38bdf8' }} /> {myBranch.name}
-                      </div>
-                    );
-                  }
-                })()}
-              </div>
+                      ))}
+                    </select>
+                  );
+                } else {
+                  const myBranch = branches.find(b => String(b.id) === String(currentUser?.branch_id)) || { name: `Branch #${currentUser?.branch_id || 1}` };
+                  return (
+                    <div style={{ fontSize: '0.84rem', fontWeight: '800', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '5px', padding: '2px 0' }}>
+                      <Lock size={12} style={{ color: '#38bdf8' }} /> {myBranch.name}
+                    </div>
+                  );
+                }
+              })()}
             </div>
+
 
             <button
               onClick={() => setIsProfileModalOpen(true)}
@@ -2049,423 +2055,426 @@ export default function App() {
         {/* Scrollable Main Workspace Content */}
         <div className="workspace-body">
 
-        {/* Dashboard Tab Content */}
-        {activeTab === 'dashboard' && (
-          <div>
-            <div className="stats-grid">
-              <div className="glass-card stat-box">
-                <div className="stat-icon">
-                  <Users size={26} />
-                </div>
-                <div className="stat-info">
-                  <h3>{filterByBranch(customers).length}</h3>
-                  <p>CRM Customer Profiles</p>
-                </div>
-              </div>
-
-              <div className="glass-card stat-box">
-                <div className="stat-icon" style={{ background: 'rgba(99, 102, 241, 0.15)', color: 'var(--primary-indigo)' }}>
-                  <Calendar size={26} />
-                </div>
-                <div className="stat-info">
-                  <h3>{filterByBranch(appointments).length}</h3>
-                  <p>Booked Appointments</p>
-                </div>
-              </div>
-
-              <div className="glass-card stat-box">
-                <div className="stat-icon" style={{ background: 'rgba(37, 99, 235, 0.15)', color: 'var(--success)' }}>
-                  <Target size={26} />
-                </div>
-                <div className="stat-info">
-                  <h3>{filterByBranch(leads).length}</h3>
-                  <p>Active Prospects / Leads</p>
-                </div>
-              </div>
-
-              <div className="glass-card stat-box">
-                <div className="stat-info">
-                  <h3>{filterByBranch(leads).length}</h3>
-                  <p>Active Prospects / Leads</p>
-                </div>
-              </div>
-
-              <div className="glass-card stat-box">
-                <div className="stat-icon" style={{ background: 'rgba(236, 72, 153, 0.15)', color: '#ec4899' }}>
-                  <Building size={26} />
-                </div>
-                <div className="stat-info">
-                  <h3>{branches.length}</h3>
-                  <p>Salon Branches</p>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
-              <div className="glass-panel" style={{ padding: '24px' }}>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginBottom: '14px' }}>🚀 Modules Active</h3>
-                <p style={{ color: 'var(--text-sub)', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '16px' }}>
-                  Manage your salon staff, branches, customers, bookings, and financial tracking all from one platform.
-                </p>
-                <button onClick={() => setActiveTab('customers')} className="glass-card" style={{ padding: '10px 18px', cursor: 'pointer', color: '#fff', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                  View CRM Directory <Users size={16} />
-                </button>
-              </div>
-
-              <div className="glass-panel" style={{ padding: '24px' }}>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginBottom: '14px' }}>🔑 Active Profile</h3>
-                <div style={{ padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontWeight: '700' }}>{currentUser.name}</span>
-                    <span className={`role-tag ${currentUser.role?.toLowerCase() || 'staff'}`}>{currentUser.role}</span>
+          {/* Dashboard Tab Content */}
+          {activeTab === 'dashboard' && (
+            <div>
+              <div className="stats-grid">
+                <div className="glass-card stat-box">
+                  <div className="stat-icon">
+                    <Users size={26} />
                   </div>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    Active Workspace: {selectedBranchId === 'all' ? 'All Branches' : (branches.find(b => String(b.id) === String(selectedBranchId))?.name || currentUser.branch_name)}
+                  <div className="stat-info">
+                    <h3>{filterByBranch(customers).length}</h3>
+                    <p>CRM Customer Profiles</p>
+                  </div>
+                </div>
+
+                <div className="glass-card stat-box">
+                  <div className="stat-icon" style={{ background: 'rgba(99, 102, 241, 0.15)', color: 'var(--primary-indigo)' }}>
+                    <Calendar size={26} />
+                  </div>
+                  <div className="stat-info">
+                    <h3>{filterByBranch(appointments).length}</h3>
+                    <p>Booked Appointments</p>
+                  </div>
+                </div>
+
+                <div className="glass-card stat-box">
+                  <div className="stat-icon" style={{ background: 'rgba(37, 99, 235, 0.15)', color: 'var(--success)' }}>
+                    <Target size={26} />
+                  </div>
+                  <div className="stat-info">
+                    <h3>{filterByBranch(leads).length}</h3>
+                    <p>Active Prospects / Leads</p>
+                  </div>
+                </div>
+
+                <div className="glass-card stat-box">
+                  <div className="stat-info">
+                    <h3>{filterByBranch(leads).length}</h3>
+                    <p>Active Prospects / Leads</p>
+                  </div>
+                </div>
+
+                <div className="glass-card stat-box">
+                  <div className="stat-icon" style={{ background: 'rgba(236, 72, 153, 0.15)', color: '#ec4899' }}>
+                    <Building size={26} />
+                  </div>
+                  <div className="stat-info">
+                    <h3>{branches.length}</h3>
+                    <p>Salon Branches</p>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+                <div className="glass-panel" style={{ padding: '24px' }}>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginBottom: '14px' }}>🚀 Modules Active</h3>
+                  <p style={{ color: 'var(--text-sub)', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '16px' }}>
+                    Manage your salon staff, branches, customers, bookings, and financial tracking all from one platform.
                   </p>
+                  <button onClick={() => setActiveTab('customers')} className="glass-card" style={{ padding: '10px 18px', cursor: 'pointer', color: '#fff', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                    View CRM Directory <Users size={16} />
+                  </button>
+                </div>
+
+                <div className="glass-panel" style={{ padding: '24px' }}>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginBottom: '14px' }}>🔑 Active Profile</h3>
+                  <div style={{ padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontWeight: '700' }}>{currentUser.name}</span>
+                      <span className={`role-tag ${currentUser.role?.toLowerCase() || 'staff'}`}>{currentUser.role}</span>
+                    </div>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      Active Workspace: {selectedBranchId === 'all' ? 'All Branches' : (branches.find(b => String(b.id) === String(selectedBranchId))?.name || currentUser.branch_name)}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Module 1 Views */}
-        {activeTab === 'users' && (
-          canAccess('manage_users') ? (
-            <UsersManagementView
-              users={filterByBranch(users)}
-              branches={branches}
-              roles={roles}
-              selectedBranchId={selectedBranchId}
-              currentUser={currentUser}
-              onAddUser={(u) => handleAddUser({ ...u, branch_id: u.branch_id || activeBranchId })}
-            />
-          ) : (
-            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
-          )
-        )}
+          {/* Module 1 Views */}
+          {activeTab === 'users' && (
+            canAccess('manage_users') ? (
+              <UsersManagementView
+                users={filterByBranch(users)}
+                branches={branches}
+                roles={roles}
+                selectedBranchId={selectedBranchId}
+                currentUser={currentUser}
+                onAddUser={(u) => handleAddUser({ ...u, branch_id: u.branch_id || activeBranchId })}
+              />
+            ) : (
+              <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+            )
+          )}
 
-        {activeTab === 'branches' && (
-          canAccess('manage_branches') ? (
-            <BranchesManagementView
-              branches={isMasterAdmin(currentUser) ? branches : accessibleBranches}
-              selectedBranchId={selectedBranchId}
-              currentUser={currentUser}
-              onSelectBranch={(id) => setSelectedBranchId(id)}
-              onAddBranch={handleAddBranch}
-              onUpdateBranch={handleUpdateBranch}
-              onToggleBranchStatus={handleToggleBranchStatus}
-              onDeleteBranch={handleDeleteBranch}
-            />
-          ) : (
-            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
-          )
-        )}
+          {activeTab === 'branches' && (
+            canAccess('manage_branches') ? (
+              <BranchesManagementView
+                branches={isMasterAdmin(currentUser) ? branches : accessibleBranches}
+                selectedBranchId={selectedBranchId}
+                currentUser={currentUser}
+                onSelectBranch={(id) => setSelectedBranchId(id)}
+                onAddBranch={handleAddBranch}
+                onUpdateBranch={handleUpdateBranch}
+                onToggleBranchStatus={handleToggleBranchStatus}
+                onDeleteBranch={handleDeleteBranch}
+              />
+            ) : (
+              <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+            )
+          )}
 
-        {activeTab === 'matrix' && (
-          canAccess('manage_permissions') ? (
-            <PermissionsMatrixView
-              roles={roles}
-              onUpdateRoles={(updatedRole) => {
-                // Update roles state immediately
-                setRoles(prev => prev.map(r => r.id === updatedRole.id ? updatedRole : r));
-                // If the updated role is the current user's role, update their live permissions too
-                if (currentUser && currentUser.role_id === updatedRole.id) {
-                  setCurrentUser(prev => ({ ...prev, permissions: updatedRole.permissions || [] }));
-                }
-              }}
-            />
-          ) : (
-            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
-          )
-        )}
+          {activeTab === 'matrix' && (
+            canAccess('manage_permissions') ? (
+              <PermissionsMatrixView
+                roles={roles}
+                onUpdateRoles={(updatedRole) => {
+                  // Update roles state immediately
+                  setRoles(prev => prev.map(r => r.id === updatedRole.id ? updatedRole : r));
+                  // If the updated role is the current user's role, update their live permissions too
+                  if (currentUser && currentUser.role_id === updatedRole.id) {
+                    setCurrentUser(prev => ({ ...prev, permissions: updatedRole.permissions || [] }));
+                  }
+                }}
+              />
+            ) : (
+              <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+            )
+          )}
 
-        {/* Module 2 Views */}
-        {activeTab === 'customers' && (
-          canAccess('view_customers') ? (
-            <CustomersCRMView
-              customers={filterByBranch(customers)}
-              selectedBranchId={selectedBranchId}
-              currentUser={currentUser}
-              onAddCustomer={(c, file) => handleAddCustomer({ ...c, branch_id: c.branch_id || activeBranchId }, file)}
-              onUpdateCustomer={handleUpdateCustomer}
-              onDeleteCustomer={handleDeleteCustomer}
-            />
-          ) : (
-            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
-          )
-        )}
+          {/* Module 2 Views */}
+          {activeTab === 'customers' && (
+            canAccess('view_customers') ? (
+              <CustomersCRMView
+                customers={filterByBranch(customers)}
+                selectedBranchId={selectedBranchId}
+                currentUser={currentUser}
+                onAddCustomer={(c, file) => handleAddCustomer({ ...c, branch_id: c.branch_id || activeBranchId }, file)}
+                onUpdateCustomer={handleUpdateCustomer}
+                onDeleteCustomer={handleDeleteCustomer}
+              />
+            ) : (
+              <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+            )
+          )}
 
-        {activeTab === 'leads' && (
-          canAccess('view_customers') ? (
-            <LeadsManagementView
-              leads={filterByBranch(leads)}
-              selectedBranchId={selectedBranchId}
-              currentUser={currentUser}
-              onAddLead={(l, file) => handleAddLead({ ...l, branch_id: l.branch_id || activeBranchId }, file)}
-              onUpdateLead={handleUpdateLead}
-              onDeleteLead={handleDeleteLead}
-              onUpdateLeadStatus={handleUpdateLeadStatus}
-            />
-          ) : (
-            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
-          )
-        )}
+          {activeTab === 'leads' && (
+            canAccess('view_customers') ? (
+              <LeadsManagementView
+                leads={filterByBranch(leads)}
+                selectedBranchId={selectedBranchId}
+                currentUser={currentUser}
+                onAddLead={(l, file) => handleAddLead({ ...l, branch_id: l.branch_id || activeBranchId }, file)}
+                onUpdateLead={handleUpdateLead}
+                onDeleteLead={handleDeleteLead}
+                onUpdateLeadStatus={handleUpdateLeadStatus}
+              />
+            ) : (
+              <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+            )
+          )}
 
-        {/* Module 4 Views: Salon Service & Package Catalog */}
-        {activeTab === 'services_packages' && (
-          canAccess('manage_services') ? (
-            <ServicesPackagesView
-              services={filterByBranch(services)}
-              packages={filterByBranch(packages)}
-              categories={categories}
-              branches={branches}
-              selectedBranchId={selectedBranchId}
-              currentUser={currentUser}
-              onAddService={(s) => handleAddService({ ...s, branch_id: s.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : (branches && branches[0]?.id ? branches[0].id : null)) })}
-              onUpdateService={handleUpdateService}
-              onDeleteService={handleDeleteService}
-              onAddPackage={(p) => handleAddPackage({ ...p, branch_id: p.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : (branches && branches[0]?.id ? branches[0].id : null)) })}
-              onUpdatePackage={handleUpdatePackage}
-              onDeletePackage={handleDeletePackage}
-              onAddCategory={handleAddCategory}
-              onUpdateCategory={handleUpdateCategory}
-              onDeleteCategory={handleDeleteCategory}
-            />
-          ) : (
-            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
-          )
-        )}
+          {/* Module 4 Views: Salon Service & Package Catalog */}
+          {activeTab === 'services_packages' && (
+            canAccess('manage_services') ? (
+              <ServicesPackagesView
+                services={filterByBranch(services)}
+                packages={filterByBranch(packages)}
+                categories={categories}
+                branches={branches}
+                selectedBranchId={selectedBranchId}
+                currentUser={currentUser}
+                onAddService={(s) => handleAddService({ ...s, branch_id: s.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : (branches && branches[0]?.id ? branches[0].id : null)) })}
+                onUpdateService={handleUpdateService}
+                onDeleteService={handleDeleteService}
+                onAddPackage={(p) => handleAddPackage({ ...p, branch_id: p.branch_id || (selectedBranchId !== 'all' ? selectedBranchId : (branches && branches[0]?.id ? branches[0].id : null)) })}
+                onUpdatePackage={handleUpdatePackage}
+                onDeletePackage={handleDeletePackage}
+                onAddCategory={handleAddCategory}
+                onUpdateCategory={handleUpdateCategory}
+                onDeleteCategory={handleDeleteCategory}
+              />
+            ) : (
+              <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+            )
+          )}
 
-        {/* Module 3 Views */}
-        {activeTab === 'appointments' && (
-          canAccess('manage_appointments') ? (
-            <AppointmentsCalendarView
-              appointments={filterByBranch(appointments)}
-              bills={filterByBranch(bills)}
-              customers={filterByBranch(customers)}
-              stylists={filterByBranch(combinedStylists)}
-              services={filterByBranch(services)}
-              timeSlots={filterByBranch(timeSlots)}
-              members={members}
-              selectedBranchId={selectedBranchId}
-              onDeductMemberCredit={handleDeductMemberCredit}
-              onCreateBill={(b) => handleCreateBill({ ...b, branch_id: b.branch_id || activeBranchId })}
-              onAddAppointment={(a) => handleAddAppointment({ ...a, branch_id: a.branch_id || activeBranchId })}
-              onUpdateAppointment={handleUpdateAppointment}
-              onDeleteAppointment={handleDeleteAppointment}
-              onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
-            />
-          ) : (
-            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
-          )
-        )}
+          {/* Module 3 Views */}
+          {activeTab === 'appointments' && (
+            canAccess('manage_appointments') ? (
+              <AppointmentsCalendarView
+                appointments={filterByBranch(appointments)}
+                bills={filterByBranch(bills)}
+                customers={filterByBranch(customers)}
+                stylists={filterByBranch(combinedStylists)}
+                services={filterByBranch(services)}
+                timeSlots={filterByBranch(timeSlots)}
+                members={members}
+                selectedBranchId={selectedBranchId}
+                onDeductMemberCredit={handleDeductMemberCredit}
+                onCreateBill={(b) => handleCreateBill({ ...b, branch_id: b.branch_id || activeBranchId })}
+                onAddAppointment={(a) => handleAddAppointment({ ...a, branch_id: a.branch_id || activeBranchId })}
+                onUpdateAppointment={handleUpdateAppointment}
+                onDeleteAppointment={handleDeleteAppointment}
+                onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
+              />
+            ) : (
+              <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+            )
+          )}
 
-        {activeTab === 'stylists' && (
-          canAccess(['manage_appointments', 'manage_users', 'all']) ? (
-            <StylistManagementView
-              stylists={filterByBranch(combinedStylists)}
-              branches={branches}
-              onAddStylist={handleAddStylist}
-              onUpdateStylist={handleUpdateStylist}
-              onDeleteStylist={handleDeleteStylist}
-              onToggleActive={handleToggleStylistActive}
-              currentUser={currentUser}
-              userBranch={branches.find(b => String(b.id) === String(currentUser?.branch_id))}
-            />
-          ) : (
-            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
-          )
-        )}
+          {activeTab === 'stylists' && (
+            canAccess(['manage_appointments', 'manage_users', 'all']) ? (
+              <StylistManagementView
+                stylists={filterByBranch(combinedStylists)}
+                branches={branches}
+                onAddStylist={handleAddStylist}
+                onUpdateStylist={handleUpdateStylist}
+                onDeleteStylist={handleDeleteStylist}
+                onToggleActive={handleToggleStylistActive}
+                currentUser={currentUser}
+                userBranch={branches.find(b => String(b.id) === String(currentUser?.branch_id))}
+              />
+            ) : (
+              <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+            )
+          )}
 
-        {activeTab === 'time_slots' && (
-          canAccess(['manage_appointments', 'all']) ? (
-            <TimeSlotsManagementView
-              timeSlots={filterByBranch(timeSlots)}
-              branches={branches}
-              onAddTimeSlot={handleAddTimeSlot}
-              onUpdateTimeSlot={handleUpdateTimeSlot}
-              onDeleteTimeSlot={handleDeleteTimeSlot}
-              onToggleActive={handleToggleTimeSlotActive}
-              onGenerateRange={handleGenerateTimeSlots}
-              currentUser={currentUser}
-              userBranch={branches.find(b => String(b.id) === String(currentUser?.branch_id))}
-            />
-          ) : (
-            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
-          )
-        )}
+          {activeTab === 'time_slots' && (
+            canAccess(['manage_appointments', 'all']) ? (
+              <TimeSlotsManagementView
+                timeSlots={filterByBranch(timeSlots)}
+                branches={branches}
+                onAddTimeSlot={handleAddTimeSlot}
+                onUpdateTimeSlot={handleUpdateTimeSlot}
+                onDeleteTimeSlot={handleDeleteTimeSlot}
+                onToggleActive={handleToggleTimeSlotActive}
+                onGenerateRange={handleGenerateTimeSlots}
+                currentUser={currentUser}
+                userBranch={branches.find(b => String(b.id) === String(currentUser?.branch_id))}
+              />
+            ) : (
+              <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+            )
+          )}
 
-        {/* Receptionist Module Views */}
-        {activeTab === 'reception_checkin' && (
-          canAccess(['manage_appointments', 'manage_billing']) ? (
-            <ReceptionistView
-              customers={filterByBranch(customers)}
-              stylists={filterByBranch(combinedStylists)}
-              services={filterByBranch(services)}
-              appointments={filterByBranch(appointments)}
-              members={members}
-              selectedBranchId={selectedBranchId}
-              onDeductMemberCredit={handleDeductMemberCredit}
-              onCreateBill={(b) => handleCreateBill({ ...b, branch_id: b.branch_id || activeBranchId })}
-              onCheckIn={handleCheckIn}
-              onAddAppointment={(a) => handleAddAppointment({ ...a, branch_id: a.branch_id || activeBranchId })}
-              onUpdateAppointment={handleUpdateAppointment}
-              onDeleteAppointment={handleDeleteAppointment}
-              onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
-              onAddCustomer={(c, file) => handleAddCustomer({ ...c, branch_id: c.branch_id || activeBranchId }, file)}
-            />
-          ) : (
-            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
-          )
-        )}
+          {/* Receptionist Module Views */}
+          {activeTab === 'reception_checkin' && (
+            canAccess(['manage_appointments', 'manage_billing']) ? (
+              <ReceptionistView
+                customers={filterByBranch(customers)}
+                allAdminCustomers={customers}
+                branches={branches}
+                currentUser={currentUser}
+                stylists={filterByBranch(combinedStylists)}
+                services={filterByBranch(services)}
+                appointments={filterByBranch(appointments)}
+                members={members}
+                selectedBranchId={selectedBranchId}
+                onDeductMemberCredit={handleDeductMemberCredit}
+                onCreateBill={(b) => handleCreateBill({ ...b, branch_id: b.branch_id || activeBranchId })}
+                onCheckIn={handleCheckIn}
+                onAddAppointment={(a) => handleAddAppointment({ ...a, branch_id: a.branch_id || activeBranchId })}
+                onUpdateAppointment={handleUpdateAppointment}
+                onDeleteAppointment={handleDeleteAppointment}
+                onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
+                onAddCustomer={(c, file) => handleAddCustomer({ ...c, branch_id: c.branch_id || activeBranchId }, file)}
+              />
+            ) : (
+              <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+            )
+          )}
 
-        {activeTab === 'pos_billing' && (
-          canAccess('manage_billing') ? (
-            <POSBillingView
-              customer={posCustomer}
-              stylistId={posStylistId}
-              initialServices={posInitialServices}
-              stylists={filterByBranch(combinedStylists)}
-              services={filterByBranch(services)}
-              packages={filterByBranch(packages)}
-              categories={categories}
-              customers={filterByBranch(customers)}
-              bills={filterByBranch(bills)}
-              members={members}
-              selectedBranchId={selectedBranchId}
-              onDeductMemberCredit={handleDeductMemberCredit}
-              onCreateBill={(b) => handleCreateBill({ ...b, branch_id: b.branch_id || activeBranchId })}
-              onBack={handlePOSBack}
-              onViewHistory={() => setActiveTab('billing_history')}
-            />
-          ) : (
-            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
-          )
-        )}
+          {activeTab === 'pos_billing' && (
+            canAccess('manage_billing') ? (
+              <POSBillingView
+                customer={posCustomer}
+                stylistId={posStylistId}
+                initialServices={posInitialServices}
+                stylists={filterByBranch(combinedStylists)}
+                services={filterByBranch(services)}
+                packages={filterByBranch(packages)}
+                categories={categories}
+                customers={filterByBranch(customers)}
+                bills={filterByBranch(bills)}
+                members={members}
+                selectedBranchId={selectedBranchId}
+                onDeductMemberCredit={handleDeductMemberCredit}
+                onCreateBill={(b) => handleCreateBill({ ...b, branch_id: b.branch_id || activeBranchId })}
+                onBack={handlePOSBack}
+                onViewHistory={() => setActiveTab('billing_history')}
+              />
+            ) : (
+              <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+            )
+          )}
 
 
 
-        {activeTab === 'billing_history' && (
-          canAccess(['manage_billing', 'all']) ? (
-            <BillingHistoryView
-              bills={filterBillsByAdmin(bills)}
-              customers={filterByBranch(customers)}
-              stylists={filterByBranch(combinedStylists)}
-              members={members}
-              branches={accessibleBranches}
-              currentUser={currentUser}
-              selectedBranchId={selectedBranchId}
-              onDeleteBill={handleDeleteBill}
-              onClearAllBills={handleClearAllBills}
-              onNavigateToPOS={() => setActiveTab('pos_billing')}
-            />
-          ) : (
-            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
-          )
-        )}
+          {activeTab === 'billing_history' && (
+            canAccess(['manage_billing', 'all']) ? (
+              <BillingHistoryView
+                bills={filterBillsByAdmin(bills)}
+                customers={filterByBranch(customers)}
+                stylists={filterByBranch(combinedStylists)}
+                members={members}
+                branches={accessibleBranches}
+                currentUser={currentUser}
+                selectedBranchId={selectedBranchId}
+                onDeleteBill={handleDeleteBill}
+                onClearAllBills={handleClearAllBills}
+                onNavigateToPOS={() => setActiveTab('pos_billing')}
+              />
+            ) : (
+              <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+            )
+          )}
 
-        {activeTab === 'inventory' && (
-          canAccess(['manage_inventory', 'all']) ? (
-            <InventoryStockManagementView
-              products={filterByBranch(products)}
-              suppliers={suppliers}
-              purchaseOrders={purchaseOrders}
-              consumptions={consumptions}
-              services={filterByBranch(services)}
-              selectedBranchId={selectedBranchId}
-              onAddProduct={(p) => handleAddProduct({ ...p, branch_id: p.branch_id || activeBranchId })}
-              onUpdateProduct={handleUpdateProduct}
-              onAdjustStock={handleAdjustStock}
-              onDeleteProduct={handleDeleteProduct}
-              onAddSupplier={handleAddSupplier}
-              onUpdateSupplier={handleUpdateSupplier}
-              onDeleteSupplier={handleDeleteSupplier}
-              onCreatePO={handleCreatePO}
-              onUpdatePOStatus={handleUpdatePOStatus}
-              onAddConsumption={handleAddConsumption}
-              onUpdateConsumption={handleUpdateConsumption}
-              onDeleteConsumption={handleDeleteConsumption}
-            />
-          ) : (
-            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
-          )
-        )}
+          {activeTab === 'inventory' && (
+            canAccess(['manage_inventory', 'all']) ? (
+              <InventoryStockManagementView
+                products={filterByBranch(products)}
+                suppliers={suppliers}
+                purchaseOrders={purchaseOrders}
+                consumptions={consumptions}
+                services={filterByBranch(services)}
+                selectedBranchId={selectedBranchId}
+                onAddProduct={(p) => handleAddProduct({ ...p, branch_id: p.branch_id || activeBranchId })}
+                onUpdateProduct={handleUpdateProduct}
+                onAdjustStock={handleAdjustStock}
+                onDeleteProduct={handleDeleteProduct}
+                onAddSupplier={handleAddSupplier}
+                onUpdateSupplier={handleUpdateSupplier}
+                onDeleteSupplier={handleDeleteSupplier}
+                onCreatePO={handleCreatePO}
+                onUpdatePOStatus={handleUpdatePOStatus}
+                onAddConsumption={handleAddConsumption}
+                onUpdateConsumption={handleUpdateConsumption}
+                onDeleteConsumption={handleDeleteConsumption}
+              />
+            ) : (
+              <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+            )
+          )}
 
-        {activeTab === 'assets_tracking' && (
-          canAccess(['manage_inventory', 'all']) ? (
-            <AssetsTrackingManagementView
-              assets={filterByBranch(assets)}
-              branches={branches}
-              staff={users}
-              selectedBranchId={selectedBranchId}
-              onAddAsset={(a) => handleAddAsset({ ...a, branch_id: a.branch_id || activeBranchId })}
-              onUpdateAsset={handleUpdateAsset}
-              onDeleteAsset={handleDeleteAsset}
-              onTransferAsset={handleTransferAsset}
-            />
-          ) : (
-            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
-          )
-        )}
+          {activeTab === 'assets_tracking' && (
+            canAccess(['manage_inventory', 'all']) ? (
+              <AssetsTrackingManagementView
+                assets={filterByBranch(assets)}
+                branches={branches}
+                staff={users}
+                selectedBranchId={selectedBranchId}
+                onAddAsset={(a) => handleAddAsset({ ...a, branch_id: a.branch_id || activeBranchId })}
+                onUpdateAsset={handleUpdateAsset}
+                onDeleteAsset={handleDeleteAsset}
+                onTransferAsset={handleTransferAsset}
+              />
+            ) : (
+              <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+            )
+          )}
 
-        {activeTab === 'loyalty' && (
-          canAccess(['manage_customers', 'all']) ? (
-            <LoyaltyMembershipView
-              customers={filterByBranch(customers)}
-              bills={filterByBranch(bills)}
-              members={members}
-              selectedBranchId={selectedBranchId}
-              onUpdateMembers={setMembers}
-              onCreateBill={(b) => handleCreateBill({ ...b, branch_id: b.branch_id || activeBranchId })}
-            />
-          ) : (
-            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
-          )
-        )}
+          {activeTab === 'loyalty' && (
+            canAccess(['manage_customers', 'all']) ? (
+              <LoyaltyMembershipView
+                customers={filterByBranch(customers)}
+                bills={filterByBranch(bills)}
+                members={members}
+                selectedBranchId={selectedBranchId}
+                onUpdateMembers={setMembers}
+                onCreateBill={(b) => handleCreateBill({ ...b, branch_id: b.branch_id || activeBranchId })}
+              />
+            ) : (
+              <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+            )
+          )}
 
-        {activeTab === 'marketing' && (
-          canAccess(['view_customers', 'all']) ? (
-            <MarketingAutomationView />
-          ) : (
-            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
-          )
-        )}
+          {activeTab === 'marketing' && (
+            canAccess(['view_customers', 'all']) ? (
+              <MarketingAutomationView />
+            ) : (
+              <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+            )
+          )}
 
-        {activeTab === 'analytics' && (
-          canAccess(['view_reports', 'manage_finances', 'all']) ? (
-            <ReportsAnalyticsView selectedBranchId={selectedBranchId} />
-          ) : (
-            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
-          )
-        )}
+          {activeTab === 'analytics' && (
+            canAccess(['view_reports', 'manage_finances', 'all']) ? (
+              <ReportsAnalyticsView selectedBranchId={selectedBranchId} />
+            ) : (
+              <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+            )
+          )}
 
-        {activeTab === 'tracking_records' && (
-          canAccess(['view_reports', 'manage_finances', 'all']) ? (
-            <StaffCustomerTrackingView
-              stylists={filterByBranch(combinedStylists)}
-              customers={filterByBranch(customers)}
-              appointments={filterByBranch(appointments)}
-              bills={filterByBranch(bills)}
-              selectedBranchId={selectedBranchId}
-            />
-          ) : (
-            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
-          )
-        )}
+          {activeTab === 'tracking_records' && (
+            canAccess(['view_reports', 'manage_finances', 'all']) ? (
+              <StaffCustomerTrackingView
+                stylists={filterByBranch(combinedStylists)}
+                customers={filterByBranch(customers)}
+                appointments={filterByBranch(appointments)}
+                bills={filterByBranch(bills)}
+                selectedBranchId={selectedBranchId}
+              />
+            ) : (
+              <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+            )
+          )}
 
-        {activeTab === 'settings' && (
-          (isSalonAdmin(currentUser) || canAccess(['manage_permissions', 'all'])) ? (
-            <AdminSecuritySettingsView
-              onNavigateToMatrix={() => setActiveTab('matrix')}
-              currentUser={currentUser}
-              branches={isMasterAdmin(currentUser) ? branches : accessibleBranches}
-              selectedBranchId={selectedBranchId}
-              initialTab={adminSettingsSubTab}
-            />
-          ) : (
-            <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
-          )
-        )}
+          {activeTab === 'settings' && (
+            (isSalonAdmin(currentUser) || canAccess(['manage_permissions', 'all'])) ? (
+              <AdminSecuritySettingsView
+                onNavigateToMatrix={() => setActiveTab('matrix')}
+                currentUser={currentUser}
+                branches={isMasterAdmin(currentUser) ? branches : accessibleBranches}
+                selectedBranchId={selectedBranchId}
+                initialTab={adminSettingsSubTab}
+              />
+            ) : (
+              <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+            )
+          )}
         </div>
       </main>
 

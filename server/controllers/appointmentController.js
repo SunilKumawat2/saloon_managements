@@ -7,8 +7,9 @@ export const getAppointments = async (req, res) => {
     const limit = limitQuery === 'all' ? null : parseInt(limitQuery || '0');
     const search = req.query.search || '';
     const status = req.query.status || 'All';
+    const branch_id = req.query.branch_id || '';
 
-    const result = await AppointmentModel.findAll({ page, limit, search, status });
+    const result = await AppointmentModel.findAll({ page, limit, search, status, branch_id, currentUser: req.user });
     if (result && result.pagination) {
       return res.json({ status: 'success', data: result.data, pagination: result.pagination });
     }
@@ -20,7 +21,11 @@ export const getAppointments = async (req, res) => {
 
 export const createAppointment = async (req, res) => {
   try {
-    const { branch_id, customer_id, customer_name, stylist_id, service_id, appointment_date, appointment_time, status, total_amount, notes } = req.body;
+    let { branch_id, customer_id, customer_name, stylist_id, service_id, appointment_date, appointment_time, status, total_amount, notes } = req.body;
+
+    if (!branch_id && req.user?.branch_id) {
+      branch_id = req.user.branch_id;
+    }
 
     const newAppointment = await AppointmentModel.create({
       branch_id,

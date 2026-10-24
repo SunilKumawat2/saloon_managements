@@ -3,7 +3,8 @@ import {
   UserCheck, Search, Plus, Phone, CheckCircle2,
   Clock, Users, ArrowRight, Scissors, AlertCircle,
   Edit3, Trash2, X, CreditCard, ChevronRight, Sparkles, Filter,
-  Loader2, ChevronLeft, ChevronsLeft, ChevronsRight, Crown, Calendar
+  Loader2, ChevronLeft, ChevronsLeft, ChevronsRight, Crown, Calendar,
+  Building, Globe, Eye
 } from 'lucide-react';
 import { Admin_Get_Appointments } from '../services/apiService';
 
@@ -38,6 +39,9 @@ const CustomerAvatar = ({ name, avatarUrl, size = 42 }) => {
 
 function ReceptionistView({
   customers = [],
+  allAdminCustomers = [],
+  branches = [],
+  currentUser = null,
   stylists = [],
   services = [],
   appointments = [],
@@ -57,6 +61,45 @@ function ReceptionistView({
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [selectedStylist, setSelectedStylist] = useState('');
   const [selectedServices, setSelectedServices] = useState([]);
+
+  // ─── Customer Directory Scope States (Only on Reception page) ───
+  const [customerScope, setCustomerScope] = useState('my_branch'); // 'my_branch' | 'all_salon' | 'branch_<id>'
+  const [showCustomerDirectoryModal, setShowCustomerDirectoryModal] = useState(false);
+  const [directorySearch, setDirectorySearch] = useState('');
+  const [directoryPage, setDirectoryPage] = useState(1);
+  const DIRECTORY_PAGE_SIZE = 8;
+
+  const currentBranchId = String(selectedBranchId !== 'all' ? selectedBranchId : (currentUser?.branch_id || ''));
+  const myBranch = (branches || []).find(b => String(b.id) === currentBranchId) || { name: `Branch #${currentBranchId || 1}` };
+
+  // Salon-wide customers under this salon admin
+  const salonCustomers = React.useMemo(() => {
+    if (Array.isArray(allAdminCustomers) && allAdminCustomers.length > 0) return allAdminCustomers;
+    return customers || [];
+  }, [allAdminCustomers, customers]);
+
+  // Current branch customers
+  const branchCustomers = React.useMemo(() => {
+    if (Array.isArray(customers) && customers.length > 0) return customers;
+    return salonCustomers.filter(c => String(c.branch_id) === currentBranchId);
+  }, [customers, salonCustomers, currentBranchId]);
+
+  // Other branches of this salon admin
+  const otherBranches = React.useMemo(() => {
+    return (branches || []).filter(b => String(b.id) !== currentBranchId);
+  }, [branches, currentBranchId]);
+
+  // Active pool of customers based on customerScope
+  const activeCustomerPool = React.useMemo(() => {
+    if (customerScope === 'all_salon') {
+      return salonCustomers;
+    }
+    if (customerScope.startsWith('branch_')) {
+      const targetId = customerScope.replace('branch_', '');
+      return salonCustomers.filter(c => String(c.branch_id) === String(targetId));
+    }
+    return branchCustomers;
+  }, [customerScope, salonCustomers, branchCustomers]);
 
   // Booking Type, Date & Time Slot States
   const [bookingType, setBookingType] = useState('Walk-in'); // 'Walk-in', 'Scheduled', 'Phone'
@@ -198,7 +241,8 @@ function ReceptionistView({
         page: currentPage,
         limit: pageSize === 'all' ? 'all' : pageSize,
         search: queueSearch,
-        status: queueFilter
+        status: queueFilter,
+        branch_id: selectedBranchId !== 'all' ? selectedBranchId : (currentUser?.branch_id || undefined)
       };
       const res = await Admin_Get_Appointments(queryParams).catch(() => null);
       if (res?.data) {
@@ -211,19 +255,19 @@ function ReceptionistView({
     } finally {
       setLoadingBackend(false);
     }
-  }, [currentPage, pageSize, queueSearch, queueFilter]);
+  }, [currentPage, pageSize, queueSearch, queueFilter, selectedBranchId, currentUser]);
 
   // Trigger Backend API Call on Page, PageSize, Search, or Filter change
   useEffect(() => {
     fetchBackendQueue();
   }, [fetchBackendQueue, appointments.length]);
 
-  // Search customer results
+  // Search customer results based on selected directory scope
   const searchResults = searchTerm.length >= 2
-    ? customers.filter(c =>
+    ? activeCustomerPool.filter(c =>
         String(c.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         String(c.phone ?? '').includes(searchTerm)
-      ).slice(0, 6)
+      ).slice(0, 8)
     : [];
 
   // Select customer handler
@@ -254,8 +298,8 @@ function ReceptionistView({
       const cleanPhone = String(quickPhone).trim();
       const cleanName = String(quickName).trim().toLowerCase();
 
-      // Check if customer already exists by phone or name
-      const existing = (customers || []).find(c => 
+      // Check if customer already exists across salon customers
+      const existing = (salonCustomers || []).find(c => 
         (c.phone && String(c.phone).trim() === cleanPhone) || 
         (c.name && String(c.name).trim().toLowerCase() === cleanName)
       );
@@ -269,7 +313,7 @@ function ReceptionistView({
         return;
       }
 
-      let newCust = { name: quickName, phone: quickPhone, email: '', notes: 'Walk-in Guest' };
+      let newCust = { name: quickName, phone: quickPhone, email: '', notes: 'Walk-in Guest', branch_id: currentBranchId || selectedBranchId };
       let created = null;
       if (onAddCustomer) {
         created = await onAddCustomer(newCust);
@@ -419,10 +463,13 @@ function ReceptionistView({
         });
       }
     });
-    const combined = Array.from(map.values());
+    let combined = Array.from(map.values());
+    if (currentBranchId && currentBranchId !== 'all') {
+      combined = combined.filter(a => !a.branch_id || String(a.branch_id) === String(currentBranchId));
+    }
     combined.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
     return combined;
-  }, [serverData, appointments]);
+  }, [serverData, appointments, currentBranchId]);
 
   // Robust Date Normalizer: Converts ISO string, YYYY-MM-DD, or Date object to local "YYYY-MM-DD"
   const normalizeDateStr = (dateStr) => {
@@ -528,13 +575,28 @@ function ReceptionistView({
   return (
     <div>
       {/* ─── Header Stats Cards ─── */}
+      {/* ─── Header Stats Cards ─── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '28px' }}>
         <div className="glass-card" style={{ padding: '18px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-            <Users size={18} style={{ color: 'var(--accent-gold)' }} />
-            <span style={{ fontWeight: '700', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Total Customers</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Users size={18} style={{ color: 'var(--accent-gold)' }} />
+              <span style={{ fontWeight: '700', fontSize: '0.85rem', color: 'var(--text-sub)' }}>
+                {customerScope === 'all_salon' ? 'Total Salon Customers' : 'Branch Customers'}
+              </span>
+            </div>
+            {customerScope === 'all_salon' && (
+              <span style={{ fontSize: '0.68rem', background: 'rgba(245, 158, 11, 0.15)', color: 'var(--accent-gold)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '2px 6px', borderRadius: '4px', fontWeight: '800' }}>
+                All Branches
+              </span>
+            )}
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: '900' }}>{customers.length}</div>
+          <div style={{ fontSize: '2rem', fontWeight: '900' }}>{activeCustomerPool.length}</div>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+            {customerScope === 'all_salon'
+              ? `${branchCustomers.length} this branch · ${Math.max(0, activeCustomerPool.length - branchCustomers.length)} other branches`
+              : `${branchCustomers.length} in this branch (${salonCustomers.length} across salon)`}
+          </div>
         </div>
 
         <div className="glass-card" style={{ padding: '18px 20px' }}>
@@ -565,10 +627,101 @@ function ReceptionistView({
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
         {/* ─── LEFT PANEL: Walk-in Customer Check-in Counter ─── */}
         <div className="glass-panel" style={{ padding: '28px' }}>
-          <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <UserCheck size={20} style={{ color: 'var(--accent-gold)' }} />
-            Walk-in Check-in Counter
-          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <UserCheck size={20} style={{ color: 'var(--accent-gold)' }} />
+              Walk-in Check-in Counter
+            </h3>
+            {myBranch && myBranch.name && (
+              <span style={{
+                fontSize: '0.75rem',
+                background: 'rgba(56, 189, 248, 0.12)',
+                color: '#38bdf8',
+                border: '1px solid rgba(56, 189, 248, 0.25)',
+                padding: '3px 9px',
+                borderRadius: '8px',
+                fontWeight: '700'
+              }}>
+                🏢 {myBranch.name}
+              </span>
+            )}
+          </div>
+
+          {/* ─── Dedicated Reception Page Customer Scope Dropdown ─── */}
+          {!selectedCustomer && (
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid var(--border)',
+              borderRadius: '12px',
+              padding: '12px 14px',
+              marginBottom: '18px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <label style={{ fontSize: '0.82rem', fontWeight: '800', color: 'var(--text-sub)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Building size={15} style={{ color: 'var(--accent-gold)' }} />
+                  Customer Directory Scope:
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDirectorySearch('');
+                    setDirectoryPage(1);
+                    setShowCustomerDirectoryModal(true);
+                  }}
+                  style={{
+                    background: 'rgba(56, 189, 248, 0.12)',
+                    border: '1px solid rgba(56, 189, 248, 0.3)',
+                    color: '#38bdf8',
+                    borderRadius: '8px',
+                    padding: '4px 10px',
+                    fontSize: '0.76rem',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}
+                >
+                  <Eye size={13} /> View Directory ({activeCustomerPool.length})
+                </button>
+              </div>
+
+              <select
+                value={customerScope}
+                onChange={(e) => {
+                  setCustomerScope(e.target.value);
+                  setSearchTerm('');
+                }}
+                style={{
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border-gold)',
+                  color: 'var(--accent-gold)',
+                  borderRadius: '8px',
+                  padding: '7px 12px',
+                  fontSize: '0.84rem',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  width: '100%'
+                }}
+              >
+                <option value="my_branch" style={{ background: '#1c1c1c', color: '#fff' }}>
+                  🏢 My Branch Customers ({branchCustomers.length})
+                </option>
+                <option value="all_salon" style={{ background: '#1c1c1c', color: '#fff' }}>
+                  🌐 All Salon Customers — Cross-Branch ({salonCustomers.length})
+                </option>
+                {otherBranches.map(b => (
+                  <option key={b.id} value={`branch_${b.id}`} style={{ background: '#1c1c1c', color: '#fff' }}>
+                    🏢 {b.name} ({salonCustomers.filter(c => String(c.branch_id) === String(b.id)).length} customers)
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Search Box */}
           {!selectedCustomer && (
@@ -608,33 +761,67 @@ function ReceptionistView({
               {/* Search Results Dropdown */}
               {searchResults.length > 0 && (
                 <div style={{ marginTop: '-8px', marginBottom: '16px', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)', overflow: 'hidden' }}>
-                  {searchResults.map(c => (
-                    <div
-                      key={c.id}
-                      onClick={() => handleSelectCustomer(c)}
-                      style={{ padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '12px', transition: 'background 0.2s' }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-card-hover)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <CustomerAvatar name={c.name} avatarUrl={c.avatar_url} size={38} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>{c.name}</div>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                          <Phone size={10} style={{ display: 'inline', marginRight: '4px' }} />{c.phone}
-                          {' · '} 🏆 {c.loyalty_points || 0} pts
-                        </div>
-                        {c.membership_name && (
-                          <div style={{
-                            fontSize: '0.74rem', color: parseFloat(c.remaining_service_credit ?? 0) <= 0 ? '#ef4444' : (c.membership_badge_color || '#2563eb'),
-                            fontWeight: '700', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px'
-                          }}>
-                            💳 {c.membership_name} {parseFloat(c.remaining_service_credit ?? 0) <= 0 ? '(₹0 Bal - Credit Used)' : `(₹${parseFloat(c.remaining_service_credit || 0).toLocaleString()} Credit)`}
+                  {searchResults.map(c => {
+                    const isOtherBranch = c.branch_id && String(c.branch_id) !== currentBranchId;
+                    const cBranchName = isOtherBranch
+                      ? (branches.find(b => String(b.id) === String(c.branch_id))?.name || `Branch #${c.branch_id}`)
+                      : 'This Branch';
+
+                    return (
+                      <div
+                        key={c.id}
+                        onClick={() => handleSelectCustomer(c)}
+                        style={{ padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '12px', transition: 'background 0.2s' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-card-hover)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <CustomerAvatar name={c.name} avatarUrl={c.avatar_url} size={38} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: '700', fontSize: '0.9rem' }}>{c.name}</span>
+                            {isOtherBranch ? (
+                              <span style={{
+                                fontSize: '0.68rem',
+                                background: 'rgba(56, 189, 248, 0.15)',
+                                color: '#38bdf8',
+                                border: '1px solid rgba(56, 189, 248, 0.3)',
+                                padding: '1px 6px',
+                                borderRadius: '6px',
+                                fontWeight: '700'
+                              }}>
+                                🏢 {cBranchName}
+                              </span>
+                            ) : (
+                              <span style={{
+                                fontSize: '0.68rem',
+                                background: 'rgba(52, 211, 153, 0.12)',
+                                color: '#34d399',
+                                border: '1px solid rgba(52, 211, 153, 0.25)',
+                                padding: '1px 6px',
+                                borderRadius: '6px',
+                                fontWeight: '600'
+                              }}>
+                                My Branch
+                              </span>
+                            )}
                           </div>
-                        )}
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                            <Phone size={10} style={{ display: 'inline', marginRight: '4px' }} />{c.phone}
+                            {' · '} 🏆 {c.loyalty_points || 0} pts
+                          </div>
+                          {c.membership_name && (
+                            <div style={{
+                              fontSize: '0.74rem', color: parseFloat(c.remaining_service_credit ?? 0) <= 0 ? '#ef4444' : (c.membership_badge_color || '#2563eb'),
+                              fontWeight: '700', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px'
+                            }}>
+                              💳 {c.membership_name} {parseFloat(c.remaining_service_credit ?? 0) <= 0 ? '(₹0 Bal - Credit Used)' : `(₹${parseFloat(c.remaining_service_credit || 0).toLocaleString()} Credit)`}
+                            </div>
+                          )}
+                        </div>
+                        <ArrowRight size={14} style={{ color: 'var(--text-muted)' }} />
                       </div>
-                      <ArrowRight size={14} style={{ color: 'var(--text-muted)' }} />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
@@ -702,8 +889,35 @@ function ReceptionistView({
               <div style={{ background: 'rgba(52,211,153,0.08)', border: '1.5px solid rgba(52,211,153,0.3)', borderRadius: '14px', padding: '18px 20px', marginBottom: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '10px' }}>
                   <CustomerAvatar name={selectedCustomer.name} avatarUrl={selectedCustomer.avatar_url} size={48} />
-                  <div>
-                    <div style={{ fontWeight: '800', fontSize: '1.1rem' }}>{selectedCustomer.name}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: '800', fontSize: '1.1rem' }}>{selectedCustomer.name}</span>
+                      {selectedCustomer.branch_id && String(selectedCustomer.branch_id) !== currentBranchId ? (
+                        <span style={{
+                          fontSize: '0.72rem',
+                          background: 'rgba(56, 189, 248, 0.18)',
+                          color: '#38bdf8',
+                          border: '1px solid rgba(56, 189, 248, 0.35)',
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          fontWeight: '700'
+                        }}>
+                          🏢 Cross-Branch: {branches.find(b => String(b.id) === String(selectedCustomer.branch_id))?.name || `Branch #${selectedCustomer.branch_id}`}
+                        </span>
+                      ) : (
+                        <span style={{
+                          fontSize: '0.72rem',
+                          background: 'rgba(52, 211, 153, 0.12)',
+                          color: '#34d399',
+                          border: '1px solid rgba(52, 211, 153, 0.25)',
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          fontWeight: '600'
+                        }}>
+                          My Branch Client
+                        </span>
+                      )}
+                    </div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{selectedCustomer.phone}</div>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '4px' }}>
                       {selectedCustomer.membership_name ? (
@@ -2042,6 +2256,256 @@ function ReceptionistView({
           </div>
         </div>
       )}
+
+      {/* ─── CUSTOMER DIRECTORY MODAL (Receptionist Page Directory) ─── */}
+      {showCustomerDirectoryModal && (() => {
+        const query = directorySearch.trim().toLowerCase();
+        const filteredDir = activeCustomerPool.filter(c => {
+          if (!query) return true;
+          return String(c.name || '').toLowerCase().includes(query) ||
+                 String(c.phone || '').includes(query);
+        });
+        const totalDirPages = Math.ceil(filteredDir.length / DIRECTORY_PAGE_SIZE) || 1;
+        const currentDirPage = Math.min(directoryPage, totalDirPages);
+        const pagedDir = filteredDir.slice((currentDirPage - 1) * DIRECTORY_PAGE_SIZE, currentDirPage * DIRECTORY_PAGE_SIZE);
+
+        return (
+          <div className="modal-overlay">
+            <div className="glass-panel modal-content" style={{ maxWidth: '850px', width: '95%', maxHeight: '88vh', overflowY: 'auto', padding: '28px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px', borderBottom: '1px solid var(--border)', paddingBottom: '14px' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Users size={22} style={{ color: 'var(--accent-gold)' }} />
+                    Salon Customer Directory
+                  </h3>
+                  <p style={{ fontSize: '0.80rem', color: 'var(--text-sub)', margin: '4px 0 0 0' }}>
+                    Browse & search clients registered across this branch or any other salon branch
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCustomerDirectoryModal(false)}
+                  className="glass-card"
+                  style={{ padding: '8px 12px', cursor: 'pointer', color: 'var(--text-sub)', borderRadius: '8px' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Scope & Search Bar Row */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '14px', marginBottom: '20px' }}>
+                <div>
+                  <label style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-sub)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Building size={14} style={{ color: 'var(--accent-gold)' }} />
+                    Directory Scope:
+                  </label>
+                  <select
+                    value={customerScope}
+                    onChange={(e) => {
+                      setCustomerScope(e.target.value);
+                      setDirectoryPage(1);
+                    }}
+                    style={{
+                      width: '100%',
+                      background: 'var(--bg-card)',
+                      border: '1px solid var(--border-gold)',
+                      color: 'var(--accent-gold)',
+                      borderRadius: '8px',
+                      padding: '9px 12px',
+                      fontSize: '0.84rem',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    <option value="my_branch" style={{ background: '#1c1c1c', color: '#fff' }}>
+                      🏢 My Branch Customers ({branchCustomers.length})
+                    </option>
+                    <option value="all_salon" style={{ background: '#1c1c1c', color: '#fff' }}>
+                      🌐 All Salon Customers — Cross-Branch ({salonCustomers.length})
+                    </option>
+                    {otherBranches.map(b => (
+                      <option key={b.id} value={`branch_${b.id}`} style={{ background: '#1c1c1c', color: '#fff' }}>
+                        🏢 {b.name} ({salonCustomers.filter(c => String(c.branch_id) === String(b.id)).length} customers)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-sub)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Search size={14} style={{ color: 'var(--accent-gold)' }} />
+                    Quick Search (Name or Phone):
+                  </label>
+                  <div className="search-input-wrapper">
+                    <Search size={16} className="search-icon" />
+                    <input
+                      type="text"
+                      className="search-input-field"
+                      placeholder="Type name or phone number..."
+                      value={directorySearch}
+                      onChange={e => {
+                        setDirectorySearch(e.target.value);
+                        setDirectoryPage(1);
+                      }}
+                    />
+                    {directorySearch && (
+                      <button
+                        type="button"
+                        className="search-input-clear-btn"
+                        onClick={() => setDirectorySearch('')}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Customer List Table */}
+              <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', background: 'var(--bg-card)' }}>
+                {pagedDir.length === 0 ? (
+                  <div style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                    No customers found matching the search or scope.
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr style={{ background: 'rgba(255, 255, 255, 0.04)', borderBottom: '1px solid var(--border)' }}>
+                          <th style={{ padding: '12px 16px', fontWeight: '800', color: 'var(--text-sub)' }}>Customer</th>
+                          <th style={{ padding: '12px 16px', fontWeight: '800', color: 'var(--text-sub)' }}>Contact</th>
+                          <th style={{ padding: '12px 16px', fontWeight: '800', color: 'var(--text-sub)' }}>Home Branch</th>
+                          <th style={{ padding: '12px 16px', fontWeight: '800', color: 'var(--text-sub)' }}>Membership & Loyalty</th>
+                          <th style={{ padding: '12px 16px', fontWeight: '800', color: 'var(--text-sub)', textAlign: 'right' }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pagedDir.map(c => {
+                          const isOther = c.branch_id && String(c.branch_id) !== currentBranchId;
+                          const branchName = isOther
+                            ? (branches.find(b => String(b.id) === String(c.branch_id))?.name || `Branch #${c.branch_id}`)
+                            : (myBranch?.name || 'My Branch');
+
+                          return (
+                            <tr
+                              key={c.id}
+                              style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.15s' }}
+                              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-card-hover)'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <td style={{ padding: '12px 16px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <CustomerAvatar name={c.name} avatarUrl={c.avatar_url} size={36} />
+                                  <div style={{ fontWeight: '700', color: 'var(--text-main)' }}>{c.name}</div>
+                                </div>
+                              </td>
+                              <td style={{ padding: '12px 16px', color: 'var(--text-sub)' }}>
+                                <Phone size={12} style={{ display: 'inline', marginRight: '5px' }} />
+                                {c.phone}
+                              </td>
+                              <td style={{ padding: '12px 16px' }}>
+                                {isOther ? (
+                                  <span style={{
+                                    fontSize: '0.72rem',
+                                    background: 'rgba(56, 189, 248, 0.14)',
+                                    color: '#38bdf8',
+                                    border: '1px solid rgba(56, 189, 248, 0.3)',
+                                    padding: '2px 8px',
+                                    borderRadius: '6px',
+                                    fontWeight: '700'
+                                  }}>
+                                    🏢 {branchName}
+                                  </span>
+                                ) : (
+                                  <span style={{
+                                    fontSize: '0.72rem',
+                                    background: 'rgba(52, 211, 153, 0.12)',
+                                    color: '#34d399',
+                                    border: '1px solid rgba(52, 211, 153, 0.25)',
+                                    padding: '2px 8px',
+                                    borderRadius: '6px',
+                                    fontWeight: '600'
+                                  }}>
+                                    This Branch
+                                  </span>
+                                )}
+                              </td>
+                              <td style={{ padding: '12px 16px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                  <span style={{ fontSize: '0.76rem', color: 'var(--accent-gold)', fontWeight: '700' }}>
+                                    🏆 {c.loyalty_points || 0} pts
+                                  </span>
+                                  {c.membership_name && (
+                                    <span style={{ fontSize: '0.70rem', color: '#38bdf8' }}>
+                                      💳 {c.membership_name}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleSelectCustomer(c);
+                                    setShowCustomerDirectoryModal(false);
+                                  }}
+                                  className="btn-primary"
+                                  style={{
+                                    padding: '6px 12px',
+                                    fontSize: '0.78rem',
+                                    fontWeight: '700',
+                                    cursor: 'pointer',
+                                    borderRadius: '8px'
+                                  }}
+                                >
+                                  ✓ Select
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Directory Pagination */}
+              {totalDirPages > 1 && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', padding: '0 4px' }}>
+                  <div style={{ fontSize: '0.80rem', color: 'var(--text-muted)' }}>
+                    Showing {(currentDirPage - 1) * DIRECTORY_PAGE_SIZE + 1} to {Math.min(currentDirPage * DIRECTORY_PAGE_SIZE, filteredDir.length)} of {filteredDir.length} customers
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      type="button"
+                      disabled={currentDirPage <= 1}
+                      onClick={() => setDirectoryPage(p => Math.max(1, p - 1))}
+                      className="glass-card"
+                      style={{ padding: '6px 12px', cursor: currentDirPage <= 1 ? 'not-allowed' : 'pointer', opacity: currentDirPage <= 1 ? 0.5 : 1, fontSize: '0.78rem' }}
+                    >
+                      Previous
+                    </button>
+                    <span style={{ fontSize: '0.80rem', fontWeight: '700', padding: '6px 10px', color: 'var(--accent-gold)' }}>
+                      Page {currentDirPage} of {totalDirPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={currentDirPage >= totalDirPages}
+                      onClick={() => setDirectoryPage(p => Math.min(totalDirPages, p + 1))}
+                      className="glass-card"
+                      style={{ padding: '6px 12px', cursor: currentDirPage >= totalDirPages ? 'not-allowed' : 'pointer', opacity: currentDirPage >= totalDirPages ? 0.5 : 1, fontSize: '0.78rem' }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

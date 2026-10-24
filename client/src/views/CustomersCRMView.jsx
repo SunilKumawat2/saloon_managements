@@ -12,9 +12,9 @@ const API_BASE = BACKEND_URL;
 // ─── Segmentation ───
 const getSegment = (customer) => {
   const points = customer.loyalty_points || 0;
-  if (points >= 200) return { label: 'VIP',        color: '#f59e0b', bg: 'rgba(245,158,11,0.18)', icon: '👑' };
-  if (points >= 51)  return { label: 'Regular',    color: '#818cf8', bg: 'rgba(99,102,241,0.18)', icon: '⭐' };
-  return               { label: 'New Client', color: '#34d399', bg: 'rgba(52,211,153,0.18)', icon: '🆕' };
+  if (points >= 200) return { label: 'VIP', color: '#f59e0b', bg: 'rgba(245,158,11,0.18)', icon: '👑' };
+  if (points >= 51) return { label: 'Regular', color: '#818cf8', bg: 'rgba(99,102,241,0.18)', icon: '⭐' };
+  return { label: 'New Client', color: '#34d399', bg: 'rgba(52,211,153,0.18)', icon: '🆕' };
 };
 
 const MONTHS = [
@@ -59,8 +59,8 @@ const parseDayMonth = (dateStr) => {
   if (spaceParts.length >= 2) {
     const day = spaceParts[0].replace(/\D/g, '');
     const monthStr = spaceParts.slice(1).join(' ').toLowerCase();
-    const foundMonth = MONTHS.find(m => 
-      m.label.toLowerCase().startsWith(monthStr) || 
+    const foundMonth = MONTHS.find(m =>
+      m.label.toLowerCase().startsWith(monthStr) ||
       m.value === monthStr ||
       m.value === monthStr.padStart(2, '0')
     );
@@ -120,8 +120,8 @@ const EMPTY_FORM = {
 
 // ─── Loyalty Bar ───
 const LoyaltyBar = ({ points }) => {
-  const next  = points >= 200 ? 200 : points >= 51 ? 200 : 51;
-  const pct   = Math.min((points / next) * 100, 100);
+  const next = points >= 200 ? 200 : points >= 51 ? 200 : 51;
+  const pct = Math.min((points / next) * 100, 100);
   const color = points >= 200 ? '#f59e0b' : points >= 51 ? '#818cf8' : '#34d399';
   return (
     <div>
@@ -156,8 +156,8 @@ const CustomerAvatar = ({ customer, size = 40, style = {} }) => {
   const rawUrl = customer?.avatar_url;
   const avatarUrl = (rawUrl && !imgFailed)
     ? (rawUrl.startsWith('data:') || rawUrl.startsWith('blob:') || rawUrl.startsWith('http://') || rawUrl.startsWith('https://')
-        ? rawUrl
-        : `${API_BASE}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`)
+      ? rawUrl
+      : `${API_BASE}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`)
     : null;
 
   const initial = String(customer?.name || 'C').charAt(0).toUpperCase();
@@ -186,9 +186,9 @@ const CustomerAvatar = ({ customer, size = 40, style = {} }) => {
 
 // ─── Image Upload Picker ───
 const AvatarUploadPicker = ({ currentUrl, customerId, onUploaded }) => {
-  const fileRef  = useRef(null);
-  const [preview, setPreview]   = useState(currentUrl ? `${API_BASE}${currentUrl}` : null);
-  const [pending, setPending]   = useState(null); // File object waiting to be uploaded
+  const fileRef = useRef(null);
+  const [preview, setPreview] = useState(currentUrl ? `${API_BASE}${currentUrl}` : null);
+  const [pending, setPending] = useState(null); // File object waiting to be uploaded
   const [uploading, setUploading] = useState(false);
 
   const handleFile = (e) => {
@@ -247,20 +247,20 @@ const AvatarUploadPicker = ({ currentUrl, customerId, onUploaded }) => {
 };
 
 function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDeleteCustomer, selectedBranchId = 'all', currentUser }) {
-  const [searchTerm, setSearchTerm]         = useState('');
-  const [segmentFilter, setSegmentFilter]   = useState('All');
-  const [modalMode, setModalMode]           = useState(null);
-  const [editTarget, setEditTarget]         = useState(null);
-  const [formData, setFormData]             = useState(EMPTY_FORM);
-  const [deleteTarget, setDeleteTarget]     = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [segmentFilter, setSegmentFilter] = useState('All');
+  const [modalMode, setModalMode] = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
+  const [formData, setFormData] = useState(EMPTY_FORM);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [profileCustomer, setProfileCustomer] = useState(null);
-  const [avatarFile, setAvatarFile]         = useState(null);
-  const [avatarPreview, setAvatarPreview]   = useState(null);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
 
   // ─── Pagination States & Backend API Sync ───
-  const [pageSize, setPageSize]             = useState(10); // 5, 10, 20, 50, 100, or 'all'
-  const [currentPage, setCurrentPage]       = useState(1);
-  const [serverData, setServerData]         = useState(null);
+  const [pageSize, setPageSize] = useState(10); // 5, 10, 20, 50, 100, or 'all'
+  const [currentPage, setCurrentPage] = useState(1);
+  const [serverData, setServerData] = useState(null);
   const [loadingBackend, setLoadingBackend] = useState(false);
 
   // Trigger Backend API Call on Page, PageSize, Search or Branch change
@@ -365,9 +365,9 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
   const startIndex = isAll || totalItems === 0 ? 0 : (safePage - 1) * (isServerPaginated ? Number(pageSize) : effectivePageSize);
   const endIndex = isAll ? totalItems : Math.min(startIndex + paginatedList.length, totalItems);
 
-  const vipCount     = rawList.filter(c => getSegment(c).label === 'VIP').length;
+  const vipCount = rawList.filter(c => getSegment(c).label === 'VIP').length;
   const regularCount = rawList.filter(c => getSegment(c).label === 'Regular').length;
-  const newCount     = rawList.filter(c => getSegment(c).label === 'New Client').length;
+  const newCount = rawList.filter(c => getSegment(c).label === 'New Client').length;
 
   const field = (key) => ({ value: formData[key], onChange: e => setFormData(p => ({ ...p, [key]: e.target.value })) });
 
@@ -517,9 +517,9 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
         {/* Segment Tiles */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
           {[
-            { label: 'VIP',        count: vipCount,     color: '#f59e0b', icon: <Crown size={20} />,  sub: '200+ loyalty points' },
-            { label: 'Regular',    count: regularCount, color: '#818cf8', icon: <Star size={20} />,   sub: '51–199 loyalty points' },
-            { label: 'New Client', count: newCount,     color: '#34d399', icon: <Users size={20} />,  sub: '0–50 loyalty points' },
+            { label: 'VIP', count: vipCount, color: '#f59e0b', icon: <Crown size={20} />, sub: '200+ loyalty points' },
+            { label: 'Regular', count: regularCount, color: '#818cf8', icon: <Star size={20} />, sub: '51–199 loyalty points' },
+            { label: 'New Client', count: newCount, color: '#34d399', icon: <Users size={20} />, sub: '0–50 loyalty points' },
           ].map(({ label, count, color, icon, sub }) => (
             <div key={label} className="glass-card"
               onClick={() => handleSegmentSelect(label)}
@@ -548,17 +548,17 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
             <div className="search-input-wrapper" style={{ width: '280px' }}>
               <Search size={16} className="search-icon" />
-              <input 
-                type="text" 
-                className="search-input-field search-input-compact" 
-                placeholder="Search by name or phone..." 
-                value={searchTerm} 
-                onChange={handleSearchChange} 
+              <input
+                type="text"
+                className="search-input-field search-input-compact"
+                placeholder="Search by name or phone..."
+                value={searchTerm}
+                onChange={handleSearchChange}
               />
               {searchTerm && (
-                <button 
-                  type="button" 
-                  className="search-input-clear-btn" 
+                <button
+                  type="button"
+                  className="search-input-clear-btn"
                   onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
                   title="Clear search"
                 >
@@ -641,16 +641,20 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
                             {c.name}
                             <ChevronRight size={13} style={{ color: 'var(--accent)', opacity: 0.7 }} />
                           </div>
-                          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>ID: #CRM-{String(c.id).padStart(3, '0')}</div>
+                          {/* <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>ID: 
+                            #CRM-{String(c.id).padStart(3, '0')}</div> */}
                         </div>
                       </div>
                     </td>
 
                     <td>
                       <div style={{ fontSize: '0.85rem' }}>
-                        <div><Phone size={12} style={{ display: 'inline', marginRight: '4px', color: 'var(--accent-gold)' }} />{c.phone}</div>
+                        <div><Phone size={12} style={{
+                          display: 'inline', marginRight: '4px',
+                          color: 'var(--accent-gold)'
+                        }} />{c.phone}</div>
                         <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '2px' }}>
-                          <Mail size={12} style={{ display: 'inline', marginRight: '4px' }} />{c.email || 'N/A'}
+                          {/* <Mail size={12} style={{ display: 'inline', marginRight: '4px' }} />{c.email || 'N/A'} */}
                         </div>
                       </div>
                     </td>
@@ -674,7 +678,7 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
                           )}
                         </div>
                         <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                          DOB: {formatDayMonthLabel(c.dob) || 'N/A'}
+                          {/* DOB: {formatDayMonthLabel(c.dob) || 'N/A'} */}
                         </div>
                         {c.anniversary && (
                           <div style={{ fontSize: '0.74rem', color: '#818cf8', marginTop: '2px', fontWeight: '600' }}>
@@ -690,10 +694,10 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: segment.bg, color: segment.color, padding: '3px 8px', borderRadius: '10px', fontWeight: '800', fontSize: '0.76rem', width: 'fit-content' }}>
                           {segment.icon} {segment.label}
                         </span>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(245,158,11,0.12)', color: 'var(--accent-gold)', padding: '3px 8px', borderRadius: '10px', fontWeight: '700', fontSize: '0.76rem', width: 'fit-content' }}>
+                        {/* <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(245,158,11,0.12)', color: 'var(--accent-gold)', padding: '3px 8px', borderRadius: '10px', fontWeight: '700', fontSize: '0.76rem', width: 'fit-content' }}>
                           <Award size={11} /> {c.loyalty_points || 0} pts
-                        </span>
-                        {c.membership_name ? (
+                        </span> */}
+                        {/* {c.membership_name ? (
                           <span style={{
                             display: 'inline-flex', alignItems: 'center', gap: '4px',
                             background: c.membership_badge_color ? `${c.membership_badge_color}22` : 'rgba(0, 230, 118, 0.18)',
@@ -711,7 +715,7 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
                           }}>
                             No Membership
                           </span>
-                        )}
+                        )} */}
                       </div>
                     </td>
 
@@ -933,13 +937,13 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
 
             {/* Details */}
             <div style={{ marginBottom: '14px' }}>
-              <InfoRow icon={<Phone size={14} />}    label="Mobile"       value={c.phone} />
-              <InfoRow icon={<Mail size={14} />}     label="Email"        value={c.email} />
-              <InfoRow icon={<User size={14} />}     label="Gender"       value={c.gender} />
+              <InfoRow icon={<Phone size={14} />} label="Mobile" value={c.phone} />
+              <InfoRow icon={<Mail size={14} />} label="Email" value={c.email} />
+              <InfoRow icon={<User size={14} />} label="Gender" value={c.gender} />
               <InfoRow icon={<Calendar size={14} />} label="Date of Birth" value={formatDayMonthLabel(c.dob) ? `${formatDayMonthLabel(c.dob)}${calculateAge(c.dob) !== null ? ` (${calculateAge(c.dob)} yrs)` : ''}` : null} />
-              <InfoRow icon={<Heart size={14} />}    label="Anniversary"  value={formatDayMonthLabel(c.anniversary) ? `${formatDayMonthLabel(c.anniversary)}${calculateAnniversaryYears(c.anniversary) !== null ? ` (${calculateAnniversaryYears(c.anniversary)} yrs)` : ''}` : null} />
-              <InfoRow icon={<StickyNote size={14} />} label="Notes"      value={c.notes} />
-              <InfoRow icon={<Gift size={14} />}     label="Member Since" value={c.created_at ? String(c.created_at).split('T')[0] : null} />
+              <InfoRow icon={<Heart size={14} />} label="Anniversary" value={formatDayMonthLabel(c.anniversary) ? `${formatDayMonthLabel(c.anniversary)}${calculateAnniversaryYears(c.anniversary) !== null ? ` (${calculateAnniversaryYears(c.anniversary)} yrs)` : ''}` : null} />
+              <InfoRow icon={<StickyNote size={14} />} label="Notes" value={c.notes} />
+              <InfoRow icon={<Gift size={14} />} label="Member Since" value={c.created_at ? String(c.created_at).split('T')[0] : null} />
             </div>
 
             {/* Actions */}

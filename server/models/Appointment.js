@@ -16,6 +16,7 @@ export const AppointmentModel = {
         LEFT JOIN services s ON a.service_id = s.id
         LEFT JOIN stylists st ON a.stylist_id = st.id
         LEFT JOIN users u ON a.stylist_id = u.id
+        LEFT JOIN branches b ON a.branch_id = b.id
       `;
 
       const whereConditions = [];
@@ -24,6 +25,54 @@ export const AppointmentModel = {
       if (statusFilter && statusFilter !== 'All') {
         queryParams.push(statusFilter);
         whereConditions.push(`a.status = $${queryParams.length}`);
+      }
+
+      const branchId = options.branch_id;
+      if (branchId && branchId !== 'all') {
+        queryParams.push(parseInt(branchId));
+        whereConditions.push(`a.branch_id = $${queryParams.length}`);
+      }
+
+      const currentUser = options.currentUser;
+      if (currentUser) {
+        const roleStr = String(currentUser.role || currentUser.role_name || '').trim().toLowerCase();
+        const isSuper = currentUser.is_super_admin === true || currentUser.email === 'admin@saloon.com' || roleStr.includes('super');
+        const isOwner = !isSuper && (roleStr === 'admin' || roleStr === 'owner' || roleStr === 'salon admin' || currentUser.role_id === 1);
+        const isManager = !isSuper && !isOwner && (roleStr.includes('manager') || currentUser.role_id === 2);
+
+        if (isOwner) {
+          queryParams.push(currentUser.id);
+          const uidParam = `$${queryParams.length}`;
+          whereConditions.push(`(b.admin_id = ${uidParam} OR b.created_by_user_id = ${uidParam} OR a.branch_id IN (SELECT id FROM branches WHERE admin_id = ${uidParam} OR created_by_user_id = ${uidParam}))`);
+        } else if (isManager) {
+          const adminOwnerId = currentUser.admin_id || currentUser.created_by_user_id;
+          let allowedBranches = [];
+          if (Array.isArray(currentUser.allowed_branch_ids) && currentUser.allowed_branch_ids.length > 0) {
+            allowedBranches = currentUser.allowed_branch_ids.map(Number).filter(n => !isNaN(n));
+          } else if (typeof currentUser.allowed_branch_ids === 'string') {
+            try {
+              const parsed = JSON.parse(currentUser.allowed_branch_ids);
+              if (Array.isArray(parsed)) allowedBranches = parsed.map(Number).filter(n => !isNaN(n));
+            } catch (e) {}
+          }
+          if (allowedBranches.length > 0) {
+            queryParams.push(allowedBranches);
+            whereConditions.push(`a.branch_id = ANY($${queryParams.length}::int[])`);
+          } else if (adminOwnerId) {
+            queryParams.push(adminOwnerId);
+            whereConditions.push(`(b.admin_id = $${queryParams.length} OR b.created_by_user_id = $${queryParams.length} OR a.branch_id IN (SELECT id FROM branches WHERE admin_id = $${queryParams.length} OR created_by_user_id = $${queryParams.length}))`);
+          } else if (currentUser.branch_id) {
+            queryParams.push(currentUser.branch_id);
+            whereConditions.push(`a.branch_id = $${queryParams.length}`);
+          }
+        } else if (!isSuper) {
+          if (currentUser.branch_id) {
+            queryParams.push(currentUser.branch_id);
+            whereConditions.push(`a.branch_id = $${queryParams.length}`);
+          } else {
+            whereConditions.push(`1 = 0`);
+          }
+        }
       }
 
       if (search) {

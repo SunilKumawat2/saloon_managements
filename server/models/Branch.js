@@ -51,7 +51,11 @@ export const BranchModel = {
             whereConditions.push(`b.id = $${queryParams.length}`);
           }
         } else if (!isSuper) {
-          if (currentUser.branch_id) {
+          const adminOwnerId = currentUser.admin_id;
+          if (adminOwnerId) {
+            queryParams.push(adminOwnerId);
+            whereConditions.push(`(b.admin_id = $${queryParams.length} OR b.created_by_user_id = $${queryParams.length})`);
+          } else if (currentUser.branch_id) {
             queryParams.push(currentUser.branch_id);
             whereConditions.push(`b.id = $${queryParams.length}`);
           } else {
