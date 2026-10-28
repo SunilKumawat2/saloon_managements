@@ -28,7 +28,20 @@ class ServiceModel {
           const uidParam = `$${queryParams.length}`;
           whereConditions.push(`(b.admin_id = ${uidParam} OR b.created_by_user_id = ${uidParam} OR s.branch_id IN (SELECT id FROM branches WHERE admin_id = ${uidParam} OR created_by_user_id = ${uidParam}))`);
         } else if (!isSuper) {
-          if (currentUser.branch_id) {
+          let allowedBranches = [];
+          if (Array.isArray(currentUser.allowed_branch_ids) && currentUser.allowed_branch_ids.length > 0) {
+            allowedBranches = currentUser.allowed_branch_ids.map(Number).filter(n => !isNaN(n));
+          } else if (typeof currentUser.allowed_branch_ids === 'string') {
+            try {
+              const parsed = JSON.parse(currentUser.allowed_branch_ids);
+              if (Array.isArray(parsed)) allowedBranches = parsed.map(Number).filter(n => !isNaN(n));
+            } catch (e) {}
+          }
+
+          if (allowedBranches.length > 0) {
+            queryParams.push(allowedBranches);
+            whereConditions.push(`s.branch_id = ANY($${queryParams.length}::int[])`);
+          } else if (currentUser.branch_id) {
             queryParams.push(currentUser.branch_id);
             whereConditions.push(`s.branch_id = $${queryParams.length}`);
           } else {

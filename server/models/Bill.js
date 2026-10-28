@@ -22,9 +22,17 @@ const Bill = {
         } catch (e) {}
       }
 
+      const roleStr = String(currentUser.role || currentUser.role_name || '').trim().toLowerCase();
+      const isSuper = currentUser.is_super_admin === true || currentUser.email === 'admin@saloon.com' || roleStr.includes('super');
+      const isOwner = !isSuper && (roleStr === 'admin' || roleStr === 'owner' || roleStr === 'salon admin' || currentUser.role_id === 1);
+      const isManager = !isSuper && !isOwner && (roleStr.includes('manager') || currentUser.role_id === 2);
+
       if (allowedBranches.length > 0) {
         params.push(allowedBranches);
         conditions.push(`b.branch_id = ANY($${params.length}::int[])`);
+      } else if (!isSuper && !isOwner && !isManager && currentUser.branch_id) {
+        params.push(currentUser.branch_id);
+        conditions.push(`b.branch_id = $${params.length}`);
       }
 
       whereClause = `WHERE ` + conditions.join(' AND ');

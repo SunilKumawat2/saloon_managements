@@ -41,7 +41,7 @@ export const authenticateToken = async (req, res, next) => {
         try {
           const { rows } = await pool.query(`
             SELECT u.id, u.name, u.email, u.phone, u.avatar_url, u.is_active,
-                   u.role_id, u.branch_id, u.admin_id,
+                   u.role_id, u.branch_id, u.admin_id, u.created_by_user_id, u.allowed_branch_ids,
                    r.name as role, r.permissions,
                    b.name as branch_name
             FROM users u
@@ -53,6 +53,13 @@ export const authenticateToken = async (req, res, next) => {
           if (rows.length > 0) {
             const u = rows[0];
             const isSuper = Boolean(u.email === 'admin@saloon.com' || String(u.role || '').toLowerCase().includes('super'));
+            let parsedAllowed = [];
+            if (Array.isArray(u.allowed_branch_ids)) {
+              parsedAllowed = u.allowed_branch_ids;
+            } else if (typeof u.allowed_branch_ids === 'string') {
+              try { parsedAllowed = JSON.parse(u.allowed_branch_ids); } catch (e) { parsedAllowed = []; }
+            }
+
             req.user = {
               id: u.id,
               name: u.name,
@@ -61,7 +68,9 @@ export const authenticateToken = async (req, res, next) => {
               role_id: u.role_id,
               is_super_admin: isSuper,
               branch_id: isSuper ? null : u.branch_id,
-              admin_id: isSuper ? null : (u.admin_id || u.id),
+              admin_id: isSuper ? null : (u.admin_id || u.created_by_user_id || u.id),
+              created_by_user_id: u.created_by_user_id || null,
+              allowed_branch_ids: parsedAllowed,
               branch_name: u.branch_name || 'Main Salon',
               permissions: isSuper ? ['all'] : (Array.isArray(u.permissions) ? u.permissions : [])
             };
@@ -89,6 +98,18 @@ export const authenticateToken = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
+    try {
+      const uRes = await pool.query('SELECT allowed_branch_ids, branch_id, role_id FROM users WHERE id = $1', [decoded.id]);
+      if (uRes.rows.length > 0) {
+        let parsed = uRes.rows[0].allowed_branch_ids;
+        if (typeof parsed === 'string') {
+          try { parsed = JSON.parse(parsed); } catch (e) { parsed = []; }
+        }
+        decoded.allowed_branch_ids = Array.isArray(parsed) ? parsed : [];
+        if (uRes.rows[0].branch_id) decoded.branch_id = uRes.rows[0].branch_id;
+        if (uRes.rows[0].role_id) decoded.role_id = uRes.rows[0].role_id;
+      }
+    } catch (e) {}
     req.user = decoded;
     next();
   } catch (err) {

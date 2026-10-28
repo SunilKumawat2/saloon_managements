@@ -66,7 +66,20 @@ export const AppointmentModel = {
             whereConditions.push(`a.branch_id = $${queryParams.length}`);
           }
         } else if (!isSuper) {
-          if (currentUser.branch_id) {
+          let allowedBranches = [];
+          if (Array.isArray(currentUser.allowed_branch_ids) && currentUser.allowed_branch_ids.length > 0) {
+            allowedBranches = currentUser.allowed_branch_ids.map(Number).filter(n => !isNaN(n));
+          } else if (typeof currentUser.allowed_branch_ids === 'string') {
+            try {
+              const parsed = JSON.parse(currentUser.allowed_branch_ids);
+              if (Array.isArray(parsed)) allowedBranches = parsed.map(Number).filter(n => !isNaN(n));
+            } catch (e) {}
+          }
+
+          if (allowedBranches.length > 0) {
+            queryParams.push(allowedBranches);
+            whereConditions.push(`a.branch_id = ANY($${queryParams.length}::int[])`);
+          } else if (currentUser.branch_id) {
             queryParams.push(currentUser.branch_id);
             whereConditions.push(`a.branch_id = $${queryParams.length}`);
           } else {
@@ -138,6 +151,29 @@ export const AppointmentModel = {
           String(a.stylist_name || '').toLowerCase().includes(s)
         );
       }
+      if (options.branch_id && options.branch_id !== 'all') {
+        cleaned = cleaned.filter(a => String(a.branch_id) === String(options.branch_id));
+      } else if (options.currentUser) {
+        const cu = options.currentUser;
+        const roleStr = String(cu.role || cu.role_name || '').trim().toLowerCase();
+        const isSuper = cu.is_super_admin === true || cu.email === 'admin@saloon.com' || roleStr.includes('super');
+        if (!isSuper) {
+          let allowedBranches = [];
+          if (Array.isArray(cu.allowed_branch_ids) && cu.allowed_branch_ids.length > 0) {
+            allowedBranches = cu.allowed_branch_ids.map(String);
+          } else if (typeof cu.allowed_branch_ids === 'string') {
+            try {
+              const parsed = JSON.parse(cu.allowed_branch_ids);
+              if (Array.isArray(parsed)) allowedBranches = parsed.map(String);
+            } catch (e) {}
+          }
+          if (allowedBranches.length > 0) {
+            cleaned = cleaned.filter(a => !a.branch_id || allowedBranches.includes(String(a.branch_id)));
+          } else if (cu.branch_id) {
+            cleaned = cleaned.filter(a => !a.branch_id || String(a.branch_id) === String(cu.branch_id));
+          }
+        }
+      }
       if (options.status && options.status !== 'All') {
         cleaned = cleaned.filter(a => a.status === options.status);
       }
@@ -154,7 +190,7 @@ export const AppointmentModel = {
     }
   },
 
-  async create({ branch_id, customer_id, customer_name, customer_phone, stylist_id, service_id, appointment_date, appointment_time, status, total_amount, notes }) {
+  async create({ branch_id, customer_id, customer_name, customer_phone, stylist_id, service_id, appointment_date, appointment_time, status, total_amount, notes, service_ids = [], service_name = '' }) {
     try {
       // Validate customer_id exists in DB to prevent foreign key error
       let validCustomerId = parseInt(customer_id || 1);
@@ -218,8 +254,8 @@ export const AppointmentModel = {
       }
 
       const insertQuery = `
-        INSERT INTO appointments (branch_id, customer_id, customer_name, customer_phone, stylist_id, service_id, appointment_date, appointment_time, status, total_amount, notes)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        INSERT INTO appointments (branch_id, customer_id, customer_name, customer_phone, stylist_id, service_id, appointment_date, appointment_time, status, total_amount, notes, service_ids, service_name)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING *
       `;
       const { rows } = await pool.query(insertQuery, [
@@ -233,7 +269,9 @@ export const AppointmentModel = {
         appointment_time || '10:00',
         status || 'Scheduled',
         total_amount || 350.00,
-        notes || ''
+        notes || '',
+        JSON.stringify(Array.isArray(service_ids) ? service_ids : []),
+        service_name || ''
       ]);
 
       const created = rows[0];
@@ -242,7 +280,7 @@ export const AppointmentModel = {
                 COALESCE(NULLIF(a.customer_name, ''), NULLIF(c.name, ''), $2) as customer_name,
                 COALESCE(NULLIF(a.customer_phone, ''), c.phone, '') as customer_phone,
                 c.avatar_url as customer_avatar,
-                s.name as service_name,
+                COALESCE(NULLIF(a.service_name, ''), s.name, 'Salon Service') as service_name,
                 COALESCE(st.name, u.name, 'Staff') as stylist_name
          FROM appointments a
          LEFT JOIN customers c ON a.customer_id = c.id

@@ -4,7 +4,7 @@ import {
   CreditCard, Smartphone, Banknote, CheckCircle2,
   ArrowLeft, Award, Percent, Tag, User, Search,
   DollarSign, Sparkles, AlertCircle, RefreshCw, Scissors, ChevronRight, Check,
-  QrCode, ShieldCheck, Clock, Layers, HelpCircle, X, Loader2, Crown
+  QrCode, ShieldCheck, Clock, Layers, HelpCircle, X, Loader2, Crown, List, LayoutGrid
 } from 'lucide-react';
 import {
   Admin_Get_Coupons,
@@ -81,6 +81,7 @@ function POSBillingView({
   // ─── Service Catalog Menu Filters ───
   const [activeCategory, setActiveCategory] = useState('All');
   const [menuSearch, setMenuSearch] = useState('');
+  const [catalogViewMode, setCatalogViewMode] = useState('table'); // by default 'table', switchable to 'grid'
 
   // ─── Cart Items ───
   // Item structure: { id, service_id, package_id, service_name, price, qty, category, stylist_id }
@@ -1041,65 +1042,69 @@ function POSBillingView({
   return (
     <div>
       {/* ─── REAL POS TOP HEADER & CRM CLIENT BAR ─── */}
-      <div className="glass-panel" style={{ padding: '20px 24px', marginBottom: '20px', borderRadius: '16px', position: 'relative', zIndex: 100 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+      <div className="glass-panel" style={{ padding: '8px 14px', marginBottom: '12px', borderRadius: '12px', position: 'relative', zIndex: 100 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
           
           {/* Title & Back */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
               className="glass-card"
               onClick={onBack}
-              style={{ padding: '8px 14px', cursor: 'pointer', color: 'var(--text-sub)', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '10px' }}
+              style={{ padding: '5px 10px', cursor: 'pointer', color: 'var(--text-sub)', display: 'flex', alignItems: 'center', gap: '5px', borderRadius: '8px', fontSize: '0.78rem' }}
+              title="Go Back"
             >
-              <ArrowLeft size={16} /> Back
+              <ArrowLeft size={14} /> Back
             </button>
             {onViewHistory && (
               <button
                 className="glass-card"
                 onClick={onViewHistory}
-                style={{ padding: '8px 14px', cursor: 'pointer', color: 'var(--accent-gold)', border: '1.5px solid var(--accent-gold)', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '10px', fontWeight: '800', fontSize: '0.82rem' }}
+                style={{ padding: '5px 10px', cursor: 'pointer', color: 'var(--accent-gold)', border: '1px solid var(--accent-gold)', display: 'flex', alignItems: 'center', gap: '5px', borderRadius: '8px', fontWeight: '800', fontSize: '0.76rem' }}
+                title="View POS Billing History"
               >
-                <Receipt size={16} /> Billing History ({bills.length})
+                <Receipt size={14} /> History ({bills.length})
               </button>
             )}
-            <div>
-              <h2 style={{ fontSize: '1.3rem', fontWeight: '900', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Receipt size={24} style={{ color: 'var(--accent-gold)' }} />
-                Commercial POS Terminal Billing
-              </h2>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Enterprise Salon & Spa Real Checkout Counter</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Receipt size={17} style={{ color: 'var(--accent-gold)' }} />
+              <span style={{ fontSize: '0.92rem', fontWeight: '900', color: 'var(--text-main)', whiteSpace: 'nowrap' }}>
+                POS Billing
+              </span>
+              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)', padding: '1px 6px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                Terminal
+              </span>
             </div>
           </div>
 
-          {/* CRM Client Card / Search Bar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          {/* CRM Client & Stylist Bar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             
             {/* Guest / CRM Mode Toggle */}
-            <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', padding: '4px', border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '2px', border: '1px solid var(--border)' }}>
               <button
                 type="button"
                 onClick={() => { setIsWalkIn(true); setSelectedCustomer(null); }}
                 style={{
-                  padding: '7px 16px', borderRadius: '9px', border: 'none',
+                  padding: '4px 10px', borderRadius: '6px', border: 'none',
                   background: isWalkIn ? '#2563eb' : 'transparent',
                   color: isWalkIn ? '#ffffff' : 'var(--text-sub)',
-                  fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer',
-                  boxShadow: isWalkIn ? '0 2px 10px rgba(37, 99, 235, 0.35)' : 'none',
-                  transition: 'all 0.2s'
+                  fontWeight: '800', fontSize: '0.74rem', cursor: 'pointer',
+                  boxShadow: isWalkIn ? '0 2px 6px rgba(37, 99, 235, 0.35)' : 'none',
+                  transition: 'all 0.15s'
                 }}
               >
-                Walk-in Guest
+                Walk-in
               </button>
               <button
                 type="button"
                 onClick={() => { setIsWalkIn(false); }}
                 style={{
-                  padding: '7px 16px', borderRadius: '9px', border: 'none',
+                  padding: '4px 10px', borderRadius: '6px', border: 'none',
                   background: !isWalkIn ? '#2563eb' : 'transparent',
                   color: !isWalkIn ? '#ffffff' : 'var(--text-sub)',
-                  fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer',
-                  boxShadow: !isWalkIn ? '0 2px 10px rgba(37, 99, 235, 0.35)' : 'none',
-                  transition: 'all 0.2s'
+                  fontWeight: '800', fontSize: '0.74rem', cursor: 'pointer',
+                  boxShadow: !isWalkIn ? '0 2px 6px rgba(37, 99, 235, 0.35)' : 'none',
+                  transition: 'all 0.15s'
                 }}
               >
                 CRM Member
@@ -1107,51 +1112,52 @@ function POSBillingView({
             </div>
 
             {isWalkIn ? (
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '6px' }}>
                 <input
                   type="text"
                   placeholder="Guest Name"
                   value={walkInName}
                   onChange={e => setWalkInName(e.target.value)}
-                  style={{ width: '140px', padding: '8px 12px', borderRadius: '10px', background: 'var(--input-bg)', border: '1.5px solid var(--border)', color: 'var(--text-main)', fontSize: '0.84rem' }}
+                  style={{ width: '115px', height: '31px', padding: '4px 8px', borderRadius: '8px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-main)', fontSize: '0.78rem' }}
                 />
                 <input
                   type="text"
                   placeholder="Mobile No"
                   value={walkInPhone}
                   onChange={e => setWalkInPhone(e.target.value)}
-                  style={{ width: '130px', padding: '8px 12px', borderRadius: '10px', background: 'var(--input-bg)', border: '1.5px solid var(--border)', color: 'var(--text-main)', fontSize: '0.84rem' }}
+                  style={{ width: '105px', height: '31px', padding: '4px 8px', borderRadius: '8px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-main)', fontSize: '0.78rem' }}
                 />
               </div>
             ) : (
-              <div className="search-input-wrapper" style={{ width: '260px', position: 'relative', zIndex: 101 }}>
-                <Search size={15} className="search-icon" />
+              <div className="search-input-wrapper" style={{ width: '220px', position: 'relative', zIndex: 101 }}>
+                <Search size={14} className="search-icon" style={{ left: '8px' }} />
                 <input
                   type="text"
                   className="search-input-field search-input-compact"
-                  placeholder="Search CRM by Name / Mobile..."
+                  placeholder="Search CRM Member..."
                   value={selectedCustomer ? `${selectedCustomer.name} (${selectedCustomer.phone})` : customerSearch}
                   onFocus={() => setShowCustDropdown(true)}
                   onChange={e => { setSelectedCustomer(null); setCustomerSearch(e.target.value); setShowCustDropdown(true); }}
+                  style={{ height: '31px', fontSize: '0.78rem', paddingLeft: '28px', paddingRight: '8px' }}
                 />
                 {showCustDropdown && !selectedCustomer && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 9999, background: '#1e293b', border: '1.5px solid var(--accent-gold)', borderRadius: '12px', marginTop: '6px', maxHeight: '260px', overflowY: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.95), 0 0 15px rgba(245,158,11,0.2)' }}>
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 9999, background: '#1e293b', border: '1.5px solid var(--accent-gold)', borderRadius: '10px', marginTop: '4px', maxHeight: '240px', overflowY: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.95), 0 0 15px rgba(245,158,11,0.2)' }}>
                     {filteredCustomers.length === 0 ? (
-                      <div style={{ padding: '12px', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>No CRM client found</div>
+                      <div style={{ padding: '10px', fontSize: '0.76rem', color: 'var(--text-muted)', textAlign: 'center' }}>No CRM client found</div>
                     ) : (
                       filteredCustomers.map(c => (
                         <div
                           key={c.id}
                           onClick={() => { setSelectedCustomer(c); setShowCustDropdown(false); }}
-                          style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontSize: '0.83rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', transition: 'background 0.15s' }}
+                          style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', transition: 'background 0.15s' }}
                           onMouseEnter={e => e.currentTarget.style.background = 'rgba(16,185,129,0.15)'}
                           onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
                         >
                           <div>
                             <strong style={{ color: '#ffffff' }}>{c.name}</strong>
-                            <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>📞 {c.phone}</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>📞 {c.phone}</div>
                           </div>
-                          <span style={{ fontSize: '0.74rem', background: 'rgba(16,185,129,0.15)', color: '#10b981', padding: '2px 8px', borderRadius: '6px', fontWeight: '800' }}>
+                          <span style={{ fontSize: '0.7rem', background: 'rgba(16,185,129,0.15)', color: '#10b981', padding: '1px 6px', borderRadius: '4px', fontWeight: '800' }}>
                             🏆 {c.loyalty_points || 0} pts
                           </span>
                         </div>
@@ -1163,13 +1169,13 @@ function POSBillingView({
             )}
 
             {/* Primary Stylist Selection */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: '700' }}>Stylist:</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: '700' }}>Stylist:</span>
               <select
                 className="select-filter"
                 value={selectedStylistId}
                 onChange={e => setSelectedStylistId(e.target.value)}
-                style={{ height: '38px', padding: '6px 32px 6px 12px', fontSize: '0.82rem' }}
+                style={{ height: '31px', padding: '4px 26px 4px 8px', fontSize: '0.78rem', borderRadius: '8px' }}
               >
                 <option value="">No Primary Stylist</option>
                 {stylists.map(s => (
@@ -1184,32 +1190,32 @@ function POSBillingView({
 
         {/* Selected Customer Banner */}
         {selectedCustomer && !isWalkIn && (
-          <div style={{ background: 'rgba(37,99,235,0.12)', border: '1.5px solid rgba(37,99,235,0.35)', padding: '12px 18px', borderRadius: '14px', marginTop: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <User size={20} style={{ color: '#10b981' }} />
+          <div style={{ background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.3)', padding: '5px 12px', borderRadius: '8px', marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.76rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <User size={15} style={{ color: '#10b981' }} />
               <div>
-                <strong style={{ color: '#10b981', fontSize: '0.92rem' }}>CRM Member Selected: {selectedCustomer.name}</strong>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-sub)', marginLeft: '8px' }}>({selectedCustomer.phone})</span>
+                <strong style={{ color: '#10b981' }}>CRM Member: {selectedCustomer.name}</strong>
+                <span style={{ color: 'var(--text-sub)', marginLeft: '6px' }}>({selectedCustomer.phone})</span>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '0.82rem' }}>
-              <span style={{ background: 'rgba(245,158,11,0.15)', color: 'var(--accent-gold)', padding: '4px 10px', borderRadius: '8px', fontWeight: '800' }}>
-                🎁 Loyalty Points: {selectedCustomer.loyalty_points || 0} pts
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ background: 'rgba(245,158,11,0.15)', color: 'var(--accent-gold)', padding: '2px 7px', borderRadius: '5px', fontWeight: '800', fontSize: '0.7rem' }}>
+                🎁 Points: {selectedCustomer.loyalty_points || 0} pts
               </span>
-              <button onClick={() => setSelectedCustomer(null)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: '800', fontSize: '0.8rem' }}>✕ Change Client</button>
+              <button onClick={() => setSelectedCustomer(null)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: '800', fontSize: '0.74rem' }}>✕ Change</button>
             </div>
           </div>
         )}
       </div>
 
       {/* ─── MAIN 2-COLUMN REAL POS WORKSPACE ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.45fr 1fr', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.45fr 1fr', gap: '14px' }}>
 
         {/* ─── LEFT COLUMN: SERVICE CATALOG & PACKAGES MENU ─── */}
-        <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div className="glass-panel" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', height: '100%' }}>
           
           {/* Menu Search & Category Tabs */}
-          <div style={{ marginBottom: '16px' }}>
+          <div style={{ marginBottom: '12px' }}>
             <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
               <div style={{ position: 'relative', flex: 1 }}>
                 <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
@@ -1236,7 +1242,7 @@ function POSBillingView({
                     padding: '6px 14px', borderRadius: '20px', border: activeCategory === cat ? '1px solid var(--accent-gold)' : '1px solid var(--border)',
                     background: activeCategory === cat ? 'rgba(245,158,11,0.18)' : 'rgba(255,255,255,0.03)',
                     color: activeCategory === cat ? 'var(--accent-gold)' : 'var(--text-sub)',
-                    fontWeight: '800', fontSize: '0.78rem', cursor: 'pointer', whitespace: 'nowrap', transition: 'all 0.15s'
+                    fontWeight: '800', fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s'
                   }}
                 >
                   {cat}
@@ -1245,16 +1251,15 @@ function POSBillingView({
             </div>
           </div>
 
-          {/* Service Items Grid */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', maxHeight: '520px', paddingRight: '4px' }}>
-            
+          {/* Service Items Grid / List Scrollable Container */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', maxHeight: '560px', paddingRight: '4px' }}>
             {/* Bundled Special Packages */}
             {filteredPackages.length > 0 && (
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--accent-gold)', textTransform: 'uppercase', marginBottom: '10px', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Layers size={14} /> Bundled Combo Packages ({filteredPackages.length})
+              <div style={{ marginBottom: '14px' }}>
+                <div style={{ fontSize: '0.73rem', fontWeight: '800', color: 'var(--accent-gold)', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Layers size={13} /> Bundled Combo Packages ({filteredPackages.length})
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(185px, 1fr))', gap: '10px' }}>
                   {filteredPackages.map(pkg => {
                     const includedServices = getIncludedServicesForPackage(pkg, services);
                     return (
@@ -1262,20 +1267,20 @@ function POSBillingView({
                         key={pkg.id}
                         onClick={() => addServiceToCart(pkg, true)}
                         style={{
-                          padding: '14px',
+                          padding: '10px 12px',
                           background: 'linear-gradient(145deg, rgba(245,158,11,0.06), rgba(16,185,129,0.04))',
-                          borderRadius: '14px',
+                          borderRadius: '10px',
                           border: '1.5px solid rgba(245,158,11,0.3)',
                           cursor: 'pointer',
-                          transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                          transition: 'all 0.15s ease',
                           display: 'flex',
                           flexDirection: 'column',
-                          justify: 'space-between',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                          justifyContent: 'space-between',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
                         }}
                         onMouseEnter={e => {
                           e.currentTarget.style.borderColor = 'var(--accent-gold)';
-                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.transform = 'translateY(-1px)';
                         }}
                         onMouseLeave={e => {
                           e.currentTarget.style.borderColor = 'rgba(245,158,11,0.3)';
@@ -1283,27 +1288,27 @@ function POSBillingView({
                         }}
                       >
                         <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '4px' }}>
-                            <div style={{ fontWeight: '800', fontSize: '0.9rem', color: '#ffffff', lineHeight: '1.3' }}>{pkg.name}</div>
-                            <span style={{ fontSize: '0.68rem', background: 'rgba(245, 158, 11, 0.2)', color: 'var(--accent-gold)', border: '1px solid var(--accent-gold)', padding: '2px 7px', borderRadius: '12px', fontWeight: '900', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px', marginBottom: '3px' }}>
+                            <div style={{ fontWeight: '800', fontSize: '0.84rem', color: '#ffffff', lineHeight: '1.25' }}>{pkg.name}</div>
+                            <span style={{ fontSize: '0.65rem', background: 'rgba(245, 158, 11, 0.2)', color: 'var(--accent-gold)', border: '1px solid var(--accent-gold)', padding: '1px 6px', borderRadius: '10px', fontWeight: '900', whiteSpace: 'nowrap' }}>
                               {pkg.category || 'Combo'}
                             </span>
                           </div>
 
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '8px', lineHeight: '1.35' }}>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '6px', lineHeight: '1.3' }}>
                             {pkg.description || 'Special Bundle Package'}
                           </div>
 
                           {/* Included Combo Services List */}
                           {includedServices.length > 0 && (
-                            <div style={{ background: 'rgba(0, 0, 0, 0.3)', borderRadius: '10px', padding: '8px 10px', marginBottom: '10px', border: '1px solid rgba(245,158,11,0.18)' }}>
-                              <div style={{ fontSize: '0.68rem', color: 'var(--accent-gold)', fontWeight: '800', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                <Scissors size={11} /> Included Services ({includedServices.length}):
+                            <div style={{ background: 'rgba(0, 0, 0, 0.3)', borderRadius: '8px', padding: '6px 8px', marginBottom: '8px', border: '1px solid rgba(245,158,11,0.18)' }}>
+                              <div style={{ fontSize: '0.65rem', color: 'var(--accent-gold)', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <Scissors size={10} /> Included ({includedServices.length}):
                               </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                                 {includedServices.map((srvName, idx) => (
-                                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.76rem', color: '#f8fafc', fontWeight: '600' }}>
-                                    <CheckCircle2 size={12} style={{ color: '#10b981', flexShrink: 0 }} />
+                                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', color: '#f8fafc', fontWeight: '600' }}>
+                                    <CheckCircle2 size={11} style={{ color: '#10b981', flexShrink: 0 }} />
                                     <span>{srvName}</span>
                                   </div>
                                 ))}
@@ -1312,19 +1317,19 @@ function POSBillingView({
                           )}
                         </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', paddingTop: '8px', borderTop: '1px dashed rgba(245,158,11,0.2)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed rgba(245,158,11,0.2)' }}>
                           <div>
-                            <span style={{ fontWeight: '900', color: 'var(--accent-gold)', fontSize: '1rem' }}>
+                            <span style={{ fontWeight: '900', color: 'var(--accent-gold)', fontSize: '0.92rem' }}>
                               ₹{parseFloat(pkg.package_price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </span>
                             {pkg.standalone_price > pkg.package_price && (
-                              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textDecoration: 'line-through', marginLeft: '6px' }}>
+                              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textDecoration: 'line-through', marginLeft: '5px' }}>
                                 ₹{pkg.standalone_price}
                               </span>
                             )}
                           </div>
-                          <span style={{ fontSize: '0.74rem', background: 'var(--accent-gold)', color: '#000', padding: '4px 10px', borderRadius: '8px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Plus size={13} /> Add Combo
+                          <span style={{ fontSize: '0.7rem', background: 'var(--accent-gold)', color: '#000', padding: '3px 8px', borderRadius: '6px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                            <Plus size={12} /> Add
                           </span>
                         </div>
                       </div>
@@ -1334,35 +1339,164 @@ function POSBillingView({
               </div>
             )}
 
-            {/* Standalone Salon Services */}
-            <div style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' }}>
-              💈 Salon Services Catalog ({filteredServices.length})
+            {/* Standalone Salon Services Header with View Toggle */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '8px'
+            }}>
+              <div style={{ fontSize: '0.73rem', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                💈 Salon Services Catalog ({filteredServices.length})
+              </div>
+
+              {/* View Mode Toggle: Compact Grid vs List/Table */}
+              <div style={{ display: 'flex', background: 'var(--input-bg)', borderRadius: '6px', border: '1px solid var(--border)', padding: '1px' }}>
+                <button
+                  type="button"
+                  onClick={() => setCatalogViewMode('grid')}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: '5px',
+                    border: 'none',
+                    background: catalogViewMode === 'grid' ? 'rgba(37,99,235,0.3)' : 'transparent',
+                    color: catalogViewMode === 'grid' ? '#60a5fa' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    fontSize: '0.7rem',
+                    fontWeight: '700',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                  title="Compact Cards View"
+                >
+                  <LayoutGrid size={12} /> Cards
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCatalogViewMode('table')}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: '5px',
+                    border: 'none',
+                    background: catalogViewMode === 'table' ? 'rgba(37,99,235,0.3)' : 'transparent',
+                    color: catalogViewMode === 'table' ? '#60a5fa' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    fontSize: '0.7rem',
+                    fontWeight: '700',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                  title="Compact Table / List View"
+                >
+                  <List size={12} /> Table
+                </button>
+              </div>
             </div>
+
             {filteredServices.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
                 No services found matching category filter.
               </div>
+            ) : catalogViewMode === 'table' ? (
+              /* Compact Table / List View */
+              <div style={{
+                background: 'rgba(0, 0, 0, 0.25)',
+                border: '1px solid var(--border)',
+                borderRadius: '10px',
+                overflow: 'hidden'
+              }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.78rem' }}>
+                  <thead>
+                    <tr style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid var(--border)', color: 'var(--text-muted)', fontSize: '0.7rem', textTransform: 'uppercase' }}>
+                      <th style={{ padding: '8px 12px' }}>Service Name</th>
+                      <th style={{ padding: '8px 12px' }}>Category</th>
+                      <th style={{ padding: '8px 12px' }}>Duration</th>
+                      <th style={{ padding: '8px 12px' }}>Price</th>
+                      <th style={{ padding: '8px 12px', textAlign: 'right' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredServices.map((s, idx) => (
+                      <tr
+                        key={s.id}
+                        onClick={() => addServiceToCart(s, false)}
+                        style={{
+                          borderBottom: '1px solid rgba(255,255,255,0.04)',
+                          cursor: 'pointer',
+                          background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)',
+                          transition: 'background 0.15s'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.08)'}
+                        onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)'}
+                      >
+                        <td style={{ padding: '7px 12px', fontWeight: '700', color: 'var(--text-main)' }}>
+                          {s.name}
+                        </td>
+                        <td style={{ padding: '7px 12px' }}>
+                          <span style={{ fontSize: '0.68rem', color: 'var(--accent-gold)', background: 'rgba(245,158,11,0.12)', padding: '2px 6px', borderRadius: '4px', fontWeight: '700' }}>
+                            {s.category}
+                          </span>
+                        </td>
+                        <td style={{ padding: '7px 12px', color: 'var(--text-muted)' }}>
+                          ⏱ {s.duration_minutes || 30}m
+                        </td>
+                        <td style={{ padding: '7px 12px', fontWeight: '800', color: '#10b981' }}>
+                          ₹{s.price}
+                        </td>
+                        <td style={{ padding: '7px 12px', textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              addServiceToCart(s, false);
+                            }}
+                            style={{
+                              background: '#2563eb',
+                              border: 'none',
+                              color: '#ffffff',
+                              padding: '3px 9px',
+                              borderRadius: '6px',
+                              fontWeight: '700',
+                              fontSize: '0.72rem',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)'
+                            }}
+                          >
+                            <Plus size={12} /> Add
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px' }}>
+              /* Compact Cards Grid View */
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(135px, 1fr))', gap: '8px' }}>
                 {filteredServices.map(s => (
                   <div
                     key={s.id}
                     onClick={() => addServiceToCart(s, false)}
                     style={{
-                      padding: '14px',
+                      padding: '8px 10px',
                       background: 'var(--bg-card)',
-                      borderRadius: '14px',
+                      borderRadius: '10px',
                       border: '1px solid var(--border)',
                       cursor: 'pointer',
-                      transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                      transition: 'all 0.15s ease',
                       display: 'flex',
                       flexDirection: 'column',
-                      justify: 'space-between'
+                      justifyContent: 'space-between'
                     }}
                     onMouseEnter={e => {
                       e.currentTarget.style.background = 'rgba(16, 185, 129, 0.08)';
-                      e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.35)';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
                     }}
                     onMouseLeave={e => {
                       e.currentTarget.style.background = 'var(--bg-card)';
@@ -1371,35 +1505,53 @@ function POSBillingView({
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: '800', fontSize: '0.9rem', color: 'var(--text-main)', marginBottom: '4px', lineHeight: '1.3' }}>
+                      <div
+                        style={{
+                          fontWeight: '700',
+                          fontSize: '0.82rem',
+                          color: 'var(--text-main)',
+                          marginBottom: '3px',
+                          lineHeight: '1.25',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical'
+                        }}
+                        title={s.name}
+                      >
                         {s.name}
                       </div>
-                      <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <span style={{ color: 'var(--accent-gold)', fontWeight: '700' }}>{s.category}</span>
-                        <span>· ⏱ {s.duration_minutes}m</span>
+                        <span>· ⏱ {s.duration_minutes || 30}m</span>
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '14px' }}>
-                      <span style={{ fontWeight: '900', fontSize: '1.05rem', color: '#10b981' }}>₹{s.price}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px', paddingTop: '6px', borderTop: '1px dashed rgba(255,255,255,0.06)' }}>
+                      <span style={{ fontWeight: '800', fontSize: '0.92rem', color: '#10b981' }}>₹{s.price}</span>
                       <button
                         type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addServiceToCart(s, false);
+                        }}
                         style={{
                           background: '#2563eb',
                           border: 'none',
                           color: '#ffffff',
-                          padding: '5px 12px',
-                          borderRadius: '8px',
-                          fontWeight: '800',
-                          fontSize: '0.76rem',
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          fontWeight: '700',
+                          fontSize: '0.72rem',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '4px',
-                          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)'
+                          gap: '3px',
+                          boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)'
                         }}
                       >
-                        <Plus size={13} /> Add
+                        <Plus size={12} /> Add
                       </button>
                     </div>
                   </div>
@@ -1412,54 +1564,54 @@ function POSBillingView({
         </div>
 
         {/* ─── RIGHT COLUMN: LIVE POS CART & BILLING PANEL ─── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
           {/* CART ITEMS LIST */}
-          <div className="glass-panel" style={{ padding: '18px', flex: 1 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ fontWeight: '800', fontSize: '0.98rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)' }}>
-                <Receipt size={17} style={{ color: 'var(--accent-gold)' }} />
+          <div className="glass-panel" style={{ padding: '12px 14px', flex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <h3 style={{ fontWeight: '800', fontSize: '0.86rem', margin: 0, display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-main)' }}>
+                <Receipt size={15} style={{ color: 'var(--accent-gold)' }} />
                 POS Cart Items ({cartItems.length})
               </h3>
               {cartItems.length > 0 && (
-                <button onClick={() => setCartItems([])} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.78rem', cursor: 'pointer', fontWeight: '700' }}>
+                <button onClick={() => setCartItems([])} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.72rem', cursor: 'pointer', fontWeight: '700' }}>
                   Clear Cart
                 </button>
               )}
             </div>
 
             {cartItems.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '36px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                🛒 Cart is empty.<br />Click <strong>+</strong> on any service to add to bill.
+              <div style={{ textAlign: 'center', padding: '14px 0', color: 'var(--text-muted)', fontSize: '0.76rem', lineHeight: '1.4' }}>
+                🛒 Cart is empty. Click <strong>+</strong> on any service to add to bill.
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '340px', overflowY: 'auto', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '250px', overflowY: 'auto', marginBottom: '10px', paddingRight: '2px' }}>
                 {cartItems.map(item => {
                   const pkgObj = item.package_id ? packages.find(p => String(p.id) === String(item.package_id)) : null;
                   const incServices = pkgObj ? getIncludedServicesForPackage(pkgObj, services) : [];
 
                   return (
-                    <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                    <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '6px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                       {/* Title & Price Header */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div style={{ fontWeight: '800', fontSize: '0.9rem', color: '#ffffff' }}>
+                        <div style={{ fontWeight: '700', fontSize: '0.82rem', color: '#ffffff' }}>
                           {item.service_name}
                         </div>
-                        <div style={{ fontWeight: '900', color: '#10b981', fontSize: '0.95rem' }}>
+                        <div style={{ fontWeight: '800', color: '#10b981', fontSize: '0.86rem' }}>
                           ₹{(item.price * item.qty).toFixed(2)}
                         </div>
                       </div>
 
                       {/* Included Services Breakdown for Combo Packages */}
                       {item.package_id && incServices.length > 0 && (
-                        <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: '8px', padding: '8px 10px', border: '1px solid rgba(245, 158, 11, 0.25)', marginTop: '2px', marginBottom: '2px' }}>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--accent-gold)', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Scissors size={11} /> Included Services ({incServices.length}):
+                        <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: '6px', padding: '5px 8px', border: '1px solid rgba(245, 158, 11, 0.25)', marginTop: '2px', marginBottom: '2px' }}>
+                          <div style={{ fontSize: '0.66rem', color: 'var(--accent-gold)', fontWeight: '800', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Scissors size={10} /> Included ({incServices.length}):
                           </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                             {incServices.map((sName, idx) => (
-                              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: '#f8fafc', fontWeight: '600' }}>
-                                <CheckCircle2 size={12} style={{ color: '#10b981', flexShrink: 0 }} />
+                              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', color: '#f8fafc', fontWeight: '600' }}>
+                                <CheckCircle2 size={11} style={{ color: '#10b981', flexShrink: 0 }} />
                                 <span>{sName}</span>
                               </div>
                             ))}
@@ -1468,11 +1620,11 @@ function POSBillingView({
                       )}
 
                       {/* Bottom Controls: Stylist Dropdown & Qty */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem', marginTop: '2px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.72rem', marginTop: '2px' }}>
                         <select
                           value={item.stylist_id || ''}
                           onChange={e => updateItemStylist(item.id, e.target.value)}
-                          style={{ padding: '3px 8px', fontSize: '0.74rem', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-sub)' }}
+                          style={{ height: '26px', padding: '2px 6px', fontSize: '0.72rem', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '5px', color: 'var(--text-sub)' }}
                         >
                           <option value="">Assign Stylist</option>
                           {stylists.map(s => (
@@ -1480,16 +1632,16 @@ function POSBillingView({
                           ))}
                         </select>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                          <button onClick={() => updateQty(item.id, -1)} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: '#fff', width: '22px', height: '22px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Minus size={10} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <button onClick={() => updateQty(item.id, -1)} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: '#fff', width: '20px', height: '20px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Minus size={9} />
                           </button>
-                          <span style={{ fontWeight: '800', width: '18px', textAlign: 'center', fontSize: '0.85rem' }}>{item.qty}</span>
-                          <button onClick={() => updateQty(item.id, 1)} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: '#fff', width: '22px', height: '22px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Plus size={10} />
+                          <span style={{ fontWeight: '800', width: '16px', textAlign: 'center', fontSize: '0.78rem' }}>{item.qty}</span>
+                          <button onClick={() => updateQty(item.id, 1)} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: '#fff', width: '20px', height: '20px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Plus size={9} />
                           </button>
-                          <button onClick={() => removeFromCart(item.id)} style={{ background: 'rgba(239,68,68,0.12)', border: 'none', color: '#ef4444', width: '22px', height: '22px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '4px' }}>
-                            <Trash2 size={10} />
+                          <button onClick={() => removeFromCart(item.id)} style={{ background: 'rgba(239,68,68,0.12)', border: 'none', color: '#ef4444', width: '20px', height: '20px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '2px' }}>
+                            <Trash2 size={9} />
                           </button>
                         </div>
                       </div>
@@ -1500,31 +1652,31 @@ function POSBillingView({
             )}
 
             {/* ─── DISCOUNT & COUPON SECTION ─── */}
-            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '10px', marginTop: '10px' }}>
-              <div style={{ fontSize: '0.78rem', fontWeight: '800', color: 'var(--accent-gold)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Tag size={13} /> Coupon Code & Manual Override
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '8px', marginTop: '8px' }}>
+              <div style={{ fontSize: '0.73rem', fontWeight: '800', color: 'var(--accent-gold)', marginBottom: '5px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <Tag size={12} /> Coupon Code & Manual Override
               </div>
 
               {appliedCoupon ? (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.3)', padding: '6px 10px', borderRadius: '8px', fontSize: '0.78rem', color: '#34d399', fontWeight: '700' }}>
-                  <span>🎉 Coupon Applied: <strong>{appliedCoupon.code}</strong> (-₹{couponDiscountAmt.toFixed(2)})</span>
-                  <button onClick={removeCoupon} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: '800' }}>Remove</button>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.3)', padding: '5px 8px', borderRadius: '6px', fontSize: '0.74rem', color: '#34d399', fontWeight: '700' }}>
+                  <span>🎉 Coupon: <strong>{appliedCoupon.code}</strong> (-₹{couponDiscountAmt.toFixed(2)})</span>
+                  <button onClick={removeCoupon} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: '800', fontSize: '0.72rem' }}>Remove</button>
                 </div>
               ) : (
                 <div>
-                  <div style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
+                  <div style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
                     <input
                       type="text"
                       placeholder="Enter Coupon Code"
                       value={couponCode}
                       onChange={e => setCouponCode(e.target.value.toUpperCase())}
-                      style={{ flex: 1, padding: '5px 10px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-main)', fontSize: '0.78rem' }}
+                      style={{ flex: 1, height: '28px', padding: '3px 8px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-main)', fontSize: '0.74rem' }}
                     />
-                    <button onClick={() => handleApplyCoupon()} style={{ padding: '5px 10px', background: 'var(--accent-gold)', border: 'none', borderRadius: '6px', color: '#000', fontWeight: '800', fontSize: '0.76rem', cursor: 'pointer' }}>
+                    <button onClick={() => handleApplyCoupon()} style={{ height: '28px', padding: '3px 10px', background: 'var(--accent-gold)', border: 'none', borderRadius: '6px', color: '#000', fontWeight: '800', fontSize: '0.72rem', cursor: 'pointer' }}>
                       Apply
                     </button>
                   </div>
-                  {couponError && <div style={{ color: '#ef4444', fontSize: '0.72rem', marginBottom: '4px' }}>{couponError}</div>}
+                  {couponError && <div style={{ color: '#ef4444', fontSize: '0.7rem', marginBottom: '3px' }}>{couponError}</div>}
                   
                   {/* Coupon Pills */}
                   <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
@@ -1532,7 +1684,7 @@ function POSBillingView({
                       <span
                         key={c.code}
                         onClick={() => handleApplyCoupon(c.code)}
-                        style={{ fontSize: '0.68rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', padding: '2px 6px', borderRadius: '6px', color: 'var(--text-sub)', cursor: 'pointer' }}
+                        style={{ fontSize: '0.64rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', padding: '2px 5px', borderRadius: '5px', color: 'var(--text-sub)', cursor: 'pointer' }}
                       >
                         🏷️ {c.code}
                       </span>
@@ -1542,12 +1694,12 @@ function POSBillingView({
               )}
 
               {/* Manual Override Input */}
-              <div style={{ marginTop: '8px', display: 'flex', gap: '6px', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Manual Discount:</span>
+              <div style={{ marginTop: '6px', display: 'flex', gap: '5px', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Manual Discount:</span>
                 <select
                   value={manualDiscountType}
                   onChange={e => setManualDiscountType(e.target.value)}
-                  style={{ padding: '3px 6px', fontSize: '0.74rem', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-main)', borderRadius: '4px' }}
+                  style={{ height: '26px', padding: '2px 6px', fontSize: '0.72rem', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-main)', borderRadius: '4px' }}
                 >
                   <option value="flat">₹ Flat</option>
                   <option value="percent">% Percent</option>
@@ -1557,28 +1709,28 @@ function POSBillingView({
                   placeholder="Amount"
                   value={manualDiscountVal}
                   onChange={e => setManualDiscountVal(e.target.value)}
-                  style={{ width: '65px', padding: '3px 6px', fontSize: '0.74rem', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-main)', borderRadius: '4px' }}
+                  style={{ width: '60px', height: '26px', padding: '2px 6px', fontSize: '0.72rem', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-main)', borderRadius: '4px' }}
                 />
               </div>
 
               {/* Loyalty & Membership Program (Module 7) */}
-              <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px dashed var(--border)' }}>
+              <div style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed var(--border)' }}>
                 {loyaltyProfile?.activeMembership && (
                   <div style={{
-                    padding: '6px 10px', borderRadius: '6px', marginBottom: '6px',
+                    padding: '4px 8px', borderRadius: '6px', marginBottom: '5px',
                     background: `${loyaltyProfile.activeMembership.badge_color || '#2563eb'}22`,
                     border: `1px solid ${loyaltyProfile.activeMembership.badge_color || '#2563eb'}`,
                     color: loyaltyProfile.activeMembership.badge_color || '#38bdf8',
-                    fontSize: '0.76rem', fontWeight: '700', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                    fontSize: '0.72rem', fontWeight: '700', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                   }}>
-                    <span>👑 {loyaltyProfile.activeMembership.membership_name} ({loyaltyProfile.activeMembership.discount_percent}% Auto Off)</span>
+                    <span>👑 {loyaltyProfile.activeMembership.membership_name} ({loyaltyProfile.activeMembership.discount_percent}% Off)</span>
                     <span>-₹{memberDiscountAmt.toFixed(2)}</span>
                   </div>
                 )}
 
                 {selectedCustomer && (
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.74rem', color: '#38bdf8', fontWeight: '600' }}>
+                    <span style={{ fontSize: '0.72rem', color: '#38bdf8', fontWeight: '600' }}>
                       🎁 Points: <strong>{availPoints}</strong>
                     </span>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
@@ -1587,10 +1739,10 @@ function POSBillingView({
                         placeholder="Redeem Pts"
                         value={pointsToRedeem}
                         onChange={e => setPointsToRedeem(e.target.value)}
-                        style={{ width: '85px', padding: '3px 6px', fontSize: '0.74rem', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-main)', borderRadius: '4px' }}
+                        style={{ width: '75px', height: '25px', padding: '2px 5px', fontSize: '0.72rem', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-main)', borderRadius: '4px' }}
                       />
                       {pointsDiscountAmt > 0 && (
-                        <span style={{ fontSize: '0.72rem', color: '#38bdf8', fontWeight: '700' }}>-₹{pointsDiscountAmt}</span>
+                        <span style={{ fontSize: '0.7rem', color: '#38bdf8', fontWeight: '700' }}>-₹{pointsDiscountAmt}</span>
                       )}
                     </div>
                   </div>
@@ -1599,13 +1751,13 @@ function POSBillingView({
             </div>
 
             {/* ─── GST RATE & TIP ─── */}
-            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '8px', marginTop: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: '700' }}>GST Tax Configuration:</span>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '6px', marginTop: '6px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: '700' }}>GST Tax:</span>
                 <select
                   value={gstRate}
                   onChange={e => setGstRate(Number(e.target.value))}
-                  style={{ padding: '3px 6px', fontSize: '0.74rem', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-main)', borderRadius: '4px' }}
+                  style={{ height: '26px', padding: '2px 6px', fontSize: '0.72rem', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-main)', borderRadius: '4px' }}
                 >
                   <option value={0}>0% Tax Exempt</option>
                   <option value={5}>5% GST</option>
@@ -1615,45 +1767,45 @@ function POSBillingView({
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: '700' }}>Stylist Tip (₹):</span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: '700' }}>Stylist Tip (₹):</span>
                 <input
                   type="number"
                   placeholder="0"
                   value={tipAmount}
                   onChange={e => setTipAmount(e.target.value)}
-                  style={{ width: '70px', padding: '3px 6px', fontSize: '0.74rem', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-main)', borderRadius: '4px', textAlign: 'right' }}
+                  style={{ width: '65px', height: '25px', padding: '2px 6px', fontSize: '0.72rem', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-main)', borderRadius: '4px', textAlign: 'right' }}
                 />
               </div>
             </div>
 
             {/* ─── TOTAL BREAKDOWN ─── */}
             {cartItems.length > 0 && (
-              <div style={{ borderTop: '1px dashed var(--border)', paddingTop: '8px', marginTop: '8px', fontSize: '0.8rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', color: 'var(--text-sub)' }}>
+              <div style={{ borderTop: '1px dashed var(--border)', paddingTop: '6px', marginTop: '6px', fontSize: '0.76rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1px 0', color: 'var(--text-sub)' }}>
                   <span>Subtotal</span><span>₹{rawSubtotal.toFixed(2)}</span>
                 </div>
                 {totalDiscount > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', color: '#ef4444' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1px 0', color: '#ef4444' }}>
                     <span>Discount</span><span>-₹{totalDiscount.toFixed(2)}</span>
                   </div>
                 )}
                 {walletCreditDeduct > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', color: '#10b981', fontWeight: '800' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1px 0', color: '#10b981', fontWeight: '800' }}>
                     <span>👑 Wallet Credit Applied</span><span>-₹{walletCreditDeduct.toFixed(2)}</span>
                   </div>
                 )}
                 {gstRate > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', color: '#34d399' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1px 0', color: '#34d399' }}>
                     <span>GST ({gstRate}%)</span><span>₹{taxAmount.toFixed(2)}</span>
                   </div>
                 )}
                 {tipVal > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', color: 'var(--accent-gold)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1px 0', color: 'var(--accent-gold)' }}>
                     <span>Stylist Tip</span><span>+₹{tipVal.toFixed(2)}</span>
                   </div>
                 )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: '1.5px solid var(--border)', fontWeight: '900', fontSize: '1.05rem', marginTop: '4px' }}>
-                  <span>GRAND TOTAL PAYABLE</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderTop: '1.5px solid var(--border)', fontWeight: '900', fontSize: '0.94rem', marginTop: '3px' }}>
+                  <span>GRAND TOTAL</span>
                   <span style={{ color: grandTotal === 0 ? '#10b981' : 'var(--accent-gold)' }}>₹{grandTotal.toFixed(2)}</span>
                 </div>
               </div>
@@ -1662,10 +1814,10 @@ function POSBillingView({
           </div>
 
           {/* ─── OFFICIAL PAYMENT GATEWAY CHECKOUT PANEL ─── */}
-          <div className="glass-panel" style={{ padding: '16px' }}>
-            <h4 style={{ fontWeight: '800', fontSize: '0.85rem', marginBottom: '10px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="glass-panel" style={{ padding: '10px 14px' }}>
+            <h4 style={{ fontWeight: '800', fontSize: '0.78rem', margin: '0 0 8px 0', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span>Payment Gateway Checkout</span>
-              <span style={{ fontSize: '0.7rem', color: '#10b981', background: 'rgba(16,185,129,0.12)', padding: '2px 8px', borderRadius: '6px', fontWeight: '800' }}>
+              <span style={{ fontSize: '0.64rem', color: '#10b981', background: 'rgba(16,185,129,0.12)', padding: '1px 6px', borderRadius: '4px', fontWeight: '800' }}>
                 ⚡ Razorpay / Stripe SDK
               </span>
             </h4>
@@ -1673,43 +1825,43 @@ function POSBillingView({
             {/* Membership Wallet Credit Redemption Checkbox Card (Manual Toggle) */}
             {activeMember && availWalletCredit > 0 && (
               <div style={{
-                marginBottom: '12px',
-                padding: '12px',
-                borderRadius: '12px',
+                marginBottom: '8px',
+                padding: '8px 10px',
+                borderRadius: '8px',
                 background: isUseWalletCredit ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 255, 255, 0.03)',
                 border: isUseWalletCredit ? '1.5px solid #10b981' : '1px dashed var(--border)',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.15s ease'
               }}>
                 <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', margin: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <input
                       type="checkbox"
                       checked={isUseWalletCredit}
                       onChange={e => setIsUseWalletCredit(e.target.checked)}
-                      style={{ width: '18px', height: '18px', accentColor: '#10b981', cursor: 'pointer' }}
+                      style={{ width: '15px', height: '15px', accentColor: '#10b981', cursor: 'pointer' }}
                     />
                     <div>
-                      <div style={{ fontSize: '0.84rem', fontWeight: '800', color: isUseWalletCredit ? '#10b981' : 'var(--text-main)' }}>
-                        👑 Manually Redeem {activeMember.membership_name} Credit Wallet
+                      <div style={{ fontSize: '0.76rem', fontWeight: '800', color: isUseWalletCredit ? '#10b981' : 'var(--text-main)' }}>
+                        👑 Redeem {activeMember.membership_name} Wallet
                       </div>
-                      <div style={{ fontSize: '0.73rem', color: 'var(--text-muted)' }}>
-                        Available Balance: <strong style={{ color: '#10b981' }}>₹{availWalletCredit.toLocaleString()}</strong> {!isUseWalletCredit && '(Click to Redeem)'}
+                      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                        Balance: <strong style={{ color: '#10b981' }}>₹{availWalletCredit.toLocaleString()}</strong> {!isUseWalletCredit && '(Click to Redeem)'}
                       </div>
                     </div>
                   </div>
 
                   {isUseWalletCredit && walletCreditDeduct > 0 && (
-                    <span style={{ fontSize: '0.86rem', fontWeight: '900', color: '#10b981' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: '900', color: '#10b981' }}>
                       -₹{walletCreditDeduct.toFixed(2)}
                     </span>
                   )}
                 </label>
 
                 {isUseWalletCredit && walletCreditDeduct > 0 && (
-                  <div style={{ marginTop: '8px', fontSize: '0.75rem', color: 'var(--text-sub)', borderTop: '1px dashed rgba(16, 185, 129, 0.3)', paddingTop: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ marginTop: '5px', fontSize: '0.7rem', color: 'var(--text-sub)', borderTop: '1px dashed rgba(16, 185, 129, 0.3)', paddingTop: '4px', display: 'flex', justifyContent: 'space-between' }}>
                     <span>Remaining Net Payable:</span>
                     <strong style={{ color: grandTotal === 0 ? '#10b981' : 'var(--accent-gold)' }}>
-                      {grandTotal === 0 ? '₹0.00 (Fully Covered by Wallet)' : `₹${grandTotal.toFixed(2)}`}
+                      {grandTotal === 0 ? '₹0.00 (Fully Covered)' : `₹${grandTotal.toFixed(2)}`}
                     </strong>
                   </div>
                 )}
@@ -1724,31 +1876,31 @@ function POSBillingView({
                 disabled={cartItems.length === 0 || isSubmitting}
                 style={{
                   width: '100%',
-                  marginBottom: '10px',
-                  fontSize: '0.92rem',
-                  padding: '13px',
-                  borderRadius: '12px',
+                  marginBottom: '6px',
+                  fontSize: '0.84rem',
+                  padding: '9px 12px',
+                  borderRadius: '8px',
                   background: 'linear-gradient(135deg, #10b981, #059669)',
                   color: '#ffffff',
                   fontWeight: '900',
                   border: 'none',
-                  boxShadow: '0 4px 16px rgba(16, 185, 129, 0.4)',
+                  boxShadow: '0 2px 10px rgba(16, 185, 129, 0.4)',
                   cursor: cartItems.length === 0 ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '8px',
+                  gap: '6px',
                   opacity: cartItems.length === 0 ? 0.5 : 1
                 }}
               >
-                <Crown size={18} />
-                {isSubmitting ? 'Redeeming Membership Credit...' : `👑 Pay ₹0.00 via Membership Wallet (₹${walletCreditDeduct.toFixed(2)} Used · ₹${remainingWalletBalAfter.toFixed(2)} Bal Left)`}
+                <Crown size={15} />
+                {isSubmitting ? 'Redeeming Wallet Credit...' : `👑 Pay ₹0.00 via Wallet (₹${walletCreditDeduct.toFixed(2)} Used)`}
               </button>
             ) : (
               <>
                 {walletCreditDeduct > 0 && (
-                  <div style={{ padding: '8px 12px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', borderRadius: '8px', color: '#10b981', fontSize: '0.78rem', fontWeight: '800', marginBottom: '10px', textAlign: 'center' }}>
-                    👑 ₹{walletCreditDeduct.toFixed(2)} Wallet Credit Applied (₹{remainingWalletBalAfter.toFixed(2)} Balance Remaining). Pay remaining net ₹{grandTotal.toFixed(2)} below:
+                  <div style={{ padding: '6px 10px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', borderRadius: '6px', color: '#10b981', fontSize: '0.72rem', fontWeight: '800', marginBottom: '6px', textAlign: 'center' }}>
+                    👑 ₹{walletCreditDeduct.toFixed(2)} Wallet Credit Applied. Pay remaining net ₹{grandTotal.toFixed(2)} below:
                   </div>
                 )}
               </>
@@ -1763,32 +1915,33 @@ function POSBillingView({
                 disabled={cartItems.length === 0 || isSubmitting}
                 style={{
                   width: '100%',
-                  fontSize: '0.96rem',
-                  padding: '14px',
+                  fontSize: '0.84rem',
+                  padding: '9px 12px',
+                  borderRadius: '8px',
                   opacity: cartItems.length === 0 ? 0.5 : 1,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '8px',
+                  gap: '6px',
                   background: '#2563eb',
-                  boxShadow: '0 4px 20px rgba(37, 99, 235, 0.4)',
+                  boxShadow: '0 2px 10px rgba(37, 99, 235, 0.3)',
                   cursor: 'pointer'
                 }}
               >
-                <Sparkles size={18} />
-                {isSubmitting ? 'Opening Payment Gateway SDK...' : `Proceed to Pay ₹${grandTotal.toFixed(2)} via ${(gatewayConfig?.gateway_name || 'Razorpay').toUpperCase()} Gateway`}
+                <Sparkles size={15} />
+                {isSubmitting ? 'Opening Gateway SDK...' : `Proceed to Pay ₹${grandTotal.toFixed(2)} via ${(gatewayConfig?.gateway_name || 'Razorpay').toUpperCase()}`}
               </button>
             ) : (
               <div style={{
-                padding: '12px 14px',
+                padding: '6px 10px',
                 background: 'rgba(255, 255, 255, 0.04)',
                 border: '1px dashed rgba(255, 255, 255, 0.15)',
-                borderRadius: '10px',
+                borderRadius: '8px',
                 color: '#94a3b8',
-                fontSize: '0.78rem',
-                marginBottom: '10px',
+                fontSize: '0.72rem',
+                marginBottom: '6px',
                 textAlign: 'center',
-                lineHeight: '1.4'
+                lineHeight: '1.3'
               }}>
                 💳 <strong>Online Gateway Not Configured</strong> for this branch.<br />
                 Please bill the customer using <strong>Counter Cash</strong> or <strong>Card Terminal</strong>.
@@ -1806,10 +1959,10 @@ function POSBillingView({
               disabled={cartItems.length === 0 || isSubmitting}
               style={{
                 width: '100%',
-                marginTop: '10px',
-                fontSize: '0.82rem',
-                padding: '10px',
-                borderRadius: '10px',
+                marginTop: '6px',
+                fontSize: '0.76rem',
+                padding: '7px 10px',
+                borderRadius: '8px',
                 background: 'rgba(255, 255, 255, 0.05)',
                 border: '1px solid var(--border)',
                 color: 'var(--text-sub)',
@@ -1818,15 +1971,15 @@ function POSBillingView({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '6px',
-                transition: 'all 0.2s ease',
+                gap: '5px',
+                transition: 'all 0.15s ease',
                 opacity: cartItems.length === 0 ? 0.5 : 1
               }}
             >
-              <Banknote size={15} style={{ color: '#34d399' }} /> Pay via Counter Cash (Manual Bill)
+              <Banknote size={14} style={{ color: '#34d399' }} /> Pay via Counter Cash (Manual Bill)
             </button>
 
-            <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+            <div style={{ textAlign: 'center', marginTop: '6px', fontSize: '0.66rem', color: 'var(--text-muted)' }}>
               🔒 Secured POS Billing Transaction · Multi-Tenant Branch Scoped
             </div>
           </div>

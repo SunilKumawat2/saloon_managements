@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   Search, Plus, Phone, Mail, Award, Crown, Star, Users,
   Edit3, Trash2, AlertTriangle, Eye, X, Calendar, User,
-  Heart, StickyNote, Gift, ChevronRight, Camera, Upload, Loader2
+  Heart, StickyNote, Gift, ChevronRight, Camera, Upload, Loader2,
+  Ban, ShieldCheck, UserCheck, UserX
 } from 'lucide-react';
 import { Admin_Upload_Customer_Avatar, Admin_Get_Customers } from '../services/apiService';
 import { BACKEND_URL } from '../config/Config';
@@ -137,11 +138,11 @@ const LoyaltyBar = ({ points }) => {
 
 // ─── Info Row ───
 const InfoRow = ({ icon, label, value }) => (
-  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
-    <span style={{ color: 'var(--text-muted)', flexShrink: 0, marginTop: '2px' }}>{icon}</span>
+  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '4px 0', borderBottom: '1px solid var(--border)' }}>
+    <span style={{ color: 'var(--text-muted)', flexShrink: 0, marginTop: '1px' }}>{icon}</span>
     <div>
-      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
-      <div style={{ fontSize: '0.86rem', color: value ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: value ? '600' : '400', marginTop: '1px' }}>{value || '—'}</div>
+      <div style={{ fontSize: '0.64rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
+      <div style={{ fontSize: '0.76rem', color: value ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: value ? '600' : '400', marginTop: '1px' }}>{value || '—'}</div>
     </div>
   </div>
 );
@@ -246,9 +247,21 @@ const AvatarUploadPicker = ({ currentUrl, customerId, onUploaded }) => {
   );
 };
 
-function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDeleteCustomer, selectedBranchId = 'all', currentUser }) {
+function CustomersCRMView({
+  customers,
+  onAddCustomer,
+  onUpdateCustomer,
+  onDeleteCustomer,
+  onToggleBlockCustomer,
+  onToggleAbandonCustomer,
+  selectedBranchId = 'all',
+  currentUser
+}) {
   const [searchTerm, setSearchTerm] = useState('');
   const [segmentFilter, setSegmentFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All'); // 'All' | 'Active' | 'Blocked' | 'Abandoned'
+  const [actionConfirm, setActionConfirm] = useState(null); // { type: 'BLOCK'|'UNBLOCK'|'ABANDON'|'UNABANDON', customer, reason: '' }
+  const [isActionLoading, setIsActionLoading] = useState(false);
   const [modalMode, setModalMode] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
@@ -309,6 +322,68 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
     setCurrentPage(1);
   };
 
+  const handleExecuteAction = async () => {
+    if (!actionConfirm?.customer) return;
+    const { type, customer, reason } = actionConfirm;
+    setIsActionLoading(true);
+    try {
+      if (type === 'BLOCK' || type === 'UNBLOCK') {
+        if (onToggleBlockCustomer) {
+          const updated = await onToggleBlockCustomer(customer.id, reason);
+          if (serverData?.data) {
+            setServerData(prev => ({
+              ...prev,
+              data: prev.data.map(item => String(item.id) === String(customer.id) ? {
+                ...item,
+                ...(updated || {}),
+                is_blocked: type === 'BLOCK',
+                status: type === 'BLOCK' ? 'Blocked' : (item.is_abandoned ? 'Abandoned' : 'Active'),
+                block_reason: type === 'BLOCK' ? reason : null
+              } : item)
+            }));
+          }
+          if (profileCustomer && String(profileCustomer.id) === String(customer.id)) {
+            setProfileCustomer(prev => ({
+              ...prev,
+              ...(updated || {}),
+              is_blocked: type === 'BLOCK',
+              status: type === 'BLOCK' ? 'Blocked' : (prev.is_abandoned ? 'Abandoned' : 'Active'),
+              block_reason: type === 'BLOCK' ? reason : null
+            }));
+          }
+        }
+      } else if (type === 'ABANDON' || type === 'UNABANDON') {
+        if (onToggleAbandonCustomer) {
+          const updated = await onToggleAbandonCustomer(customer.id);
+          if (serverData?.data) {
+            setServerData(prev => ({
+              ...prev,
+              data: prev.data.map(item => String(item.id) === String(customer.id) ? {
+                ...item,
+                ...(updated || {}),
+                is_abandoned: type === 'ABANDON',
+                status: type === 'ABANDON' ? 'Abandoned' : (item.is_blocked ? 'Blocked' : 'Active')
+              } : item)
+            }));
+          }
+          if (profileCustomer && String(profileCustomer.id) === String(customer.id)) {
+            setProfileCustomer(prev => ({
+              ...prev,
+              ...(updated || {}),
+              is_abandoned: type === 'ABANDON',
+              status: type === 'ABANDON' ? 'Abandoned' : (prev.is_blocked ? 'Blocked' : 'Active')
+            }));
+          }
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsActionLoading(false);
+      setActionConfirm(null);
+    }
+  };
+
   // ─── Source of Truth Determination ───
   const baseList = (serverData?.data && Array.isArray(serverData.data)) ? serverData.data : customers;
 
@@ -343,6 +418,15 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
   });
 
   const filtered = rawList.filter(c => {
+    // Status Filter (Blocked, Abandoned, Active)
+    if (statusFilter === 'Blocked') {
+      if (!c.is_blocked && c.status !== 'Blocked') return false;
+    } else if (statusFilter === 'Abandoned') {
+      if (c.is_blocked || (!c.is_abandoned && c.status !== 'Abandoned')) return false;
+    } else if (statusFilter === 'Active') {
+      if (c.is_blocked || c.is_abandoned || c.status === 'Blocked' || c.status === 'Abandoned') return false;
+    }
+
     if (serverData?.pagination) {
       if (segmentFilter === 'All') return true;
       return getSegment(c).label === segmentFilter;
@@ -368,6 +452,8 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
   const vipCount = rawList.filter(c => getSegment(c).label === 'VIP').length;
   const regularCount = rawList.filter(c => getSegment(c).label === 'Regular').length;
   const newCount = rawList.filter(c => getSegment(c).label === 'New Client').length;
+  const blockedCount = rawList.filter(c => c.is_blocked || c.status === 'Blocked').length;
+  const abandonedCount = rawList.filter(c => !c.is_blocked && (c.is_abandoned || c.status === 'Abandoned')).length;
 
   const field = (key) => ({ value: formData[key], onChange: e => setFormData(p => ({ ...p, [key]: e.target.value })) });
 
@@ -509,57 +595,119 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
   };
 
   return (
-    <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
 
       {/* ─── Main Content ─── */}
       <div style={{ flex: 1, minWidth: 0 }}>
 
-        {/* Segment Tiles */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
+        {/* ─── CRM SEGMENT & STATUS METRICS STRIP ─── */}
+        <div className="glass-panel" style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+          gap: '8px',
+          padding: '6px 12px',
+          marginBottom: '10px',
+          borderRadius: '10px',
+          alignItems: 'center'
+        }}>
           {[
-            { label: 'VIP', count: vipCount, color: '#f59e0b', icon: <Crown size={20} />, sub: '200+ loyalty points' },
-            { label: 'Regular', count: regularCount, color: '#818cf8', icon: <Star size={20} />, sub: '51–199 loyalty points' },
-            { label: 'New Client', count: newCount, color: '#34d399', icon: <Users size={20} />, sub: '0–50 loyalty points' },
-          ].map(({ label, count, color, icon, sub }) => (
-            <div key={label} className="glass-card"
-              onClick={() => handleSegmentSelect(label)}
-              style={{ padding: '18px 20px', cursor: 'pointer', border: segmentFilter === label ? `1.5px solid ${color}` : '1px solid var(--border)', transition: 'all 0.25s' }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                <span style={{ color }}>{icon}</span>
-                <span style={{ fontWeight: '800', color, fontSize: '0.88rem' }}>{label} Clients</span>
+            { id: 'VIP', label: 'VIP', count: vipCount, color: '#f59e0b', icon: <Crown size={14} />, sub: '200+ pts', type: 'segment' },
+            { id: 'Regular', label: 'Regular', count: regularCount, color: '#818cf8', icon: <Star size={14} />, sub: '51–199 pts', type: 'segment' },
+            { id: 'New Client', label: 'New Client', count: newCount, color: '#34d399', icon: <Users size={14} />, sub: '0–50 pts', type: 'segment' },
+            { id: 'Blocked', label: 'Blocked', count: blockedCount, color: '#ef4444', icon: <Ban size={14} />, sub: 'Restricted', type: 'status' },
+            { id: 'Abandoned', label: 'Abandoned', count: abandonedCount, color: '#f97316', icon: <UserX size={14} />, sub: 'Dormant/Lapsed', type: 'status' },
+          ].map(({ id, label, count, color, icon, sub, type }, index) => {
+            const isSelected = type === 'segment' ? (segmentFilter === id && statusFilter === 'All') : (statusFilter === id);
+            return (
+              <div
+                key={id}
+                onClick={() => {
+                  if (type === 'segment') {
+                    setSegmentFilter(prev => prev === id ? 'All' : id);
+                    setStatusFilter('All');
+                  } else {
+                    setStatusFilter(prev => prev === id ? 'All' : id);
+                    setSegmentFilter('All');
+                  }
+                  setCurrentPage(1);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px',
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  borderLeft: index > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                  background: isSelected ? 'rgba(255,255,255,0.06)' : 'transparent',
+                  border: isSelected ? `1px solid ${color}` : undefined,
+                  transition: 'all 0.2s ease'
+                }}
+                title={`Filter by ${label} Clients`}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color }}>
+                    {icon}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.66rem', color: isSelected ? color : 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      {label}
+                    </div>
+                    <div style={{ fontSize: '0.60rem', color: 'var(--text-muted)' }}>{sub}</div>
+                  </div>
+                </div>
+                <div style={{ fontSize: '0.98rem', fontWeight: '900', color, lineHeight: 1.2 }}>
+                  {count}
+                </div>
               </div>
-              <div style={{ fontSize: '2rem', fontWeight: '900', color }}>{count}</div>
-              <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '4px' }}>{sub}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Active filter badge */}
-        {segmentFilter !== 'All' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', padding: '10px 16px', background: 'rgba(255,255,255,0.04)', borderRadius: '10px', border: '1px solid var(--border)' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-sub)' }}>Showing: <strong>{segmentFilter}</strong> ({filtered.length} clients)</span>
-            <button onClick={() => handleSegmentSelect('All')} style={{ marginLeft: 'auto', background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border)', color: 'var(--text-muted)', padding: '4px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.78rem' }}>Clear ✕</button>
+        {(segmentFilter !== 'All' || statusFilter !== 'All') && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', padding: '3px 8px', background: 'rgba(255,255,255,0.04)', borderRadius: '6px', border: '1px solid var(--border)', width: 'fit-content' }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-sub)' }}>
+              Showing: <strong style={{ color: 'var(--text-main)' }}>{statusFilter !== 'All' ? `${statusFilter} Status` : `${segmentFilter} Segment`}</strong> ({filtered.length})
+            </span>
+            <button
+              onClick={() => { setSegmentFilter('All'); setStatusFilter('All'); setCurrentPage(1); }}
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.72rem', padding: '0 4px', fontWeight: '700' }}
+            >
+              ✕ Clear
+            </button>
           </div>
         )}
 
-        {/* Search, Page Size Dropdown & Add Customer */}
-        <div className="controls-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-            <div className="search-input-wrapper" style={{ width: '280px' }}>
-              <Search size={16} className="search-icon" />
+        {/* Search, Page Size Dropdown, Status Filter & Add Customer */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', flex: 1 }}>
+            <div style={{ position: 'relative', flex: '1 1 200px', maxWidth: '300px' }}>
+              <Search size={12} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input
                 type="text"
-                className="search-input-field search-input-compact"
+                className="compact-filter-input"
                 placeholder="Search by name or phone..."
                 value={searchTerm}
                 onChange={handleSearchChange}
+                style={{
+                  width: '100%',
+                  height: '28px',
+                  paddingLeft: '26px',
+                  paddingRight: searchTerm ? '24px' : '8px',
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '6px',
+                  color: 'var(--text-main)',
+                  fontSize: '0.72rem'
+                }}
               />
               {searchTerm && (
                 <button
                   type="button"
-                  className="search-input-clear-btn"
                   onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
+                  style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.70rem' }}
                   title="Clear search"
                 >
                   ✕
@@ -567,170 +715,256 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
               )}
             </div>
 
+            {/* Dropdown for Status Filter */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', color: 'var(--text-sub)', fontWeight: '600' }}>
+              <span>Status:</span>
+              <select
+                className="compact-filter-select"
+                value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+                style={{ height: '28px', padding: '1px 6px', fontSize: '0.70rem', borderRadius: '6px' }}
+              >
+                <option value="All">All Statuses</option>
+                <option value="Active">Active Only</option>
+                <option value="Blocked">Blocked (🚫)</option>
+                <option value="Abandoned">Abandoned (⚠️)</option>
+              </select>
+            </div>
+
             {/* Dropdown for Items Per Page */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', color: 'var(--text-sub)', fontWeight: '600' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', color: 'var(--text-sub)', fontWeight: '600' }}>
               <span>Show:</span>
               <select
+                className="compact-filter-select"
                 value={pageSize}
                 onChange={handlePageSizeChange}
-                style={{
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '8px',
-                  padding: '6px 10px',
-                  color: 'var(--text-main)',
-                  fontSize: '0.82rem',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  outline: 'none'
-                }}
+                style={{ height: '28px', padding: '1px 6px', fontSize: '0.70rem', borderRadius: '6px' }}
               >
-                <option value={5}>5 per page</option>
-                <option value={10}>10 per page</option>
-                <option value={20}>20 per page</option>
-                <option value={50}>50 per page</option>
-                <option value={100}>100 per page</option>
-                <option value="all">Show All</option>
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value="all">All</option>
               </select>
             </div>
           </div>
 
-          <button className="btn-primary" onClick={openAdd}><Plus size={16} /> Add New Client</button>
+          <button className="btn-primary" onClick={openAdd} style={{ height: '28px', padding: '2px 10px', fontSize: '0.72rem', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <Plus size={13} /> Add New Client
+          </button>
         </div>
 
         {/* Table */}
-        <div className="glass-panel" style={{ overflow: 'hidden', position: 'relative' }}>
-          <table className="data-table">
+        <div className="glass-panel" style={{ overflow: 'hidden', position: 'relative', padding: '8px 12px', borderRadius: '10px' }}>
+          <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr>
-                <th>Client Profile</th>
-                <th>Contact Details</th>
-                <th>Gender & DOB</th>
-                <th>Segment & Loyalty</th>
-                <th>Notes</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+              <tr style={{ background: 'var(--input-bg)', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
+                <th style={{ padding: '7px 10px', fontSize: '0.70rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Client Profile</th>
+                <th style={{ padding: '7px 10px', fontSize: '0.70rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Contact Details</th>
+                <th style={{ padding: '7px 10px', fontSize: '0.70rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Gender & Age</th>
+                <th style={{ padding: '7px 10px', fontSize: '0.70rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Segment & Loyalty</th>
+                <th style={{ padding: '7px 10px', fontSize: '0.70rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Notes</th>
+                <th style={{ padding: '7px 10px', fontSize: '0.70rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loadingBackend ? (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', padding: '54px 24px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '14px' }}>
-                      <Loader2 size={36} style={{ animation: 'spin 0.8s linear infinite', color: 'var(--accent)' }} />
-                      <span style={{ fontSize: '0.88rem', color: 'var(--text-sub)', fontWeight: '700', letterSpacing: '0.02em' }}>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '30px 16px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                      <Loader2 size={24} style={{ animation: 'spin 0.8s linear infinite', color: 'var(--accent)' }} />
+                      <span style={{ fontSize: '0.76rem', color: 'var(--text-sub)', fontWeight: '700' }}>
                         Fetching data from server... (Page {currentPage}, Limit {pageSize})
                       </span>
                     </div>
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>No customer profiles found.</td></tr>
+                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '0.76rem' }}>No customer profiles found.</td></tr>
               ) : paginatedList.map((c) => {
                 const segment = getSegment(c);
                 const isActive = profileCustomer?.id === c.id;
                 return (
-                  <tr key={c.id} style={{ background: isActive ? 'rgba(0,230,118,0.04)' : undefined }}>
+                  <tr key={c.id} style={{ background: isActive ? 'rgba(0,230,118,0.06)' : undefined, borderBottom: '1px solid var(--border)' }}>
 
                     {/* Profile — click name to open drawer */}
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
+                    <td style={{ padding: '6px 10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
                         onClick={() => setProfileCustomer(isActive ? null : c)}>
-                        <CustomerAvatar customer={c} size={40} />
+                        <CustomerAvatar customer={c} size={28} />
                         <div>
-                          <div style={{ fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <div style={{ fontWeight: '700', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-main)' }}>
                             {c.name}
-                            <ChevronRight size={13} style={{ color: 'var(--accent)', opacity: 0.7 }} />
+                            <ChevronRight size={11} style={{ color: 'var(--accent)', opacity: 0.7 }} />
                           </div>
-                          {/* <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>ID: 
-                            #CRM-{String(c.id).padStart(3, '0')}</div> */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                            {c.is_blocked || c.status === 'Blocked' ? (
+                              <span style={{
+                                background: 'rgba(239,68,68,0.18)',
+                                color: '#ef4444',
+                                border: '1px solid rgba(239,68,68,0.4)',
+                                padding: '1px 5px',
+                                borderRadius: '4px',
+                                fontSize: '0.60rem',
+                                fontWeight: '800',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '2px'
+                              }}>
+                                <Ban size={9} /> Blocked
+                              </span>
+                            ) : (c.is_abandoned || c.status === 'Abandoned') ? (
+                              <span style={{
+                                background: 'rgba(249,115,22,0.18)',
+                                color: '#f97316',
+                                border: '1px solid rgba(249,115,22,0.4)',
+                                padding: '1px 5px',
+                                borderRadius: '4px',
+                                fontSize: '0.60rem',
+                                fontWeight: '800',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '2px'
+                              }}>
+                                <UserX size={9} /> Abandoned
+                              </span>
+                            ) : (
+                              <span style={{
+                                background: 'rgba(34,197,94,0.12)',
+                                color: '#22c55e',
+                                border: '1px solid rgba(34,197,94,0.3)',
+                                padding: '1px 5px',
+                                borderRadius: '4px',
+                                fontSize: '0.60rem',
+                                fontWeight: '700',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '2px'
+                              }}>
+                                ✓ Active
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
 
-                    <td>
-                      <div style={{ fontSize: '0.85rem' }}>
-                        <div><Phone size={12} style={{
-                          display: 'inline', marginRight: '4px',
-                          color: 'var(--accent-gold)'
-                        }} />{c.phone}</div>
-                        <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '2px' }}>
-                          {/* <Mail size={12} style={{ display: 'inline', marginRight: '4px' }} />{c.email || 'N/A'} */}
+                    <td style={{ padding: '6px 10px' }}>
+                      <div style={{ fontSize: '0.74rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Phone size={11} style={{ color: 'var(--accent-gold)' }} />
+                          <span>{c.phone}</span>
                         </div>
                       </div>
                     </td>
 
-                    <td>
-                      <div style={{ fontSize: '0.84rem' }}>
-                        <div style={{ fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <td style={{ padding: '6px 10px' }}>
+                      <div style={{ fontSize: '0.74rem' }}>
+                        <div style={{ fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                           <span>{c.gender}</span>
                           {calculateAge(c.dob) !== null && (
                             <span style={{
                               background: 'rgba(0,230,118,0.15)',
                               color: '#00E676',
                               border: '1px solid rgba(0,230,118,0.3)',
-                              padding: '1px 7px',
-                              borderRadius: '10px',
-                              fontSize: '0.72rem',
+                              padding: '1px 5px',
+                              borderRadius: '3px',
+                              fontSize: '0.62rem',
                               fontWeight: '800'
                             }}>
-                              {calculateAge(c.dob)} yrs old
+                              {calculateAge(c.dob)} yrs
                             </span>
                           )}
                         </div>
-                        <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                          {/* DOB: {formatDayMonthLabel(c.dob) || 'N/A'} */}
-                        </div>
                         {c.anniversary && (
-                          <div style={{ fontSize: '0.74rem', color: '#818cf8', marginTop: '2px', fontWeight: '600' }}>
-                            ❤️ Anniv: {formatDayMonthLabel(c.anniversary)}
-                            {calculateAnniversaryYears(c.anniversary) !== null && ` (${calculateAnniversaryYears(c.anniversary)} yrs)`}
+                          <div style={{ fontSize: '0.68rem', color: '#818cf8', marginTop: '1px', fontWeight: '600' }}>
+                            ❤️ {formatDayMonthLabel(c.anniversary)}
+                            {calculateAnniversaryYears(c.anniversary) !== null && ` (${calculateAnniversaryYears(c.anniversary)}y)`}
                           </div>
                         )}
                       </div>
                     </td>
 
-                    <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: segment.bg, color: segment.color, padding: '3px 8px', borderRadius: '10px', fontWeight: '800', fontSize: '0.76rem', width: 'fit-content' }}>
+                    <td style={{ padding: '6px 10px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: segment.bg, color: segment.color, padding: '2px 6px', borderRadius: '4px', fontWeight: '700', fontSize: '0.68rem', width: 'fit-content' }}>
                           {segment.icon} {segment.label}
                         </span>
-                        {/* <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(245,158,11,0.12)', color: 'var(--accent-gold)', padding: '3px 8px', borderRadius: '10px', fontWeight: '700', fontSize: '0.76rem', width: 'fit-content' }}>
-                          <Award size={11} /> {c.loyalty_points || 0} pts
-                        </span> */}
-                        {/* {c.membership_name ? (
-                          <span style={{
-                            display: 'inline-flex', alignItems: 'center', gap: '4px',
-                            background: c.membership_badge_color ? `${c.membership_badge_color}22` : 'rgba(0, 230, 118, 0.18)',
-                            color: c.membership_badge_color || '#00E676',
-                            border: `1px solid ${c.membership_badge_color || '#00E676'}`,
-                            padding: '3px 8px', borderRadius: '10px', fontWeight: '700', fontSize: '0.75rem', width: 'fit-content'
-                          }}>
-                            💳 {c.membership_name} (₹{parseFloat(c.remaining_service_credit || 0).toLocaleString()} Credit)
-                          </span>
-                        ) : (
-                          <span style={{
-                            display: 'inline-flex', alignItems: 'center', gap: '4px',
-                            background: 'rgba(148, 163, 184, 0.1)', color: '#94A3B8',
-                            padding: '3px 8px', borderRadius: '10px', fontWeight: '600', fontSize: '0.72rem', width: 'fit-content'
-                          }}>
-                            No Membership
-                          </span>
-                        )} */}
                       </div>
                     </td>
 
-                    <td style={{ color: 'var(--text-sub)', fontSize: '0.85rem', maxWidth: '160px' }}>{c.notes || '—'}</td>
+                    <td style={{ padding: '6px 10px', color: 'var(--text-sub)', fontSize: '0.74rem', maxWidth: '160px' }}>{c.notes || '—'}</td>
 
-                    <td>
-                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                        <button className="action-icon-btn view" onClick={() => setProfileCustomer(isActive ? null : c)} title="View Full Profile">
-                          <Eye size={14} />
+                    <td style={{ padding: '6px 10px', textAlign: 'right' }}>
+                      <div style={{ display: 'inline-flex', gap: '4px', alignItems: 'center' }}>
+                        <button className="action-icon-btn view" onClick={() => setProfileCustomer(isActive ? null : c)} title="View Full Profile" style={{ width: '24px', height: '24px', padding: 0 }}>
+                          <Eye size={12} />
                         </button>
-                        <button className="action-icon-btn edit" onClick={() => openEdit(c)} title="Edit Customer">
-                          <Edit3 size={14} />
+                        <button className="action-icon-btn edit" onClick={() => openEdit(c)} title="Edit Customer" style={{ width: '24px', height: '24px', padding: 0 }}>
+                          <Edit3 size={12} />
                         </button>
-                        <button className="action-icon-btn delete" onClick={() => setDeleteTarget(c)} title="Delete Customer">
-                          <Trash2 size={14} />
+
+                        {/* Block / Unblock Button */}
+                        {c.is_blocked || c.status === 'Blocked' ? (
+                          <button
+                            className="action-icon-btn"
+                            onClick={() => setActionConfirm({ type: 'UNBLOCK', customer: c, reason: '' })}
+                            title="Unblock Customer"
+                            style={{
+                              width: '24px', height: '24px', padding: 0,
+                              background: 'rgba(34,197,94,0.12)', color: '#22c55e',
+                              border: '1px solid rgba(34,197,94,0.35)'
+                            }}
+                          >
+                            <ShieldCheck size={12} />
+                          </button>
+                        ) : (
+                          <button
+                            className="action-icon-btn"
+                            onClick={() => setActionConfirm({ type: 'BLOCK', customer: c, reason: '' })}
+                            title="Block Customer"
+                            style={{
+                              width: '24px', height: '24px', padding: 0,
+                              background: 'rgba(239,68,68,0.12)', color: '#ef4444',
+                              border: '1px solid rgba(239,68,68,0.35)'
+                            }}
+                          >
+                            <Ban size={12} />
+                          </button>
+                        )}
+
+                        {/* Abandon / Unabandon Button */}
+                        {c.is_abandoned || c.status === 'Abandoned' ? (
+                          <button
+                            className="action-icon-btn"
+                            onClick={() => setActionConfirm({ type: 'UNABANDON', customer: c, reason: '' })}
+                            title="Reactivate (Unabandon) Customer"
+                            style={{
+                              width: '24px', height: '24px', padding: 0,
+                              background: 'rgba(59,130,246,0.12)', color: '#38bdf8',
+                              border: '1px solid rgba(59,130,246,0.35)'
+                            }}
+                          >
+                            <UserCheck size={12} />
+                          </button>
+                        ) : (
+                          <button
+                            className="action-icon-btn"
+                            onClick={() => setActionConfirm({ type: 'ABANDON', customer: c, reason: '' })}
+                            title="Mark as Abandoned / Lapsed"
+                            style={{
+                              width: '24px', height: '24px', padding: 0,
+                              background: 'rgba(249,115,22,0.12)', color: '#f97316',
+                              border: '1px solid rgba(249,115,22,0.35)'
+                            }}
+                          >
+                            <UserX size={12} />
+                          </button>
+                        )}
+
+                        <button className="action-icon-btn delete" onClick={() => setDeleteTarget(c)} title="Delete Customer" style={{ width: '24px', height: '24px', padding: 0 }}>
+                          <Trash2 size={12} />
                         </button>
                       </div>
                     </td>
@@ -743,21 +977,22 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
 
         {/* ─── Pagination Bar ─── */}
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px',
-          marginTop: '16px', padding: '12px 18px',
-          background: 'var(--glass-bg)', border: '1px solid var(--border)', borderRadius: '12px'
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px',
+          marginTop: '8px', padding: '5px 10px',
+          background: 'var(--glass-bg)', border: '1px solid var(--border)', borderRadius: '8px',
+          fontSize: '0.72rem'
         }}>
           {/* Left: Per Page Selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.84rem', color: 'var(--text-sub)' }}>
-            <span>Rows per page:</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-sub)' }}>
+            <span>Rows:</span>
             <select
+              className="compact-filter-select"
               value={pageSize}
               onChange={handlePageSizeChange}
               disabled={loadingBackend}
               style={{
-                background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)',
-                borderRadius: '8px', padding: '4px 10px', color: 'var(--text-main)',
-                fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer', outline: 'none',
+                height: '24px', padding: '1px 6px',
+                fontSize: '0.70rem', borderRadius: '5px',
                 opacity: loadingBackend ? 0.6 : 1
               }}
             >
@@ -769,27 +1004,27 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
               <option value="all">All</option>
             </select>
             {loadingBackend && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.76rem', color: 'var(--accent)', fontWeight: '600' }}>
-                <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> Loading...
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '0.70rem', color: 'var(--accent)', fontWeight: '600' }}>
+                <Loader2 size={11} style={{ animation: 'spin 0.8s linear infinite' }} /> Loading...
               </span>
             )}
           </div>
 
           {/* Middle: Range Information */}
-          <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: '600' }}>
-            Showing {totalItems > 0 ? startIndex + 1 : 0} – {endIndex} of <strong style={{ color: 'var(--accent)' }}>{totalItems}</strong> clients
+          <div style={{ color: 'var(--text-muted)', fontWeight: '600' }}>
+            Showing {totalItems > 0 ? startIndex + 1 : 0} – {endIndex} of <strong style={{ color: 'var(--accent)' }}>{totalItems}</strong>
           </div>
 
-          {/* Right: Page Navigation Buttons (Always Visible) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {/* Right: Page Navigation Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <button
               disabled={loadingBackend || isAll || safePage <= 1}
               onClick={() => setCurrentPage(1)}
               style={{
-                padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border)',
+                padding: '2px 7px', borderRadius: '4px', border: '1px solid var(--border)',
                 background: (loadingBackend || isAll || safePage <= 1) ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.08)',
                 color: (loadingBackend || isAll || safePage <= 1) ? 'var(--text-muted)' : 'var(--text-main)',
-                cursor: (loadingBackend || isAll || safePage <= 1) ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: '600',
+                cursor: (loadingBackend || isAll || safePage <= 1) ? 'not-allowed' : 'pointer', fontSize: '0.70rem', fontWeight: '600',
                 opacity: (loadingBackend || isAll || safePage <= 1) ? 0.4 : 1
               }}
               title="First Page"
@@ -801,15 +1036,15 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
               disabled={loadingBackend || isAll || safePage <= 1}
               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
               style={{
-                padding: '6px 14px', borderRadius: '8px', border: '1px solid var(--border)',
+                padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border)',
                 background: (loadingBackend || isAll || safePage <= 1) ? 'rgba(255,255,255,0.02)' : 'rgba(0,230,118,0.12)',
                 color: (loadingBackend || isAll || safePage <= 1) ? 'var(--text-muted)' : 'var(--accent)',
                 borderColor: (loadingBackend || isAll || safePage <= 1) ? 'var(--border)' : 'rgba(0,230,118,0.4)',
-                cursor: (loadingBackend || isAll || safePage <= 1) ? 'not-allowed' : 'pointer', fontSize: '0.82rem', fontWeight: '700',
+                cursor: (loadingBackend || isAll || safePage <= 1) ? 'not-allowed' : 'pointer', fontSize: '0.70rem', fontWeight: '700',
                 opacity: (loadingBackend || isAll || safePage <= 1) ? 0.4 : 1
               }}
             >
-              ‹ Previous
+              ‹ Prev
             </button>
 
             {!isAll && Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -818,17 +1053,17 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
                 const showEllipsis = idx > 0 && p - arr[idx - 1] > 1;
                 return (
                   <React.Fragment key={p}>
-                    {showEllipsis && <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', padding: '0 2px' }}>...</span>}
+                    {showEllipsis && <span style={{ color: 'var(--text-muted)', fontSize: '0.70rem', padding: '0 1px' }}>...</span>}
                     <button
                       disabled={loadingBackend}
                       onClick={() => setCurrentPage(p)}
                       style={{
-                        padding: '6px 12px', borderRadius: '8px',
+                        padding: '2px 7px', borderRadius: '4px',
                         border: p === safePage ? '1px solid var(--accent)' : '1px solid var(--border)',
                         background: p === safePage ? 'var(--accent)' : 'rgba(255,255,255,0.06)',
                         color: p === safePage ? '#000' : 'var(--text-main)',
                         fontWeight: p === safePage ? '800' : '600',
-                        cursor: loadingBackend ? 'not-allowed' : 'pointer', fontSize: '0.82rem',
+                        cursor: loadingBackend ? 'not-allowed' : 'pointer', fontSize: '0.70rem',
                         opacity: loadingBackend ? 0.6 : 1
                       }}
                     >
@@ -842,11 +1077,11 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
               disabled={loadingBackend || isAll || safePage >= totalPages}
               onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
               style={{
-                padding: '6px 14px', borderRadius: '8px', border: '1px solid var(--border)',
+                padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border)',
                 background: (loadingBackend || isAll || safePage >= totalPages) ? 'rgba(255,255,255,0.02)' : 'rgba(0,230,118,0.12)',
                 color: (loadingBackend || isAll || safePage >= totalPages) ? 'var(--text-muted)' : 'var(--accent)',
                 borderColor: (loadingBackend || isAll || safePage >= totalPages) ? 'var(--border)' : 'rgba(0,230,118,0.4)',
-                cursor: (loadingBackend || isAll || safePage >= totalPages) ? 'not-allowed' : 'pointer', fontSize: '0.82rem', fontWeight: '700',
+                cursor: (loadingBackend || isAll || safePage >= totalPages) ? 'not-allowed' : 'pointer', fontSize: '0.70rem', fontWeight: '700',
                 opacity: (loadingBackend || isAll || safePage >= totalPages) ? 0.4 : 1
               }}
             >
@@ -857,10 +1092,10 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
               disabled={isAll || safePage >= totalPages}
               onClick={() => setCurrentPage(totalPages)}
               style={{
-                padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border)',
+                padding: '2px 7px', borderRadius: '4px', border: '1px solid var(--border)',
                 background: (isAll || safePage >= totalPages) ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.08)',
                 color: (isAll || safePage >= totalPages) ? 'var(--text-muted)' : 'var(--text-main)',
-                cursor: (isAll || safePage >= totalPages) ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: '600',
+                cursor: (isAll || safePage >= totalPages) ? 'not-allowed' : 'pointer', fontSize: '0.70rem', fontWeight: '600',
                 opacity: (isAll || safePage >= totalPages) ? 0.4 : 1
               }}
               title="Last Page"
@@ -877,35 +1112,53 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
         const c = customers.find(x => x.id === profileCustomer.id) || profileCustomer;
         return (
           <div style={{
-            width: '300px', flexShrink: 0,
+            width: '250px', flexShrink: 0,
             background: 'var(--glass-bg)', border: '1px solid var(--border)',
-            borderRadius: '16px', padding: '22px',
+            borderRadius: '10px', padding: '12px',
             position: 'sticky', top: '0',
             animation: 'fadeInRight 0.22s ease',
           }}>
-            <button onClick={() => setProfileCustomer(null)} style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '8px', padding: '4px', cursor: 'pointer', color: 'var(--text-muted)' }}>
-              <X size={16} />
+            <button onClick={() => setProfileCustomer(null)} style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '6px', padding: '3px', cursor: 'pointer', color: 'var(--text-muted)' }}>
+              <X size={14} />
             </button>
 
             {/* Big Avatar */}
-            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-              <CustomerAvatar customer={c} size={72} style={{ margin: '0 auto 10px', boxShadow: `0 0 0 4px ${seg.bg}` }} />
-              <div style={{ fontWeight: '800', fontSize: '1rem' }}>{c.name}</div>
-              <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '1px' }}>ID: #CRM-{String(c.id).padStart(3, '0')}</div>
-              <div style={{ marginTop: '6px' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: seg.bg, color: seg.color, padding: '3px 10px', borderRadius: '12px', fontWeight: '800', fontSize: '0.78rem' }}>
+            <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+              <CustomerAvatar customer={c} size={48} style={{ margin: '0 auto 6px', boxShadow: `0 0 0 3px ${seg.bg}` }} />
+              <div style={{ fontWeight: '800', fontSize: '0.88rem' }}>{c.name}</div>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '1px' }}>ID: #CRM-{String(c.id).padStart(3, '0')}</div>
+              <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: seg.bg, color: seg.color, padding: '2px 8px', borderRadius: '10px', fontWeight: '800', fontSize: '0.70rem' }}>
                   {seg.icon} {seg.label}
                 </span>
+                {c.is_blocked || c.status === 'Blocked' ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: 'rgba(239,68,68,0.2)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.4)', padding: '2px 8px', borderRadius: '10px', fontWeight: '800', fontSize: '0.68rem' }}>
+                    <Ban size={10} /> Blocked
+                  </span>
+                ) : (c.is_abandoned || c.status === 'Abandoned') ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: 'rgba(249,115,22,0.2)', color: '#f97316', border: '1px solid rgba(249,115,22,0.4)', padding: '2px 8px', borderRadius: '10px', fontWeight: '800', fontSize: '0.68rem' }}>
+                    <UserX size={10} /> Abandoned
+                  </span>
+                ) : (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: 'rgba(34,197,94,0.15)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)', padding: '2px 8px', borderRadius: '10px', fontWeight: '800', fontSize: '0.68rem' }}>
+                    ✓ Active
+                  </span>
+                )}
               </div>
+              {c.block_reason && (c.is_blocked || c.status === 'Blocked') && (
+                <div style={{ marginTop: '6px', padding: '5px 8px', background: 'rgba(239,68,68,0.08)', border: '1px dashed rgba(239,68,68,0.3)', borderRadius: '6px', fontSize: '0.66rem', color: '#fca5a5' }}>
+                  <strong>Blocked Reason:</strong> {c.block_reason}
+                </div>
+              )}
             </div>
 
             {/* Loyalty */}
-            <div style={{ background: 'rgba(245,158,11,0.08)', borderRadius: '10px', padding: '12px', marginBottom: '14px', border: '1px solid rgba(245,158,11,0.2)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontWeight: '700', fontSize: '0.8rem', color: 'var(--accent-gold)' }}>
-                  <Award size={12} style={{ display: 'inline', marginRight: '4px' }} />Loyalty Points
+            <div style={{ background: 'rgba(245,158,11,0.08)', borderRadius: '8px', padding: '8px', marginBottom: '8px', border: '1px solid rgba(245,158,11,0.2)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <span style={{ fontWeight: '700', fontSize: '0.72rem', color: 'var(--accent-gold)' }}>
+                  <Award size={11} style={{ display: 'inline', marginRight: '3px' }} />Loyalty Points
                 </span>
-                <span style={{ fontWeight: '900', fontSize: '1.1rem', color: 'var(--accent-gold)' }}>{c.loyalty_points || 0}</span>
+                <span style={{ fontWeight: '900', fontSize: '0.92rem', color: 'var(--accent-gold)' }}>{c.loyalty_points || 0}</span>
               </div>
               <LoyaltyBar points={c.loyalty_points || 0} />
             </div>
@@ -913,46 +1166,105 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
             {/* Membership & Wallet Credit */}
             <div style={{
               background: c.membership_badge_color ? `${c.membership_badge_color}15` : 'rgba(0, 230, 118, 0.08)',
-              borderRadius: '10px', padding: '12px', marginBottom: '14px',
+              borderRadius: '8px', padding: '8px', marginBottom: '8px',
               border: `1px solid ${c.membership_badge_color || '#00E676'}44`
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <span style={{ fontWeight: '700', fontSize: '0.82rem', color: c.membership_badge_color || '#00E676' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                <span style={{ fontWeight: '700', fontSize: '0.72rem', color: c.membership_badge_color || '#00E676' }}>
                   💳 Subscription Plan
                 </span>
-                <span style={{ fontWeight: '800', fontSize: '0.85rem', color: c.membership_badge_color || '#00E676' }}>
-                  {c.membership_name || 'No Active Plan'}
+                <span style={{ fontWeight: '800', fontSize: '0.74rem', color: c.membership_badge_color || '#00E676' }}>
+                  {c.membership_name || 'None'}
                 </span>
               </div>
               {c.membership_name ? (
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-sub)', marginTop: '4px' }}>
-                  Service Credit Balance: <strong style={{ color: '#00E676' }}>₹{parseFloat(c.remaining_service_credit || 0).toLocaleString()}</strong> / ₹{parseFloat(c.total_service_credit || 0).toLocaleString()}
+                <div style={{ fontSize: '0.70rem', color: 'var(--text-sub)', marginTop: '2px' }}>
+                  Balance: <strong style={{ color: '#00E676' }}>₹{parseFloat(c.remaining_service_credit || 0).toLocaleString()}</strong> / ₹{parseFloat(c.total_service_credit || 0).toLocaleString()}
                 </div>
               ) : (
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  No active membership enrolled.
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                  No active membership.
                 </div>
               )}
             </div>
 
             {/* Details */}
-            <div style={{ marginBottom: '14px' }}>
-              <InfoRow icon={<Phone size={14} />} label="Mobile" value={c.phone} />
-              <InfoRow icon={<Mail size={14} />} label="Email" value={c.email} />
-              <InfoRow icon={<User size={14} />} label="Gender" value={c.gender} />
-              <InfoRow icon={<Calendar size={14} />} label="Date of Birth" value={formatDayMonthLabel(c.dob) ? `${formatDayMonthLabel(c.dob)}${calculateAge(c.dob) !== null ? ` (${calculateAge(c.dob)} yrs)` : ''}` : null} />
-              <InfoRow icon={<Heart size={14} />} label="Anniversary" value={formatDayMonthLabel(c.anniversary) ? `${formatDayMonthLabel(c.anniversary)}${calculateAnniversaryYears(c.anniversary) !== null ? ` (${calculateAnniversaryYears(c.anniversary)} yrs)` : ''}` : null} />
-              <InfoRow icon={<StickyNote size={14} />} label="Notes" value={c.notes} />
-              <InfoRow icon={<Gift size={14} />} label="Member Since" value={c.created_at ? String(c.created_at).split('T')[0] : null} />
+            <div style={{ marginBottom: '8px' }}>
+              <InfoRow icon={<Phone size={12} />} label="Mobile" value={c.phone} />
+              <InfoRow icon={<Mail size={12} />} label="Email" value={c.email} />
+              <InfoRow icon={<User size={12} />} label="Gender" value={c.gender} />
+              <InfoRow icon={<Calendar size={12} />} label="DOB" value={formatDayMonthLabel(c.dob) ? `${formatDayMonthLabel(c.dob)}${calculateAge(c.dob) !== null ? ` (${calculateAge(c.dob)}y)` : ''}` : null} />
+              <InfoRow icon={<Heart size={12} />} label="Anniversary" value={formatDayMonthLabel(c.anniversary) ? `${formatDayMonthLabel(c.anniversary)}${calculateAnniversaryYears(c.anniversary) !== null ? ` (${calculateAnniversaryYears(c.anniversary)}y)` : ''}` : null} />
+              <InfoRow icon={<StickyNote size={12} />} label="Notes" value={c.notes} />
+              <InfoRow icon={<Gift size={12} />} label="Member Since" value={c.created_at ? String(c.created_at).split('T')[0] : null} />
+            </div>
+
+            {/* Quick Status Toggles in Drawer */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '8px' }}>
+              {c.is_blocked || c.status === 'Blocked' ? (
+                <button
+                  type="button"
+                  onClick={() => setActionConfirm({ type: 'UNBLOCK', customer: c, reason: '' })}
+                  style={{
+                    padding: '5px 8px', borderRadius: '6px',
+                    border: '1px solid rgba(34,197,94,0.4)', background: 'rgba(34,197,94,0.12)',
+                    color: '#22c55e', cursor: 'pointer', fontWeight: '700', fontSize: '0.68rem',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px'
+                  }}
+                >
+                  <ShieldCheck size={11} /> Unblock
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setActionConfirm({ type: 'BLOCK', customer: c, reason: '' })}
+                  style={{
+                    padding: '5px 8px', borderRadius: '6px',
+                    border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.12)',
+                    color: '#ef4444', cursor: 'pointer', fontWeight: '700', fontSize: '0.68rem',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px'
+                  }}
+                >
+                  <Ban size={11} /> Block
+                </button>
+              )}
+
+              {c.is_abandoned || c.status === 'Abandoned' ? (
+                <button
+                  type="button"
+                  onClick={() => setActionConfirm({ type: 'UNABANDON', customer: c, reason: '' })}
+                  style={{
+                    padding: '5px 8px', borderRadius: '6px',
+                    border: '1px solid rgba(59,130,246,0.4)', background: 'rgba(59,130,246,0.12)',
+                    color: '#38bdf8', cursor: 'pointer', fontWeight: '700', fontSize: '0.68rem',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px'
+                  }}
+                >
+                  <UserCheck size={11} /> Reactivate
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setActionConfirm({ type: 'ABANDON', customer: c, reason: '' })}
+                  style={{
+                    padding: '5px 8px', borderRadius: '6px',
+                    border: '1px solid rgba(249,115,22,0.4)', background: 'rgba(249,115,22,0.12)',
+                    color: '#f97316', cursor: 'pointer', fontWeight: '700', fontSize: '0.68rem',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px'
+                  }}
+                >
+                  <UserX size={11} /> Abandon
+                </button>
+              )}
             </div>
 
             {/* Actions */}
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button className="btn-primary" style={{ flex: 1, fontSize: '0.8rem', padding: '8px 10px' }} onClick={() => { openEdit(c); setProfileCustomer(null); }}>
-                <Edit3 size={12} /> Edit Profile
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button className="btn-primary" style={{ flex: 1, fontSize: '0.72rem', padding: '4px 8px', height: '28px' }} onClick={() => { openEdit(c); setProfileCustomer(null); }}>
+                <Edit3 size={11} /> Edit Profile
               </button>
-              <button onClick={() => setDeleteTarget(c)} style={{ padding: '8px 10px', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.08)', color: '#ef4444', cursor: 'pointer', fontWeight: '700', fontSize: '0.8rem' }}>
-                <Trash2 size={12} />
+              <button onClick={() => setDeleteTarget(c)} style={{ padding: '4px 8px', height: '28px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.08)', color: '#ef4444', cursor: 'pointer', fontWeight: '700', fontSize: '0.72rem' }}>
+                <Trash2 size={11} />
               </button>
             </div>
           </div>
@@ -1135,6 +1447,135 @@ function CustomersCRMView({ customers, onAddCustomer, onUpdateCustomer, onDelete
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button type="button" onClick={() => setDeleteTarget(null)} className="glass-card" style={{ padding: '8px 18px', cursor: 'pointer', color: 'var(--text-sub)', fontWeight: '600' }}>Cancel</button>
               <button type="button" onClick={handleDeleteConfirm} className="btn-primary" style={{ background: '#ef4444', borderColor: '#ef4444' }}>Yes, Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Block / Unblock & Abandon / Unabandon Action Confirm Modal ─── */}
+      {actionConfirm && (
+        <div className="modal-overlay" style={{ zIndex: 1200 }}>
+          <div className="glass-panel modal-content" style={{ maxWidth: '420px', textAlign: 'center', position: 'relative' }}>
+            <button
+              onClick={() => setActionConfirm(null)}
+              disabled={isActionLoading}
+              style={{
+                position: 'absolute', top: '12px', right: '12px',
+                background: 'none', border: 'none', color: 'var(--text-muted)',
+                cursor: isActionLoading ? 'not-allowed' : 'pointer', fontSize: '1rem'
+              }}
+            >
+              ✕
+            </button>
+
+            {/* Icon */}
+            <div style={{
+              width: '52px', height: '52px', borderRadius: '50%',
+              margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: actionConfirm.type === 'BLOCK' ? 'rgba(239,68,68,0.15)' :
+                          actionConfirm.type === 'UNBLOCK' ? 'rgba(34,197,94,0.15)' :
+                          actionConfirm.type === 'ABANDON' ? 'rgba(249,115,22,0.15)' :
+                          'rgba(59,130,246,0.15)',
+              color: actionConfirm.type === 'BLOCK' ? '#ef4444' :
+                     actionConfirm.type === 'UNBLOCK' ? '#22c55e' :
+                     actionConfirm.type === 'ABANDON' ? '#f97316' :
+                     '#38bdf8'
+            }}>
+              {actionConfirm.type === 'BLOCK' && <Ban size={28} />}
+              {actionConfirm.type === 'UNBLOCK' && <ShieldCheck size={28} />}
+              {actionConfirm.type === 'ABANDON' && <UserX size={28} />}
+              {actionConfirm.type === 'UNABANDON' && <UserCheck size={28} />}
+            </div>
+
+            <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginBottom: '8px' }}>
+              {actionConfirm.type === 'BLOCK' && 'Block Client Account?'}
+              {actionConfirm.type === 'UNBLOCK' && 'Unblock Client Account?'}
+              {actionConfirm.type === 'ABANDON' && 'Mark Client as Abandoned?'}
+              {actionConfirm.type === 'UNABANDON' && 'Reactivate (Unabandon) Client?'}
+            </h3>
+
+            <p style={{ color: 'var(--text-sub)', fontSize: '0.82rem', marginBottom: '16px', lineHeight: '1.5' }}>
+              {actionConfirm.type === 'BLOCK' && (
+                <>
+                  Are you sure you want to block <strong style={{ color: 'var(--text-main)' }}>{actionConfirm.customer.name}</strong> ({actionConfirm.customer.phone})? Blocked clients will be restricted from booking appointments.
+                </>
+              )}
+              {actionConfirm.type === 'UNBLOCK' && (
+                <>
+                  Unblock <strong style={{ color: 'var(--text-main)' }}>{actionConfirm.customer.name}</strong>? Their booking access will be immediately restored.
+                </>
+              )}
+              {actionConfirm.type === 'ABANDON' && (
+                <>
+                  Mark <strong style={{ color: 'var(--text-main)' }}>{actionConfirm.customer.name}</strong> as abandoned (dormant/lapsed)? You can reactivate them at any time.
+                </>
+              )}
+              {actionConfirm.type === 'UNABANDON' && (
+                <>
+                  Reactivate <strong style={{ color: 'var(--text-main)' }}>{actionConfirm.customer.name}</strong> as an active client in the CRM system?
+                </>
+              )}
+            </p>
+
+            {/* Block reason input if blocking */}
+            {actionConfirm.type === 'BLOCK' && (
+              <div style={{ textAlign: 'left', marginBottom: '18px' }}>
+                <label style={{ fontSize: '0.74rem', fontWeight: '700', color: 'var(--text-sub)', display: 'block', marginBottom: '4px' }}>
+                  Reason for Blocking (Optional):
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Repeated no-shows, payment disputes, behavioral issue"
+                  value={actionConfirm.reason || ''}
+                  onChange={(e) => setActionConfirm(prev => ({ ...prev, reason: e.target.value }))}
+                  style={{
+                    width: '100%', padding: '7px 10px', fontSize: '0.78rem',
+                    borderRadius: '6px', border: '1px solid var(--border)',
+                    background: 'var(--input-bg)', color: 'var(--text-main)'
+                  }}
+                />
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                onClick={() => setActionConfirm(null)}
+                disabled={isActionLoading}
+                className="glass-card"
+                style={{ padding: '8px 18px', cursor: isActionLoading ? 'not-allowed' : 'pointer', color: 'var(--text-sub)', fontWeight: '600', fontSize: '0.78rem' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteAction}
+                disabled={isActionLoading}
+                className="btn-primary"
+                style={{
+                  padding: '8px 18px',
+                  fontSize: '0.78rem',
+                  background: actionConfirm.type === 'BLOCK' ? '#ef4444' :
+                              actionConfirm.type === 'UNBLOCK' ? '#22c55e' :
+                              actionConfirm.type === 'ABANDON' ? '#f97316' :
+                              '#2563eb',
+                  borderColor: actionConfirm.type === 'BLOCK' ? '#ef4444' :
+                               actionConfirm.type === 'UNBLOCK' ? '#22c55e' :
+                               actionConfirm.type === 'ABANDON' ? '#f97316' :
+                               '#2563eb',
+                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  cursor: isActionLoading ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {isActionLoading ? (
+                  <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Processing...</>
+                ) : (
+                  actionConfirm.type === 'BLOCK' ? 'Yes, Block Client' :
+                  actionConfirm.type === 'UNBLOCK' ? 'Yes, Unblock Client' :
+                  actionConfirm.type === 'ABANDON' ? 'Yes, Mark Abandoned' :
+                  'Yes, Reactivate Client'
+                )}
+              </button>
             </div>
           </div>
         </div>

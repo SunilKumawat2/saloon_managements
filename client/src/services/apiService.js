@@ -253,6 +253,32 @@ export const Admin_Delete_Customer = async (customerId) => {
   }
 };
 
+// <----------------  Admin Toggle Block Customer (Module 2 CRM) ----------------->
+export const Admin_Toggle_Block_Customer = async (customerId, reason = '') => {
+  try {
+    const token = getToken();
+    const response = await axios.patch(`${API_BASE_URL}/customers/${customerId}/toggle-block`, { reason }, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+// <----------------  Admin Toggle Abandon Customer (Module 2 CRM) ----------------->
+export const Admin_Toggle_Abandon_Customer = async (customerId) => {
+  try {
+    const token = getToken();
+    const response = await axios.patch(`${API_BASE_URL}/customers/${customerId}/toggle-abandon`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
 // <----------------  Admin Upload Customer Profile Photo ----------------->
 export const Admin_Upload_Customer_Avatar = async (customerId, file) => {
   try {
@@ -1309,9 +1335,51 @@ export const Admin_Transfer_Asset = async (id, transferData) => {
   } catch (error) { throw error.response || error; }
 };
 
+// <----------------  Staff Attendance APIs ----------------->
+export const Admin_Get_Staff_Attendance = async (params = {}) => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/staff-attendance/daily`, {
+      params,
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  } catch (error) { throw error.response || error; }
+};
 
+export const Admin_Record_Staff_Attendance = async (data) => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/staff-attendance/record`, data, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  } catch (error) { throw error.response || error; }
+};
 
+export const Admin_Bulk_Record_Staff_Attendance = async (data) => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/staff-attendance/bulk`, data, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  } catch (error) { throw error.response || error; }
+};
 
+export const Admin_Get_Monthly_Attendance = async (params = {}) => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/staff-attendance/monthly`, {
+      params,
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  } catch (error) { throw error.response || error; }
+};
 
-
+export const Admin_Delete_Staff_Attendance = async (id) => {
+  try {
+    const token = getToken();
+    return await axios.delete(`${API_BASE_URL}/staff-attendance/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  } catch (error) { throw error.response || error; }
+};
 

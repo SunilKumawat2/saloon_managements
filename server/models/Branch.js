@@ -51,13 +51,26 @@ export const BranchModel = {
             whereConditions.push(`b.id = $${queryParams.length}`);
           }
         } else if (!isSuper) {
-          const adminOwnerId = currentUser.admin_id;
-          if (adminOwnerId) {
-            queryParams.push(adminOwnerId);
-            whereConditions.push(`(b.admin_id = $${queryParams.length} OR b.created_by_user_id = $${queryParams.length})`);
+          const adminOwnerId = currentUser.admin_id || currentUser.created_by_user_id;
+          let allowedBranches = [];
+          if (Array.isArray(currentUser.allowed_branch_ids) && currentUser.allowed_branch_ids.length > 0) {
+            allowedBranches = currentUser.allowed_branch_ids.map(Number).filter(n => !isNaN(n));
+          } else if (typeof currentUser.allowed_branch_ids === 'string') {
+            try {
+              const parsed = JSON.parse(currentUser.allowed_branch_ids);
+              if (Array.isArray(parsed)) allowedBranches = parsed.map(Number).filter(n => !isNaN(n));
+            } catch (e) {}
+          }
+
+          if (allowedBranches.length > 0) {
+            queryParams.push(allowedBranches);
+            whereConditions.push(`b.id = ANY($${queryParams.length}::int[])`);
           } else if (currentUser.branch_id) {
             queryParams.push(currentUser.branch_id);
             whereConditions.push(`b.id = $${queryParams.length}`);
+          } else if (adminOwnerId) {
+            queryParams.push(adminOwnerId);
+            whereConditions.push(`(b.admin_id = $${queryParams.length} OR b.created_by_user_id = $${queryParams.length})`);
           } else {
             whereConditions.push(`1 = 0`);
           }

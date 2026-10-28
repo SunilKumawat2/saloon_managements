@@ -61,9 +61,38 @@ export const createCustomer = async (req, res) => {
 export const updateCustomer = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, phone, email, gender, dob, anniversary, notes, loyalty_points } = req.body;
-    const updated = await CustomerModel.update(parseInt(id), { name, phone, email, gender, dob, anniversary, notes, loyalty_points });
+    const { name, phone, email, gender, dob, anniversary, notes, loyalty_points, is_blocked, is_abandoned, status, block_reason } = req.body;
+    const updated = await CustomerModel.update(parseInt(id), { name, phone, email, gender, dob, anniversary, notes, loyalty_points, is_blocked, is_abandoned, status, block_reason });
     return res.json({ status: 'success', message: 'Customer updated successfully', data: updated });
+  } catch (error) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+export const toggleBlockCustomer = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body || {};
+    const updated = await CustomerModel.toggleBlock(parseInt(id), reason);
+    return res.json({
+      status: 'success',
+      message: updated.is_blocked ? 'Customer blocked successfully' : 'Customer unblocked successfully',
+      data: updated
+    });
+  } catch (error) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+export const toggleAbandonCustomer = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updated = await CustomerModel.toggleAbandon(parseInt(id));
+    return res.json({
+      status: 'success',
+      message: updated.is_abandoned ? 'Customer marked as abandoned' : 'Customer unabandoned successfully',
+      data: updated
+    });
   } catch (error) {
     return res.status(500).json({ status: 'error', message: error.message });
   }

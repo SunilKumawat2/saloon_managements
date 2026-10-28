@@ -190,7 +190,7 @@ export const CustomerModel = {
     pool.query('UPDATE customers SET avatar_url = $1 WHERE id = $2', [avatarUrl, id]).catch(() => null);
   },
 
-  async update(id, { name, phone, email, gender, dob, anniversary, notes, loyalty_points }) {
+  async update(id, { name, phone, email, gender, dob, anniversary, notes, loyalty_points, is_blocked, is_abandoned, status, block_reason }) {
     const safeDob = parseValidDate(dob);
     const safeAnniversary = parseValidDate(anniversary);
 
@@ -204,8 +204,12 @@ export const CustomerModel = {
             dob         = COALESCE($5::date, dob),
             anniversary = COALESCE($6::date, anniversary),
             notes       = COALESCE($7, notes),
-            loyalty_points = COALESCE($8, loyalty_points)
-        WHERE id = $9
+            loyalty_points = COALESCE($8, loyalty_points),
+            is_blocked  = COALESCE($9, is_blocked),
+            is_abandoned = COALESCE($10, is_abandoned),
+            status      = COALESCE($11, status),
+            block_reason = COALESCE($12, block_reason)
+        WHERE id = $13
         RETURNING *
       `;
       const { rows } = await pool.query(query, [
@@ -214,11 +218,52 @@ export const CustomerModel = {
         safeAnniversary,
         notes,
         loyalty_points !== undefined ? parseInt(loyalty_points) : null,
+        is_blocked !== undefined ? Boolean(is_blocked) : null,
+        is_abandoned !== undefined ? Boolean(is_abandoned) : null,
+        status || null,
+        block_reason || null,
         id
       ]);
       return rows[0];
     } catch (err) {
       console.error('CustomerModel.update error:', err);
+      throw err;
+    }
+  },
+
+  async toggleBlock(id, reason = null) {
+    try {
+      const query = `
+        UPDATE customers
+        SET is_blocked = NOT COALESCE(is_blocked, FALSE),
+            blocked_at = CASE WHEN NOT COALESCE(is_blocked, FALSE) THEN CURRENT_TIMESTAMP ELSE NULL END,
+            block_reason = CASE WHEN NOT COALESCE(is_blocked, FALSE) THEN $2 ELSE NULL END,
+            status = CASE WHEN NOT COALESCE(is_blocked, FALSE) THEN 'Blocked' ELSE (CASE WHEN is_abandoned THEN 'Abandoned' ELSE 'Active' END) END
+        WHERE id = $1
+        RETURNING *
+      `;
+      const { rows } = await pool.query(query, [id, reason]);
+      return rows[0];
+    } catch (err) {
+      console.error('CustomerModel.toggleBlock error:', err);
+      throw err;
+    }
+  },
+
+  async toggleAbandon(id) {
+    try {
+      const query = `
+        UPDATE customers
+        SET is_abandoned = NOT COALESCE(is_abandoned, FALSE),
+            abandoned_at = CASE WHEN NOT COALESCE(is_abandoned, FALSE) THEN CURRENT_TIMESTAMP ELSE NULL END,
+            status = CASE WHEN NOT COALESCE(is_abandoned, FALSE) THEN 'Abandoned' ELSE (CASE WHEN is_blocked THEN 'Blocked' ELSE 'Active' END) END
+        WHERE id = $1
+        RETURNING *
+      `;
+      const { rows } = await pool.query(query, [id]);
+      return rows[0];
+    } catch (err) {
+      console.error('CustomerModel.toggleAbandon error:', err);
       throw err;
     }
   },

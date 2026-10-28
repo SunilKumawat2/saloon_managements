@@ -36,6 +36,10 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE users ADD COLUMN IF NOT EXISTS specialization VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS service_ids JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE stylists ADD COLUMN IF NOT EXISTS service_ids JSONB DEFAULT '[]'::jsonb;
+
 -- Table: services
 CREATE TABLE IF NOT EXISTS services (
     id SERIAL PRIMARY KEY,
@@ -110,6 +114,12 @@ ALTER TABLE customers ADD COLUMN IF NOT EXISTS dob DATE;
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS anniversary DATE;
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS loyalty_points INT DEFAULT 0;
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS is_abandoned BOOLEAN DEFAULT FALSE;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS status VARCHAR(30) DEFAULT 'Active';
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS block_reason TEXT;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS blocked_at TIMESTAMP;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS abandoned_at TIMESTAMP;
 
 -- Table: leads (Module 2 Lead Management)
 CREATE TABLE IF NOT EXISTS leads (
@@ -143,6 +153,8 @@ CREATE TABLE IF NOT EXISTS appointments (
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS branch_id INT REFERENCES branches(id) ON DELETE SET NULL;
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS customer_name VARCHAR(100);
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS customer_phone VARCHAR(20);
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS service_ids JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS service_name VARCHAR(255);
 
 -- Table: bills (Receptionist POS Billing)
 CREATE TABLE IF NOT EXISTS bills (
@@ -289,5 +301,27 @@ SELECT setval(pg_get_serial_sequence('stylists', 'id'), COALESCE((SELECT MAX(id)
 SELECT setval(pg_get_serial_sequence('customers', 'id'), COALESCE((SELECT MAX(id) FROM customers), 1));
 SELECT setval(pg_get_serial_sequence('leads', 'id'), COALESCE((SELECT MAX(id) FROM leads), 1));
 SELECT setval(pg_get_serial_sequence('appointments', 'id'), COALESCE((SELECT MAX(id) FROM appointments), 1));
-SELECT setval(pg_get_serial_sequence('bills', 'id'), COALESCE((SELECT MAX(id) FROM bills), 1));
+-- Table: staff_attendance
+CREATE TABLE IF NOT EXISTS staff_attendance (
+    id SERIAL PRIMARY KEY,
+    staff_id INT NOT NULL,
+    staff_name VARCHAR(100),
+    role VARCHAR(50) DEFAULT 'Staff Stylist',
+    branch_id INT REFERENCES branches(id) ON DELETE SET NULL,
+    admin_id INT,
+    attendance_date DATE NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'Present',
+    check_in_time VARCHAR(10) DEFAULT '09:30',
+    check_out_time VARCHAR(10) DEFAULT '18:30',
+    working_hours DECIMAL(4, 2) DEFAULT 9.0,
+    overtime_hours DECIMAL(4, 2) DEFAULT 0.0,
+    notes TEXT,
+    marked_by INT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_staff_attendance_day UNIQUE (staff_id, attendance_date)
+);
 
+CREATE INDEX IF NOT EXISTS idx_staff_attendance_date ON staff_attendance(attendance_date);
+CREATE INDEX IF NOT EXISTS idx_staff_attendance_staff_id ON staff_attendance(staff_id);
+CREATE INDEX IF NOT EXISTS idx_staff_attendance_branch_id ON staff_attendance(branch_id);

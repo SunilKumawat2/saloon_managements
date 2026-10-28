@@ -318,52 +318,64 @@ function InventoryStockManagementView({
 
   return (
     <div>
-      {/* ─── MODULE 6 TOP METRICS CARDS ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <div className="glass-card" style={{ padding: '18px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-            <Package size={18} style={{ color: 'var(--accent-gold)' }} />
-            <span style={{ fontWeight: '700', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Total Stock SKUs</span>
+      {/* ─── MODULE 6 TOP METRICS STRIP ─── */}
+      <div className="glass-panel" style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+        gap: '8px',
+        padding: '6px 12px',
+        marginBottom: '10px',
+        borderRadius: '10px',
+        alignItems: 'center'
+      }}>
+        {/* Metric 1: Total Stock SKUs */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 4px' }}>
+          <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: 'rgba(245,158,11,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Package size={14} style={{ color: 'var(--accent-gold)' }} />
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: '900', color: 'var(--accent-gold)' }}>
-            {products.length}
-          </div>
-        </div>
-
-        <div className="glass-card" style={{ padding: '18px 20px', border: lowStockProducts.length > 0 ? '1.5px solid rgba(239,68,68,0.4)' : '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-            <AlertTriangle size={18} style={{ color: lowStockProducts.length > 0 ? '#ef4444' : '#34d399' }} />
-            <span style={{ fontWeight: '700', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Low Stock Alerts</span>
-          </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: '900', color: lowStockProducts.length > 0 ? '#ef4444' : '#34d399' }}>
-            {lowStockProducts.length}
-          </div>
-        </div>
-
-        <div className="glass-card" style={{ padding: '18px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-            <Truck size={18} style={{ color: '#818cf8' }} />
-            <span style={{ fontWeight: '700', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Registered Suppliers</span>
-          </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#818cf8' }}>
-            {suppliers.length}
+          <div>
+            <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Total Stock SKUs</div>
+            <div style={{ fontSize: '0.98rem', fontWeight: '900', color: 'var(--accent-gold)', lineHeight: 1.2 }}>{products.length}</div>
           </div>
         </div>
 
-        <div className="glass-card" style={{ padding: '18px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-            <ShoppingCart size={18} style={{ color: '#ec4899' }} />
-            <span style={{ fontWeight: '700', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Purchase Orders</span>
+        {/* Metric 2: Low Stock Alerts */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 4px', borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: lowStockProducts.length > 0 ? 'rgba(239,68,68,0.15)' : 'rgba(52,211,153,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <AlertTriangle size={14} style={{ color: lowStockProducts.length > 0 ? '#ef4444' : '#34d399' }} />
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#ec4899' }}>
-            {purchaseOrders.length}
+          <div>
+            <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Low Stock Alerts</div>
+            <div style={{ fontSize: '0.98rem', fontWeight: '900', color: lowStockProducts.length > 0 ? '#ef4444' : '#34d399', lineHeight: 1.2 }}>{lowStockProducts.length}</div>
+          </div>
+        </div>
+
+        {/* Metric 3: Registered Suppliers */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 4px', borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: 'rgba(129,140,248,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Truck size={14} style={{ color: '#818cf8' }} />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Registered Suppliers</div>
+            <div style={{ fontSize: '0.98rem', fontWeight: '900', color: '#818cf8', lineHeight: 1.2 }}>{suppliers.length}</div>
+          </div>
+        </div>
+
+        {/* Metric 4: Purchase Orders */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 4px', borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: 'rgba(236,72,153,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <ShoppingCart size={14} style={{ color: '#ec4899' }} />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Purchase Orders</div>
+            <div style={{ fontSize: '0.98rem', fontWeight: '900', color: '#ec4899', lineHeight: 1.2 }}>{purchaseOrders.length}</div>
           </div>
         </div>
       </div>
 
       {/* ─── MODULE TABS NAVIGATION BAR ─── */}
-      <div className="controls-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', flexWrap: 'wrap' }}>
           {[
             { id: 'products', label: `Stock Products (${products.length})`, badge: null },
             { id: 'low_stock', label: `Low Stock Alerts`, badge: lowStockProducts.length },
@@ -375,16 +387,22 @@ function InventoryStockManagementView({
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               style={{
-                padding: '8px 16px', borderRadius: '10px',
+                padding: '4px 10px',
+                borderRadius: '6px',
                 border: activeTab === tab.id ? '1px solid var(--accent-gold)' : '1px solid var(--border)',
                 background: activeTab === tab.id ? 'rgba(245,158,11,0.18)' : 'rgba(255,255,255,0.03)',
                 color: activeTab === tab.id ? 'var(--accent-gold)' : 'var(--text-sub)',
-                fontWeight: '800', fontSize: '0.82rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
+                fontWeight: '700',
+                fontSize: '0.74rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px'
               }}
             >
               {tab.label}
               {tab.badge > 0 && (
-                <span style={{ background: '#ef4444', color: '#fff', padding: '1px 6px', borderRadius: '10px', fontSize: '0.72rem' }}>
+                <span style={{ background: '#ef4444', color: '#fff', padding: '1px 5px', borderRadius: '8px', fontSize: '0.64rem', fontWeight: '800' }}>
                   {tab.badge}
                 </span>
               )}
@@ -394,44 +412,60 @@ function InventoryStockManagementView({
 
         {/* Tab Action Primary Button */}
         {activeTab === 'products' && (
-          <button className="btn-primary" onClick={() => { resetProdForm(); setIsAddProductModal(true); }}>
-            <Plus size={16} /> Add Product Item
+          <button className="btn-primary" onClick={() => { resetProdForm(); setIsAddProductModal(true); }} style={{ height: '28px', padding: '2px 10px', fontSize: '0.72rem', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <Plus size={13} /> Add Product Item
           </button>
         )}
         {activeTab === 'suppliers' && (
-          <button className="btn-primary" onClick={() => { setEditingSupplier(null); setSupplierFormData({ name: '', company_name: '', phone: '', email: '', gstin: '', address: '' }); setIsAddSupplierModal(true); }}>
-            <Plus size={16} /> Register Supplier
+          <button className="btn-primary" onClick={() => { setEditingSupplier(null); setSupplierFormData({ name: '', company_name: '', phone: '', email: '', gstin: '', address: '' }); setIsAddSupplierModal(true); }} style={{ height: '28px', padding: '2px 10px', fontSize: '0.72rem', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <Plus size={13} /> Register Supplier
           </button>
         )}
         {activeTab === 'pos' && (
-          <button className="btn-primary" onClick={() => setIsCreatePOModal(true)}>
-            <Plus size={16} /> Create Purchase Order
+          <button className="btn-primary" onClick={() => setIsCreatePOModal(true)} style={{ height: '28px', padding: '2px 10px', fontSize: '0.72rem', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <Plus size={13} /> Create Purchase Order
           </button>
         )}
         {activeTab === 'consumption' && (
-          <button className="btn-primary" onClick={() => { setEditingConsumption(null); setConsumptionFormData({ service_id: '', product_id: '', quantity_consumed: 10, unit: 'ml', notes: '' }); setIsAddConsumptionModal(true); }}>
-            <Plus size={16} /> Map Service Consumption
+          <button className="btn-primary" onClick={() => { setEditingConsumption(null); setConsumptionFormData({ service_id: '', product_id: '', quantity_consumed: 10, unit: 'ml', notes: '' }); setIsAddConsumptionModal(true); }} style={{ height: '28px', padding: '2px 10px', fontSize: '0.72rem', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <Plus size={13} /> Map Service Consumption
           </button>
         )}
       </div>
 
       {/* ─── TAB 1: PRODUCTS & STOCK LIST ─── */}
       {activeTab === 'products' && (
-        <div className="glass-panel" style={{ padding: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '18px' }}>
-            <div style={{ display: 'flex', gap: '10px', flex: 1, minWidth: '260px' }}>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+        <div className="glass-panel" style={{ padding: '10px 14px', borderRadius: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', gap: '6px', flex: 1, minWidth: '220px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ position: 'relative', flex: '1 1 200px', minWidth: '160px' }}>
+                <Search size={12} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input
                   type="text"
+                  className="compact-filter-input"
                   placeholder="Search product name, SKU, category..."
                   value={productSearch}
                   onChange={e => setProductSearch(e.target.value)}
-                  style={{ width: '100%', paddingLeft: '36px', paddingRight: '12px', paddingTop: '8px', paddingBottom: '8px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '10px', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                  style={{
+                    width: '100%',
+                    height: '28px',
+                    paddingLeft: '26px',
+                    paddingRight: '8px',
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '6px',
+                    color: 'var(--text-main)',
+                    fontSize: '0.72rem'
+                  }}
                 />
               </div>
 
-              <select className="select-filter" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
+              <select
+                className="compact-filter-select"
+                value={categoryFilter}
+                onChange={e => setCategoryFilter(e.target.value)}
+                style={{ height: '28px', fontSize: '0.72rem', borderRadius: '6px' }}
+              >
                 <option value="All">All Categories</option>
                 <option value="Hair Care">Hair Care</option>
                 <option value="Facial & Skin">Facial & Skin</option>
@@ -439,7 +473,12 @@ function InventoryStockManagementView({
                 <option value="Beard & Grooming">Beard & Grooming</option>
               </select>
 
-              <select className="select-filter" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+              <select
+                className="compact-filter-select"
+                value={typeFilter}
+                onChange={e => setTypeFilter(e.target.value)}
+                style={{ height: '28px', fontSize: '0.72rem', borderRadius: '6px' }}
+              >
                 <option value="All">All Usage Types</option>
                 <option value="Retail">Retail Sale</option>
                 <option value="Internal Usage">Internal Salon Use</option>
@@ -452,20 +491,20 @@ function InventoryStockManagementView({
             <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--input-bg)', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
-                  <th style={{ padding: '12px 14px' }}>SKU / Product Name</th>
-                  <th style={{ padding: '12px 14px' }}>Category</th>
-                  <th style={{ padding: '12px 14px' }}>Usage Type</th>
-                  <th style={{ padding: '12px 14px' }}>Stock Quantity</th>
-                  <th style={{ padding: '12px 14px' }}>Min Threshold</th>
-                  <th style={{ padding: '12px 14px' }}>Cost / Retail Price</th>
-                  <th style={{ padding: '12px 14px' }}>Supplier</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'right' }}>Actions</th>
+                  <th style={{ padding: '7px 10px', fontSize: '0.70rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>SKU / Product Name</th>
+                  <th style={{ padding: '7px 10px', fontSize: '0.70rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Category</th>
+                  <th style={{ padding: '7px 10px', fontSize: '0.70rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Usage Type</th>
+                  <th style={{ padding: '7px 10px', fontSize: '0.70rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Stock Qty</th>
+                  <th style={{ padding: '7px 10px', fontSize: '0.70rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Min Threshold</th>
+                  <th style={{ padding: '7px 10px', fontSize: '0.70rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Cost / MRP</th>
+                  <th style={{ padding: '7px 10px', fontSize: '0.70rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Supplier</th>
+                  <th style={{ padding: '7px 10px', fontSize: '0.70rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedProducts.length === 0 ? (
                   <tr>
-                    <td colSpan="8" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                    <td colSpan="8" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)', fontSize: '0.76rem' }}>
                       No inventory products found.
                     </td>
                   </tr>
@@ -474,42 +513,42 @@ function InventoryStockManagementView({
                     const isLow = parseInt(p.quantity) <= parseInt(p.min_threshold);
                     return (
                       <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '12px 14px' }}>
-                          <div style={{ fontWeight: '800', color: 'var(--text-main)' }}>{p.name}</div>
-                          <div style={{ fontSize: '0.74rem', color: 'var(--accent-gold)' }}>{p.sku}</div>
+                        <td style={{ padding: '6px 10px' }}>
+                          <div style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '0.78rem' }}>{p.name}</div>
+                          <div style={{ fontSize: '0.66rem', color: 'var(--accent-gold)' }}>{p.sku}</div>
                         </td>
-                        <td style={{ padding: '12px 14px', fontSize: '0.85rem' }}>{p.category}</td>
-                        <td style={{ padding: '12px 14px' }}>
-                          <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: '8px', background: p.type === 'Retail' ? 'rgba(52,211,153,0.15)' : p.type === 'Internal Usage' ? 'rgba(129,140,248,0.15)' : 'rgba(245,158,11,0.15)', color: p.type === 'Retail' ? '#34d399' : p.type === 'Internal Usage' ? '#818cf8' : 'var(--accent-gold)', fontWeight: '800' }}>
+                        <td style={{ padding: '6px 10px', fontSize: '0.74rem' }}>{p.category}</td>
+                        <td style={{ padding: '6px 10px' }}>
+                          <span style={{ fontSize: '0.68rem', padding: '2px 6px', borderRadius: '4px', background: p.type === 'Retail' ? 'rgba(52,211,153,0.15)' : p.type === 'Internal Usage' ? 'rgba(129,140,248,0.15)' : 'rgba(245,158,11,0.15)', color: p.type === 'Retail' ? '#34d399' : p.type === 'Internal Usage' ? '#818cf8' : 'var(--accent-gold)', fontWeight: '700' }}>
                             {p.type}
                           </span>
                         </td>
-                        <td style={{ padding: '12px 14px' }}>
-                          <span style={{ fontWeight: '900', fontSize: '1rem', color: isLow ? '#ef4444' : '#34d399' }}>
+                        <td style={{ padding: '6px 10px' }}>
+                          <span style={{ fontWeight: '800', fontSize: '0.80rem', color: isLow ? '#ef4444' : '#34d399' }}>
                             {p.quantity} {p.unit || 'pcs'}
                           </span>
-                          {isLow && <span style={{ marginLeft: '6px', fontSize: '0.7rem', background: '#ef4444', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: '800' }}>LOW</span>}
+                          {isLow && <span style={{ marginLeft: '4px', fontSize: '0.62rem', background: '#ef4444', color: '#fff', padding: '1px 4px', borderRadius: '3px', fontWeight: '800' }}>LOW</span>}
                         </td>
-                        <td style={{ padding: '12px 14px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                        <td style={{ padding: '6px 10px', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                           {p.min_threshold} {p.unit}
                         </td>
-                        <td style={{ padding: '12px 14px', fontSize: '0.85rem' }}>
+                        <td style={{ padding: '6px 10px', fontSize: '0.74rem' }}>
                           <div>Cost: ₹{p.cost_price}</div>
-                          {parseFloat(p.retail_price) > 0 && <div style={{ color: 'var(--accent-gold)', fontWeight: '700' }}>MRP: ₹{p.retail_price}</div>}
+                          {parseFloat(p.retail_price) > 0 && <div style={{ color: 'var(--accent-gold)', fontWeight: '700', fontSize: '0.72rem' }}>MRP: ₹{p.retail_price}</div>}
                         </td>
-                        <td style={{ padding: '12px 14px', fontSize: '0.82rem', color: 'var(--text-sub)' }}>
+                        <td style={{ padding: '6px 10px', fontSize: '0.74rem', color: 'var(--text-sub)' }}>
                           {p.supplier_name || '—'}
                         </td>
-                        <td style={{ padding: '12px 14px', textAlign: 'right' }}>
-                          <div style={{ display: 'inline-flex', gap: '6px' }}>
-                            <button onClick={() => { setStockAdjustProduct(p); setStockChangeVal(''); }} style={{ padding: '5px 10px', background: 'rgba(245,158,11,0.15)', border: '1px solid var(--accent-gold)', borderRadius: '6px', color: 'var(--accent-gold)', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}>
+                        <td style={{ padding: '6px 10px', textAlign: 'right' }}>
+                          <div style={{ display: 'inline-flex', gap: '4px' }}>
+                            <button onClick={() => { setStockAdjustProduct(p); setStockChangeVal(''); }} style={{ padding: '2px 7px', background: 'rgba(245,158,11,0.15)', border: '1px solid var(--accent-gold)', borderRadius: '4px', color: 'var(--accent-gold)', fontSize: '0.68rem', fontWeight: '800', cursor: 'pointer' }}>
                               ± Stock
                             </button>
-                            <button onClick={() => openEditProduct(p)} style={{ padding: '5px 8px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)', borderRadius: '6px', color: '#fff', cursor: 'pointer' }}>
-                              <Edit3 size={13} />
+                            <button onClick={() => openEditProduct(p)} style={{ padding: '3px 6px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)', borderRadius: '4px', color: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}>
+                              <Edit3 size={11} />
                             </button>
-                            <button onClick={() => onDeleteProduct(p.id)} style={{ padding: '5px 8px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '6px', color: '#ef4444', cursor: 'pointer' }}>
-                              <Trash2 size={13} />
+                            <button onClick={() => onDeleteProduct(p.id)} style={{ padding: '3px 6px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '4px', color: '#ef4444', cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}>
+                              <Trash2 size={11} />
                             </button>
                           </div>
                         </td>
@@ -527,17 +566,18 @@ function InventoryStockManagementView({
             justifyContent: 'space-between',
             alignItems: 'center',
             flexWrap: 'wrap',
-            gap: '16px',
-            marginTop: '20px',
-            paddingTop: '16px',
+            gap: '8px',
+            marginTop: '10px',
+            paddingTop: '8px',
             borderTop: '1px solid var(--border)',
-            fontSize: '0.85rem',
+            fontSize: '0.72rem',
             color: 'var(--text-sub)'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
-                <span>Show products:</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600' }}>
+                <span>Show:</span>
                 <select
+                  className="compact-filter-select"
                   value={pageSize}
                   onChange={(e) => {
                     const val = e.target.value === 'all' ? 'all' : Number(e.target.value);
@@ -545,13 +585,10 @@ function InventoryStockManagementView({
                     setCurrentPage(1);
                   }}
                   style={{
-                    background: 'var(--input-bg)',
-                    color: 'var(--text-main)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '8px',
-                    padding: '4px 10px',
-                    fontWeight: '700',
-                    cursor: 'pointer'
+                    height: '24px',
+                    padding: '1px 6px',
+                    fontSize: '0.70rem',
+                    borderRadius: '5px'
                   }}
                 >
                   <option value={10}>10</option>
@@ -570,36 +607,38 @@ function InventoryStockManagementView({
             </div>
 
             {!isAll && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <button
                   disabled={safePage === 1}
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   style={{
-                    padding: '5px 12px',
+                    padding: '3px 8px',
                     background: 'var(--input-bg)',
                     border: '1px solid var(--border)',
-                    borderRadius: '8px',
+                    borderRadius: '5px',
                     color: safePage === 1 ? 'var(--text-muted)' : 'var(--text-main)',
                     cursor: safePage === 1 ? 'not-allowed' : 'pointer',
-                    fontWeight: '700'
+                    fontWeight: '700',
+                    fontSize: '0.70rem'
                   }}
                 >
-                  Previous
+                  Prev
                 </button>
-                <span style={{ fontWeight: '700', padding: '0 8px' }}>
-                  Page {safePage} of {totalPages}
+                <span style={{ fontWeight: '700', padding: '0 4px', fontSize: '0.70rem' }}>
+                  {safePage} / {totalPages}
                 </span>
                 <button
                   disabled={safePage === totalPages}
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   style={{
-                    padding: '5px 12px',
+                    padding: '3px 8px',
                     background: 'var(--input-bg)',
                     border: '1px solid var(--border)',
-                    borderRadius: '8px',
+                    borderRadius: '5px',
                     color: safePage === totalPages ? 'var(--text-muted)' : 'var(--text-main)',
                     cursor: safePage === totalPages ? 'not-allowed' : 'pointer',
-                    fontWeight: '700'
+                    fontWeight: '700',
+                    fontSize: '0.70rem'
                   }}
                 >
                   Next
@@ -612,41 +651,41 @@ function InventoryStockManagementView({
 
       {/* ─── TAB 2: LOW STOCK ALERTS ─── */}
       {activeTab === 'low_stock' && (
-        <div className="glass-panel" style={{ padding: '24px' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '16px', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <AlertTriangle size={20} /> Low Stock & Inventory Replenishment Thresholds
+        <div className="glass-panel" style={{ padding: '10px 14px', borderRadius: '10px' }}>
+          <h3 style={{ fontSize: '0.86rem', fontWeight: '800', marginBottom: '10px', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <AlertTriangle size={15} /> Low Stock & Inventory Replenishment Thresholds
           </h3>
 
           {totalLowStock === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#34d399', fontSize: '0.95rem' }}>
-              <CheckCircle2 size={36} style={{ marginBottom: '8px' }} /><br />
+            <div style={{ textAlign: 'center', padding: '24px', color: '#34d399', fontSize: '0.82rem' }}>
+              <CheckCircle2 size={24} style={{ marginBottom: '6px' }} /><br />
               All inventory products are above minimum safety thresholds! 🎉
             </div>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '8px' }}>
                 {paginatedLowStock.map(p => (
-                  <div key={p.id} style={{ background: 'rgba(239,68,68,0.06)', border: '1.5px solid rgba(239,68,68,0.3)', borderRadius: '14px', padding: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                  <div key={p.id} style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '10px 12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
                       <div>
-                        <strong style={{ fontSize: '0.95rem', color: '#fff' }}>{p.name}</strong>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--accent-gold)' }}>{p.sku} · {p.category}</div>
+                        <strong style={{ fontSize: '0.80rem', color: '#fff' }}>{p.name}</strong>
+                        <div style={{ fontSize: '0.66rem', color: 'var(--accent-gold)' }}>{p.sku} · {p.category}</div>
                       </div>
-                      <span style={{ background: '#ef4444', color: '#fff', padding: '2px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: '900' }}>
+                      <span style={{ background: '#ef4444', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontSize: '0.62rem', fontWeight: '900' }}>
                         ALERT
                       </span>
                     </div>
 
-                    <div style={{ fontSize: '0.85rem', margin: '10px 0' }}>
-                      <div>Current Quantity: <strong style={{ color: '#ef4444', fontSize: '1.1rem' }}>{p.quantity} {p.unit}</strong></div>
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Min Safety Level: {p.min_threshold} {p.unit}</div>
+                    <div style={{ fontSize: '0.74rem', margin: '6px 0' }}>
+                      <div>Current: <strong style={{ color: '#ef4444', fontSize: '0.88rem' }}>{p.quantity} {p.unit}</strong></div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>Min Safety: {p.min_threshold} {p.unit}</div>
                     </div>
 
                     <button
                       onClick={() => { setSelectedPOProduct(String(p.id)); setPOItemCost(String(p.cost_price)); setPOItemQty(20); setIsCreatePOModal(true); }}
-                      style={{ width: '100%', padding: '8px', background: '#ef4444', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                      style={{ width: '100%', padding: '4px 8px', background: '#ef4444', border: 'none', borderRadius: '5px', color: '#fff', fontWeight: '800', fontSize: '0.72rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
                     >
-                      <ShoppingCart size={14} /> Reorder Stock via PO
+                      <ShoppingCart size={12} /> Reorder Stock via PO
                     </button>
                   </div>
                 ))}
@@ -658,17 +697,18 @@ function InventoryStockManagementView({
                 justify: 'space-between',
                 alignItems: 'center',
                 flexWrap: 'wrap',
-                gap: '16px',
-                marginTop: '20px',
-                paddingTop: '16px',
+                gap: '8px',
+                marginTop: '10px',
+                paddingTop: '8px',
                 borderTop: '1px solid var(--border)',
-                fontSize: '0.85rem',
+                fontSize: '0.72rem',
                 color: 'var(--text-sub)'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
-                    <span>Show alerts:</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600' }}>
+                    <span>Show:</span>
                     <select
+                      className="compact-filter-select"
                       value={lowStockPageSize}
                       onChange={(e) => {
                         const val = e.target.value === 'all' ? 'all' : Number(e.target.value);
@@ -676,13 +716,10 @@ function InventoryStockManagementView({
                         setLowStockCurrentPage(1);
                       }}
                       style={{
-                        background: 'var(--input-bg)',
-                        color: 'var(--text-main)',
-                        border: '1px solid var(--border)',
-                        borderRadius: '8px',
-                        padding: '4px 10px',
-                        fontWeight: '700',
-                        cursor: 'pointer'
+                        height: '24px',
+                        padding: '1px 6px',
+                        fontSize: '0.70rem',
+                        borderRadius: '5px'
                       }}
                     >
                       <option value={10}>10</option>
@@ -701,36 +738,38 @@ function InventoryStockManagementView({
                 </div>
 
                 {!isLowStockAll && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <button
                       disabled={safeLowStockPage === 1}
                       onClick={() => setLowStockCurrentPage(p => Math.max(1, p - 1))}
                       style={{
-                        padding: '5px 12px',
+                        padding: '3px 8px',
                         background: 'var(--input-bg)',
                         border: '1px solid var(--border)',
-                        borderRadius: '8px',
+                        borderRadius: '5px',
                         color: safeLowStockPage === 1 ? 'var(--text-muted)' : 'var(--text-main)',
                         cursor: safeLowStockPage === 1 ? 'not-allowed' : 'pointer',
-                        fontWeight: '700'
+                        fontWeight: '700',
+                        fontSize: '0.70rem'
                       }}
                     >
-                      Previous
+                      Prev
                     </button>
-                    <span style={{ fontWeight: '700', padding: '0 8px' }}>
-                      Page {safeLowStockPage} of {totalLowStockPages}
+                    <span style={{ fontWeight: '700', padding: '0 4px', fontSize: '0.70rem' }}>
+                      {safeLowStockPage} / {totalLowStockPages}
                     </span>
                     <button
                       disabled={safeLowStockPage === totalLowStockPages}
                       onClick={() => setLowStockCurrentPage(p => Math.min(totalLowStockPages, p + 1))}
                       style={{
-                        padding: '5px 12px',
+                        padding: '3px 8px',
                         background: 'var(--input-bg)',
                         border: '1px solid var(--border)',
-                        borderRadius: '8px',
+                        borderRadius: '5px',
                         color: safeLowStockPage === totalLowStockPages ? 'var(--text-muted)' : 'var(--text-main)',
                         cursor: safeLowStockPage === totalLowStockPages ? 'not-allowed' : 'pointer',
-                        fontWeight: '700'
+                        fontWeight: '700',
+                        fontSize: '0.70rem'
                       }}
                     >
                       Next
@@ -745,52 +784,53 @@ function InventoryStockManagementView({
 
       {/* ─── TAB 3: SUPPLIERS DIRECTORY ─── */}
       {activeTab === 'suppliers' && (
-        <div className="glass-panel" style={{ padding: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-            <div style={{ position: 'relative', width: '300px' }}>
-              <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+        <div className="glass-panel" style={{ padding: '10px 14px', borderRadius: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <div style={{ position: 'relative', width: '260px' }}>
+              <Search size={12} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input
                 type="text"
+                className="compact-filter-input"
                 placeholder="Search supplier name, company, phone..."
                 value={supplierSearch}
                 onChange={e => {
                   setSupplierSearch(e.target.value);
                   setSupplierCurrentPage(1);
                 }}
-                style={{ width: '100%', paddingLeft: '36px', paddingRight: '12px', paddingTop: '8px', paddingBottom: '8px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '10px', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                style={{ width: '100%', height: '28px', paddingLeft: '26px', paddingRight: '8px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-main)', fontSize: '0.72rem' }}
               />
             </div>
           </div>
 
           {totalSuppliers === 0 ? (
-            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+            <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)', fontSize: '0.76rem' }}>
               No suppliers found.
             </div>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '8px' }}>
                 {paginatedSuppliers.map(s => (
-                  <div key={s.id} className="glass-card" style={{ padding: '18px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <div key={s.id} className="glass-card" style={{ padding: '10px 12px', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                       <div>
-                        <strong style={{ fontSize: '1rem', color: 'var(--text-main)' }}>{s.name}</strong>
-                        {s.company_name && <div style={{ fontSize: '0.8rem', color: 'var(--accent-gold)', fontWeight: '700' }}>{s.company_name}</div>}
+                        <strong style={{ fontSize: '0.80rem', color: 'var(--text-main)' }}>{s.name}</strong>
+                        {s.company_name && <div style={{ fontSize: '0.70rem', color: 'var(--accent-gold)', fontWeight: '700' }}>{s.company_name}</div>}
                       </div>
-                      <div style={{ display: 'flex', gap: '4px' }}>
-                        <button onClick={() => { setEditingSupplier(s); setSupplierFormData({ name: s.name, company_name: s.company_name || '', phone: s.phone || '', email: s.email || '', gstin: s.gstin || '', address: s.address || '' }); setIsAddSupplierModal(true); }} style={{ background: 'none', border: 'none', color: 'var(--text-sub)', cursor: 'pointer' }}>
-                          <Edit3 size={14} />
+                      <div style={{ display: 'flex', gap: '3px' }}>
+                        <button onClick={() => { setEditingSupplier(s); setSupplierFormData({ name: s.name, company_name: s.company_name || '', phone: s.phone || '', email: s.email || '', gstin: s.gstin || '', address: s.address || '' }); setIsAddSupplierModal(true); }} style={{ background: 'none', border: 'none', color: 'var(--text-sub)', cursor: 'pointer', padding: '2px' }}>
+                          <Edit3 size={12} />
                         </button>
-                        <button onClick={() => onDeleteSupplier(s.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>
-                          <Trash2 size={14} />
+                        <button onClick={() => onDeleteSupplier(s.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}>
+                          <Trash2 size={12} />
                         </button>
                       </div>
                     </div>
 
-                    <div style={{ fontSize: '0.82rem', color: 'var(--text-sub)', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '10px' }}>
-                      <div>📞 Mobile: <strong>{s.phone}</strong></div>
-                      {s.email && <div>✉️ Email: {s.email}</div>}
-                      {s.gstin && <div>🏢 GSTIN: <code style={{ color: 'var(--accent-gold)' }}>{s.gstin}</code></div>}
-                      {s.address && <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>📍 {s.address}</div>}
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-sub)', display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '6px' }}>
+                      <div>📞 {s.phone}</div>
+                      {s.email && <div>✉️ {s.email}</div>}
+                      {s.gstin && <div>🏢 <code style={{ color: 'var(--accent-gold)', fontSize: '0.68rem' }}>{s.gstin}</code></div>}
+                      {s.address && <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>📍 {s.address}</div>}
                     </div>
                   </div>
                 ))}
@@ -799,20 +839,21 @@ function InventoryStockManagementView({
               {/* Suppliers Pagination Footer */}
               <div style={{
                 display: 'flex',
-                justify: 'space-between',
+                justifyContent: 'space-between',
                 alignItems: 'center',
                 flexWrap: 'wrap',
-                gap: '16px',
-                marginTop: '20px',
-                paddingTop: '16px',
+                gap: '8px',
+                marginTop: '10px',
+                paddingTop: '8px',
                 borderTop: '1px solid var(--border)',
-                fontSize: '0.85rem',
+                fontSize: '0.72rem',
                 color: 'var(--text-sub)'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
-                    <span>Show suppliers:</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600' }}>
+                    <span>Show:</span>
                     <select
+                      className="compact-filter-select"
                       value={supplierPageSize}
                       onChange={(e) => {
                         const val = e.target.value === 'all' ? 'all' : Number(e.target.value);
@@ -820,13 +861,10 @@ function InventoryStockManagementView({
                         setSupplierCurrentPage(1);
                       }}
                       style={{
-                        background: 'var(--input-bg)',
-                        color: 'var(--text-main)',
-                        border: '1px solid var(--border)',
-                        borderRadius: '8px',
-                        padding: '4px 10px',
-                        fontWeight: '700',
-                        cursor: 'pointer'
+                        height: '24px',
+                        padding: '1px 6px',
+                        fontSize: '0.70rem',
+                        borderRadius: '5px'
                       }}
                     >
                       <option value={10}>10</option>
@@ -845,36 +883,38 @@ function InventoryStockManagementView({
                 </div>
 
                 {!isSupplierAll && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <button
                       disabled={safeSupplierPage === 1}
                       onClick={() => setSupplierCurrentPage(p => Math.max(1, p - 1))}
                       style={{
-                        padding: '5px 12px',
+                        padding: '3px 8px',
                         background: 'var(--input-bg)',
                         border: '1px solid var(--border)',
-                        borderRadius: '8px',
+                        borderRadius: '5px',
                         color: safeSupplierPage === 1 ? 'var(--text-muted)' : 'var(--text-main)',
                         cursor: safeSupplierPage === 1 ? 'not-allowed' : 'pointer',
-                        fontWeight: '700'
+                        fontWeight: '700',
+                        fontSize: '0.70rem'
                       }}
                     >
-                      Previous
+                      Prev
                     </button>
-                    <span style={{ fontWeight: '700', padding: '0 8px' }}>
-                      Page {safeSupplierPage} of {totalSupplierPages}
+                    <span style={{ fontWeight: '700', padding: '0 4px', fontSize: '0.70rem' }}>
+                      {safeSupplierPage} / {totalSupplierPages}
                     </span>
                     <button
                       disabled={safeSupplierPage === totalSupplierPages}
                       onClick={() => setSupplierCurrentPage(p => Math.min(totalSupplierPages, p + 1))}
                       style={{
-                        padding: '5px 12px',
+                        padding: '3px 8px',
                         background: 'var(--input-bg)',
                         border: '1px solid var(--border)',
-                        borderRadius: '8px',
+                        borderRadius: '5px',
                         color: safeSupplierPage === totalSupplierPages ? 'var(--text-muted)' : 'var(--text-main)',
                         cursor: safeSupplierPage === totalSupplierPages ? 'not-allowed' : 'pointer',
-                        fontWeight: '700'
+                        fontWeight: '700',
+                        fontSize: '0.70rem'
                       }}
                     >
                       Next
@@ -889,85 +929,88 @@ function InventoryStockManagementView({
 
       {/* ─── TAB 4: PURCHASE ORDERS (POs) ─── */}
       {activeTab === 'pos' && (
-        <div className="glass-panel" style={{ padding: '24px' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '16px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ShoppingCart size={18} style={{ color: 'var(--accent-gold)' }} /> Purchase Orders & Stock Intake Logs
+        <div className="glass-panel" style={{ padding: '10px 14px', borderRadius: '10px' }}>
+          <h3 style={{ fontSize: '0.86rem', fontWeight: '800', marginBottom: '10px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <ShoppingCart size={15} style={{ color: 'var(--accent-gold)' }} /> Purchase Orders & Stock Intake Logs
           </h3>
 
-          <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: 'var(--input-bg)', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
-                <th style={{ padding: '12px 14px' }}>PO Number</th>
-                <th style={{ padding: '12px 14px' }}>Supplier</th>
-                <th style={{ padding: '12px 14px' }}>Total Amount</th>
-                <th style={{ padding: '12px 14px' }}>Status</th>
-                <th style={{ padding: '12px 14px' }}>Order Date</th>
-                <th style={{ padding: '12px 14px', textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {totalPOs === 0 ? (
-                <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
-                    No purchase orders recorded yet.
-                  </td>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: 'var(--input-bg)', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
+                  <th style={{ padding: '7px 10px', fontSize: '0.70rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>PO Number</th>
+                  <th style={{ padding: '7px 10px', fontSize: '0.70rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Supplier</th>
+                  <th style={{ padding: '7px 10px', fontSize: '0.70rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Amount</th>
+                  <th style={{ padding: '7px 10px', fontSize: '0.70rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Status</th>
+                  <th style={{ padding: '7px 10px', fontSize: '0.70rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Order Date</th>
+                  <th style={{ padding: '7px 10px', fontSize: '0.70rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'right' }}>Actions</th>
                 </tr>
-              ) : (
-                paginatedPOs.map(po => (
-                  <tr key={po.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '12px 14px', fontWeight: '800', color: 'var(--accent-gold)' }}>
-                      #{po.po_number}
-                    </td>
-                    <td style={{ padding: '12px 14px', fontSize: '0.88rem' }}>
-                      {po.supplier_name || 'Vendor'}
-                    </td>
-                    <td style={{ padding: '12px 14px', fontWeight: '900', color: 'var(--text-main)' }}>
-                      ₹{parseFloat(po.total_amount).toFixed(2)}
-                    </td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <span style={{ padding: '3px 10px', borderRadius: '10px', fontSize: '0.78rem', fontWeight: '800', background: po.status === 'Received' ? 'rgba(52,211,153,0.15)' : 'rgba(245,158,11,0.15)', color: po.status === 'Received' ? '#34d399' : 'var(--accent-gold)' }}>
-                        {po.status}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 14px', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                      {new Date(po.order_date).toLocaleDateString('en-IN')}
-                    </td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right' }}>
-                      {po.status !== 'Received' ? (
-                        <button
-                          onClick={() => onUpdatePOStatus(po.id, 'Received')}
-                          style={{ padding: '5px 10px', background: 'rgba(52,211,153,0.18)', border: '1px solid #34d399', color: '#34d399', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer' }}
-                        >
-                          ✓ Mark Stock Received
-                        </button>
-                      ) : (
-                        <span style={{ fontSize: '0.78rem', color: '#34d399', fontWeight: '700' }}>✓ Stock Injected</span>
-                      )}
+              </thead>
+              <tbody>
+                {totalPOs === 0 ? (
+                  <tr>
+                    <td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)', fontSize: '0.76rem' }}>
+                      No purchase orders recorded yet.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  paginatedPOs.map(po => (
+                    <tr key={po.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '6px 10px', fontWeight: '800', color: 'var(--accent-gold)', fontSize: '0.76rem' }}>
+                        #{po.po_number}
+                      </td>
+                      <td style={{ padding: '6px 10px', fontSize: '0.74rem' }}>
+                        {po.supplier_name || 'Vendor'}
+                      </td>
+                      <td style={{ padding: '6px 10px', fontWeight: '800', color: 'var(--text-main)', fontSize: '0.76rem' }}>
+                        ₹{parseFloat(po.total_amount).toFixed(2)}
+                      </td>
+                      <td style={{ padding: '6px 10px' }}>
+                        <span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: '700', background: po.status === 'Received' ? 'rgba(52,211,153,0.15)' : 'rgba(245,158,11,0.15)', color: po.status === 'Received' ? '#34d399' : 'var(--accent-gold)' }}>
+                          {po.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: '6px 10px', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        {new Date(po.order_date).toLocaleDateString('en-IN')}
+                      </td>
+                      <td style={{ padding: '6px 10px', textAlign: 'right' }}>
+                        {po.status !== 'Received' ? (
+                          <button
+                            onClick={() => onUpdatePOStatus(po.id, 'Received')}
+                            style={{ padding: '2px 7px', background: 'rgba(52,211,153,0.18)', border: '1px solid #34d399', color: '#34d399', borderRadius: '4px', fontSize: '0.68rem', fontWeight: '800', cursor: 'pointer' }}
+                          >
+                            ✓ Mark Received
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: '0.70rem', color: '#34d399', fontWeight: '700' }}>✓ Injected</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
           {/* Purchase Orders Pagination Footer */}
           {totalPOs > 0 && (
             <div style={{
               display: 'flex',
-              justify: 'space-between',
+              justifyContent: 'space-between',
               alignItems: 'center',
               flexWrap: 'wrap',
-              gap: '16px',
-              marginTop: '20px',
-              paddingTop: '16px',
+              gap: '8px',
+              marginTop: '10px',
+              paddingTop: '8px',
               borderTop: '1px solid var(--border)',
-              fontSize: '0.85rem',
+              fontSize: '0.72rem',
               color: 'var(--text-sub)'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
-                  <span>Show orders:</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600' }}>
+                  <span>Show:</span>
                   <select
+                    className="compact-filter-select"
                     value={poPageSize}
                     onChange={(e) => {
                       const val = e.target.value === 'all' ? 'all' : Number(e.target.value);
@@ -975,13 +1018,10 @@ function InventoryStockManagementView({
                       setPOCurrentPage(1);
                     }}
                     style={{
-                      background: 'var(--input-bg)',
-                      color: 'var(--text-main)',
-                      border: '1px solid var(--border)',
-                      borderRadius: '8px',
-                      padding: '4px 10px',
-                      fontWeight: '700',
-                      cursor: 'pointer'
+                      height: '24px',
+                      padding: '1px 6px',
+                      fontSize: '0.70rem',
+                      borderRadius: '5px'
                     }}
                   >
                     <option value={10}>10</option>
@@ -1000,36 +1040,38 @@ function InventoryStockManagementView({
               </div>
 
               {!isPOAll && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <button
                     disabled={safePOPage === 1}
                     onClick={() => setPOCurrentPage(p => Math.max(1, p - 1))}
                     style={{
-                      padding: '5px 12px',
+                      padding: '3px 8px',
                       background: 'var(--input-bg)',
                       border: '1px solid var(--border)',
-                      borderRadius: '8px',
+                      borderRadius: '5px',
                       color: safePOPage === 1 ? 'var(--text-muted)' : 'var(--text-main)',
                       cursor: safePOPage === 1 ? 'not-allowed' : 'pointer',
-                      fontWeight: '700'
+                      fontWeight: '700',
+                      fontSize: '0.70rem'
                     }}
                   >
-                    Previous
+                    Prev
                   </button>
-                  <span style={{ fontWeight: '700', padding: '0 8px' }}>
-                    Page {safePOPage} of {totalPOPages}
+                  <span style={{ fontWeight: '700', padding: '0 4px', fontSize: '0.70rem' }}>
+                    {safePOPage} / {totalPOPages}
                   </span>
                   <button
                     disabled={safePOPage === totalPOPages}
                     onClick={() => setPOCurrentPage(p => Math.min(totalPOPages, p + 1))}
                     style={{
-                      padding: '5px 12px',
+                      padding: '3px 8px',
                       background: 'var(--input-bg)',
                       border: '1px solid var(--border)',
-                      borderRadius: '8px',
+                      borderRadius: '5px',
                       color: safePOPage === totalPOPages ? 'var(--text-muted)' : 'var(--text-main)',
                       cursor: safePOPage === totalPOPages ? 'not-allowed' : 'pointer',
-                      fontWeight: '700'
+                      fontWeight: '700',
+                      fontSize: '0.70rem'
                     }}
                   >
                     Next
@@ -1043,49 +1085,49 @@ function InventoryStockManagementView({
 
       {/* ─── TAB 5: SERVICE PRODUCT USAGE MAPPING ─── */}
       {activeTab === 'consumption' && (
-        <div className="glass-panel" style={{ padding: '24px' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '16px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Activity size={18} style={{ color: 'var(--accent-gold)' }} /> Service-wise Internal Product Consumption Tracking
+        <div className="glass-panel" style={{ padding: '10px 14px', borderRadius: '10px' }}>
+          <h3 style={{ fontSize: '0.86rem', fontWeight: '800', marginBottom: '10px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Activity size={15} style={{ color: 'var(--accent-gold)' }} /> Service-wise Internal Product Consumption Tracking
           </h3>
 
           {totalConsumptions === 0 ? (
-            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+            <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)', fontSize: '0.76rem' }}>
               No service consumption mappings found.
             </div>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '8px' }}>
                 {paginatedConsumptions.map(c => (
-                  <div key={c.id} className="glass-card" style={{ padding: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--accent-gold)', fontWeight: '800', textTransform: 'uppercase' }}>
+                  <div key={c.id} className="glass-card" style={{ padding: '10px 12px', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--accent-gold)', fontWeight: '800', textTransform: 'uppercase' }}>
                         💈 {c.service_category || 'Service'}
                       </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <button
                           onClick={() => openEditConsumption(c)}
-                          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#60a5fa', borderRadius: '6px', padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#60a5fa', borderRadius: '4px', padding: '2px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                           title="Edit Mapping"
                         >
-                          <Edit3 size={13} />
+                          <Edit3 size={11} />
                         </button>
                         <button
                           onClick={() => onDeleteConsumption(c.id)}
-                          style={{ background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#ef4444', borderRadius: '6px', padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                          style={{ background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#ef4444', borderRadius: '4px', padding: '2px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                           title="Delete Mapping"
                         >
-                          <Trash2 size={13} />
+                          <Trash2 size={11} />
                         </button>
                       </div>
                     </div>
 
-                    <div style={{ fontWeight: '800', fontSize: '0.95rem', color: '#fff', marginBottom: '6px' }}>
+                    <div style={{ fontWeight: '700', fontSize: '0.80rem', color: '#fff', marginBottom: '4px' }}>
                       {c.service_name}
                     </div>
 
-                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.82rem' }}>
+                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: '6px 8px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '0.72rem' }}>
                       <div>Consumes: <strong style={{ color: '#34d399' }}>{c.product_name}</strong></div>
-                      <div>Qty Per Service: <strong style={{ color: 'var(--accent-gold)' }}>{c.quantity_consumed} {c.unit}</strong></div>
+                      <div>Qty: <strong style={{ color: 'var(--accent-gold)' }}>{c.quantity_consumed} {c.unit}</strong></div>
                     </div>
                   </div>
                 ))}
@@ -1094,20 +1136,21 @@ function InventoryStockManagementView({
               {/* Service Product Usage Pagination Footer */}
               <div style={{
                 display: 'flex',
-                justify: 'space-between',
+                justifyContent: 'space-between',
                 alignItems: 'center',
                 flexWrap: 'wrap',
-                gap: '16px',
-                marginTop: '20px',
-                paddingTop: '16px',
+                gap: '8px',
+                marginTop: '10px',
+                paddingTop: '8px',
                 borderTop: '1px solid var(--border)',
-                fontSize: '0.85rem',
+                fontSize: '0.72rem',
                 color: 'var(--text-sub)'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
-                    <span>Show mappings:</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600' }}>
+                    <span>Show:</span>
                     <select
+                      className="compact-filter-select"
                       value={consumptionPageSize}
                       onChange={(e) => {
                         const val = e.target.value === 'all' ? 'all' : Number(e.target.value);
@@ -1115,13 +1158,10 @@ function InventoryStockManagementView({
                         setConsumptionCurrentPage(1);
                       }}
                       style={{
-                        background: 'var(--input-bg)',
-                        color: 'var(--text-main)',
-                        border: '1px solid var(--border)',
-                        borderRadius: '8px',
-                        padding: '4px 10px',
-                        fontWeight: '700',
-                        cursor: 'pointer'
+                        height: '24px',
+                        padding: '1px 6px',
+                        fontSize: '0.70rem',
+                        borderRadius: '5px'
                       }}
                     >
                       <option value={10}>10</option>
@@ -1140,36 +1180,38 @@ function InventoryStockManagementView({
                 </div>
 
                 {!isConsumptionAll && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <button
                       disabled={safeConsumptionPage === 1}
                       onClick={() => setConsumptionCurrentPage(p => Math.max(1, p - 1))}
                       style={{
-                        padding: '5px 12px',
+                        padding: '3px 8px',
                         background: 'var(--input-bg)',
                         border: '1px solid var(--border)',
-                        borderRadius: '8px',
+                        borderRadius: '5px',
                         color: safeConsumptionPage === 1 ? 'var(--text-muted)' : 'var(--text-main)',
                         cursor: safeConsumptionPage === 1 ? 'not-allowed' : 'pointer',
-                        fontWeight: '700'
+                        fontWeight: '700',
+                        fontSize: '0.70rem'
                       }}
                     >
-                      Previous
+                      Prev
                     </button>
-                    <span style={{ fontWeight: '700', padding: '0 8px' }}>
-                      Page {safeConsumptionPage} of {totalConsumptionPages}
+                    <span style={{ fontWeight: '700', padding: '0 4px', fontSize: '0.70rem' }}>
+                      {safeConsumptionPage} / {totalConsumptionPages}
                     </span>
                     <button
                       disabled={safeConsumptionPage === totalConsumptionPages}
                       onClick={() => setConsumptionCurrentPage(p => Math.min(totalConsumptionPages, p + 1))}
                       style={{
-                        padding: '5px 12px',
+                        padding: '3px 8px',
                         background: 'var(--input-bg)',
                         border: '1px solid var(--border)',
-                        borderRadius: '8px',
+                        borderRadius: '5px',
                         color: safeConsumptionPage === totalConsumptionPages ? 'var(--text-muted)' : 'var(--text-main)',
                         cursor: safeConsumptionPage === totalConsumptionPages ? 'not-allowed' : 'pointer',
-                        fontWeight: '700'
+                        fontWeight: '700',
+                        fontSize: '0.70rem'
                       }}
                     >
                       Next

@@ -50,7 +50,7 @@ import {
   getGatewaySettings, getAdminGatewayList, updateGatewaySettings, createOrder, verifyPayment
 } from '../controllers/paymentController.js';
 
-import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '../controllers/customerController.js';
+import { getCustomers, createCustomer, updateCustomer, deleteCustomer, toggleBlockCustomer, toggleAbandonCustomer } from '../controllers/customerController.js';
 import { getLeads, createLead, updateLeadStatus, updateLead, deleteLead } from '../controllers/leadController.js';
 import { getAppointments, createAppointment, updateAppointmentStatus, updateAppointment, deleteAppointment } from '../controllers/appointmentController.js';
 import { getBills, getBillById, createBill, deleteBill, clearBills } from '../controllers/billingController.js';
@@ -65,6 +65,13 @@ import uploadAvatar, { handleUploadAvatar } from '../middleware/uploadMiddleware
 import { getHealth, checkDatabaseStatus } from '../controllers/healthController.js';
 import { getAssets, getAssetById, createAsset, updateAsset, deleteAsset, transferAsset } from '../controllers/assetController.js';
 import { getStaffTracking, getCustomerTracking } from '../controllers/trackingController.js';
+import {
+  getDailyAttendance,
+  recordAttendance,
+  recordBulkAttendance,
+  getMonthlyReport,
+  deleteAttendanceRecord
+} from '../controllers/staffAttendanceController.js';
 
 const router = express.Router();
 
@@ -131,6 +138,8 @@ router.post('/time-slots/generate-range', authenticateToken, requirePermission('
 // -------------------- Customer CRM Routes (Module 2) --------------------
 router.get('/customers', authenticateToken, getCustomers);
 router.post('/customers/create', authenticateToken, createCustomer);
+router.patch('/customers/:id/toggle-block', authenticateToken, toggleBlockCustomer);
+router.patch('/customers/:id/toggle-abandon', authenticateToken, toggleAbandonCustomer);
 router.put('/customers/:id', authenticateToken, updateCustomer);
 router.delete('/customers/:id', authenticateToken, deleteCustomer);
 
@@ -254,6 +263,11 @@ router.get('/assets/:id', authenticateToken, getAssetById);
 router.post('/assets/create', authenticateToken, createAsset);
 router.put('/assets/:id', authenticateToken, updateAsset);
 router.delete('/assets/:id', authenticateToken, deleteAsset);
-router.patch('/assets/:id/transfer', authenticateToken, transferAsset);
+// -------------------- Staff Attendance Routes --------------------
+router.get('/staff-attendance/daily', authenticateToken, getDailyAttendance);
+router.post('/staff-attendance/record', authenticateToken, recordAttendance);
+router.post('/staff-attendance/bulk', authenticateToken, recordBulkAttendance);
+router.get('/staff-attendance/monthly', authenticateToken, getMonthlyReport);
+router.delete('/staff-attendance/:id', authenticateToken, deleteAttendanceRecord);
 
 export default router;

@@ -4,7 +4,7 @@ import {
   Clock, Users, ArrowRight, Scissors, AlertCircle,
   Edit3, Trash2, X, CreditCard, ChevronRight, Sparkles, Filter,
   Loader2, ChevronLeft, ChevronsLeft, ChevronsRight, Crown, Calendar,
-  Building, Globe, Eye
+  Building, Globe, Eye, Lock
 } from 'lucide-react';
 import { Admin_Get_Appointments } from '../services/apiService';
 
@@ -64,42 +64,75 @@ function ReceptionistView({
 
   // ─── Customer Directory Scope States (Only on Reception page) ───
   const [customerScope, setCustomerScope] = useState('my_branch'); // 'my_branch' | 'all_salon' | 'branch_<id>'
+  const [queueBranchFilter, setQueueBranchFilter] = useState('all');
   const [showCustomerDirectoryModal, setShowCustomerDirectoryModal] = useState(false);
   const [directorySearch, setDirectorySearch] = useState('');
   const [directoryPage, setDirectoryPage] = useState(1);
   const DIRECTORY_PAGE_SIZE = 8;
 
-  const currentBranchId = String(selectedBranchId !== 'all' ? selectedBranchId : (currentUser?.branch_id || ''));
-  const myBranch = (branches || []).find(b => String(b.id) === currentBranchId) || { name: `Branch #${currentBranchId || 1}` };
+  // Permitted branch IDs for this user
+  const permittedBranchIds = React.useMemo(() => {
+    return new Set((branches || []).map(b => String(b.id)));
+  }, [branches]);
 
-  // Salon-wide customers under this salon admin
+  const isMultiBranchAllowed = (branches || []).length > 1;
+
+  const hasAllBranchesPermission = React.useMemo(() => {
+    if (!currentUser) return false;
+    let allowed = currentUser.allowed_branch_ids;
+    if (typeof allowed === 'string') {
+      try { allowed = JSON.parse(allowed); } catch (e) { allowed = []; }
+    }
+    if (currentUser.manager_access_mode === 'all') return true;
+    if (Array.isArray(allowed) && allowed.length > 0 && branches.length > 0 && allowed.length >= branches.length) return true;
+    return false;
+  }, [currentUser, branches]);
+
+  const currentBranchId = String(
+    selectedBranchId !== 'all'
+      ? selectedBranchId
+      : (!isMultiBranchAllowed ? (currentUser?.branch_id || (branches[0]?.id ? String(branches[0].id) : '')) : '')
+  );
+  const myBranch = (branches || []).find(b => String(b.id) === currentBranchId) || (branches && branches[0]) || { name: `Branch #${currentBranchId || 1}` };
+
+  // Salon-wide customers under this salon admin, strictly filtered to permitted branches
   const salonCustomers = React.useMemo(() => {
-    if (Array.isArray(allAdminCustomers) && allAdminCustomers.length > 0) return allAdminCustomers;
-    return customers || [];
-  }, [allAdminCustomers, customers]);
+    const list = (Array.isArray(allAdminCustomers) && allAdminCustomers.length > 0)
+      ? allAdminCustomers
+      : (customers || []);
+    if (permittedBranchIds.size === 0) return list;
+    return list.filter(c => !c.branch_id || permittedBranchIds.has(String(c.branch_id)));
+  }, [allAdminCustomers, customers, permittedBranchIds]);
 
   // Current branch customers
   const branchCustomers = React.useMemo(() => {
-    if (Array.isArray(customers) && customers.length > 0) return customers;
-    return salonCustomers.filter(c => String(c.branch_id) === currentBranchId);
-  }, [customers, salonCustomers, currentBranchId]);
+    if (currentBranchId && currentBranchId !== 'all') {
+      return salonCustomers.filter(c => String(c.branch_id) === currentBranchId);
+    }
+    if (Array.isArray(customers) && customers.length > 0) {
+      return customers.filter(c => !c.branch_id || permittedBranchIds.has(String(c.branch_id)));
+    }
+    return salonCustomers;
+  }, [customers, salonCustomers, currentBranchId, permittedBranchIds]);
 
-  // Other branches of this salon admin
+  // Other branches strictly within permitted branches
   const otherBranches = React.useMemo(() => {
     return (branches || []).filter(b => String(b.id) !== currentBranchId);
   }, [branches, currentBranchId]);
 
   // Active pool of customers based on customerScope
   const activeCustomerPool = React.useMemo(() => {
-    if (customerScope === 'all_salon') {
+    if (customerScope === 'all_salon' && isMultiBranchAllowed) {
       return salonCustomers;
     }
     if (customerScope.startsWith('branch_')) {
       const targetId = customerScope.replace('branch_', '');
-      return salonCustomers.filter(c => String(c.branch_id) === String(targetId));
+      if (permittedBranchIds.has(String(targetId))) {
+        return salonCustomers.filter(c => String(c.branch_id) === String(targetId));
+      }
     }
     return branchCustomers;
-  }, [customerScope, salonCustomers, branchCustomers]);
+  }, [customerScope, isMultiBranchAllowed, salonCustomers, branchCustomers, permittedBranchIds]);
 
   // Booking Type, Date & Time Slot States
   const [bookingType, setBookingType] = useState('Walk-in'); // 'Walk-in', 'Scheduled', 'Phone'
@@ -237,12 +270,21 @@ function ReceptionistView({
   const fetchBackendQueue = React.useCallback(async () => {
     setLoadingBackend(true);
     try {
+      let bFilter = undefined;
+      if (queueBranchFilter && queueBranchFilter !== 'all') {
+        bFilter = queueBranchFilter;
+      } else if (selectedBranchId !== 'all') {
+        bFilter = selectedBranchId;
+      } else if (!isMultiBranchAllowed) {
+        bFilter = currentBranchId || currentUser?.branch_id || (branches[0]?.id ? String(branches[0].id) : undefined);
+      }
+
       const queryParams = {
         page: currentPage,
         limit: pageSize === 'all' ? 'all' : pageSize,
         search: queueSearch,
         status: queueFilter,
-        branch_id: selectedBranchId !== 'all' ? selectedBranchId : (currentUser?.branch_id || undefined)
+        branch_id: bFilter
       };
       const res = await Admin_Get_Appointments(queryParams).catch(() => null);
       if (res?.data) {
@@ -255,7 +297,7 @@ function ReceptionistView({
     } finally {
       setLoadingBackend(false);
     }
-  }, [currentPage, pageSize, queueSearch, queueFilter, selectedBranchId, currentUser]);
+  }, [currentPage, pageSize, queueSearch, queueFilter, queueBranchFilter, selectedBranchId, isMultiBranchAllowed, currentBranchId, currentUser, branches]);
 
   // Trigger Backend API Call on Page, PageSize, Search, or Filter change
   useEffect(() => {
@@ -313,12 +355,15 @@ function ReceptionistView({
         return;
       }
 
-      let newCust = { name: quickName, phone: quickPhone, email: '', notes: 'Walk-in Guest', branch_id: currentBranchId || selectedBranchId };
+      const custBranch = (currentBranchId && currentBranchId !== 'all')
+        ? currentBranchId
+        : (currentUser?.branch_id || (branches[0]?.id ? String(branches[0].id) : 1));
+      let newCust = { name: quickName, phone: quickPhone, email: '', notes: 'Walk-in Guest', branch_id: custBranch };
       let created = null;
       if (onAddCustomer) {
         created = await onAddCustomer(newCust);
       }
-      const createdObj = { ...(created || {}), id: created?.id || Date.now(), name: quickName, phone: quickPhone, isWalkIn: true };
+      const createdObj = { ...(created || {}), id: created?.id || Date.now(), name: quickName, phone: quickPhone, isWalkIn: true, branch_id: custBranch };
       setSelectedCustomer(createdObj);
       setSelectedServices([]);
       setQuickAddMode(false);
@@ -368,7 +413,14 @@ function ReceptionistView({
       const combinedTotal = selectedServiceObjs.reduce((sum, s) => sum + parseFloat(s.price || 0), 0);
       const styl = stylists.find(s => String(s.id) === String(selectedStylist));
 
+      const effectiveBranchId = queueBranchFilter !== 'all'
+        ? parseInt(queueBranchFilter)
+        : (currentBranchId && currentBranchId !== 'all'
+            ? parseInt(currentBranchId)
+            : (currentUser?.branch_id || branches[0]?.id || 1));
+
       const newCheckIn = {
+        branch_id: effectiveBranchId,
         customer_id: selectedCustomer.id || Date.now(),
         customer_name: selectedCustomer.name || 'Walk-in Guest',
         customer_phone: selectedCustomer.phone || '',
@@ -446,30 +498,48 @@ function ReceptionistView({
 
   // ─── Source of Truth Determination ───
   const rawList = React.useMemo(() => {
-    if (!serverData?.data || !Array.isArray(serverData.data)) {
-      return appointments;
+    let baseList = [];
+    if (serverData?.data && Array.isArray(serverData.data)) {
+      const map = new Map();
+      (appointments || []).forEach(item => {
+        if (item && item.id) map.set(String(item.id), item);
+      });
+      serverData.data.forEach(item => {
+        if (item && item.id) {
+          const local = map.get(String(item.id));
+          map.set(String(item.id), {
+            ...item,
+            customer_name: item.customer_name || local?.customer_name || 'Walk-in Guest',
+            customer_phone: item.customer_phone || local?.customer_phone || ''
+          });
+        }
+      });
+      baseList = Array.from(map.values());
+    } else {
+      baseList = [...(appointments || [])];
     }
-    const map = new Map();
-    (appointments || []).forEach(item => {
-      if (item && item.id) map.set(String(item.id), item);
-    });
-    serverData.data.forEach(item => {
-      if (item && item.id) {
-        const local = map.get(String(item.id));
-        map.set(String(item.id), {
-          ...item,
-          customer_name: item.customer_name || local?.customer_name || 'Walk-in Guest',
-          customer_phone: item.customer_phone || local?.customer_phone || ''
-        });
+
+    // STRICT ACCESS CONTROL:
+    // Receptionist MUST ONLY see appointments of branches they are permitted to access!
+    if (permittedBranchIds.size > 0) {
+      baseList = baseList.filter(a => !a.branch_id || permittedBranchIds.has(String(a.branch_id)));
+    }
+
+    // Branch Filter:
+    if (queueBranchFilter && queueBranchFilter !== 'all') {
+      baseList = baseList.filter(a => String(a.branch_id) === String(queueBranchFilter));
+    } else if (!isMultiBranchAllowed) {
+      const singleBranchId = currentBranchId || (currentUser?.branch_id ? String(currentUser.branch_id) : '') || (branches[0]?.id ? String(branches[0].id) : '');
+      if (singleBranchId) {
+        baseList = baseList.filter(a => !a.branch_id || String(a.branch_id) === String(singleBranchId));
       }
-    });
-    let combined = Array.from(map.values());
-    if (currentBranchId && currentBranchId !== 'all') {
-      combined = combined.filter(a => !a.branch_id || String(a.branch_id) === String(currentBranchId));
+    } else if (selectedBranchId !== 'all') {
+      baseList = baseList.filter(a => !a.branch_id || String(a.branch_id) === String(selectedBranchId));
     }
-    combined.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
-    return combined;
-  }, [serverData, appointments, currentBranchId]);
+
+    baseList.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+    return baseList;
+  }, [serverData, appointments, permittedBranchIds, queueBranchFilter, isMultiBranchAllowed, currentBranchId, currentUser, branches, selectedBranchId]);
 
   // Robust Date Normalizer: Converts ISO string, YYYY-MM-DD, or Date object to local "YYYY-MM-DD"
   const normalizeDateStr = (dateStr) => {
@@ -570,11 +640,10 @@ function ReceptionistView({
   const startIndex = isAll || totalItems === 0 ? 0 : (safePage - 1) * (isServerPaginated ? Number(pageSize) : effectivePageSize);
   const endIndex = isAll ? totalItems : Math.min(startIndex + paginatedQueue.length, totalItems);
 
-  const activeQueueCount = appointments.filter(a => a.status !== 'Completed' && a.status !== 'Cancelled').length;
+  const activeQueueCount = rawList.filter(a => a.status !== 'Completed' && a.status !== 'Cancelled').length;
 
   return (
     <div>
-      {/* ─── Header Stats Cards ─── */}
       {/* ─── Header Stats Cards ─── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '28px' }}>
         <div className="glass-card" style={{ padding: '18px 20px' }}>
@@ -582,20 +651,22 @@ function ReceptionistView({
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Users size={18} style={{ color: 'var(--accent-gold)' }} />
               <span style={{ fontWeight: '700', fontSize: '0.85rem', color: 'var(--text-sub)' }}>
-                {customerScope === 'all_salon' ? 'Total Salon Customers' : 'Branch Customers'}
+                {customerScope === 'all_salon'
+                  ? (hasAllBranchesPermission ? 'Total Salon Customers' : 'Permitted Branches Clients')
+                  : 'Branch Customers'}
               </span>
             </div>
-            {customerScope === 'all_salon' && (
+            {customerScope === 'all_salon' && isMultiBranchAllowed && (
               <span style={{ fontSize: '0.68rem', background: 'rgba(245, 158, 11, 0.15)', color: 'var(--accent-gold)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '2px 6px', borderRadius: '4px', fontWeight: '800' }}>
-                All Branches
+                {hasAllBranchesPermission ? 'All Branches' : 'Permitted Branches'}
               </span>
             )}
           </div>
           <div style={{ fontSize: '2rem', fontWeight: '900' }}>{activeCustomerPool.length}</div>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-            {customerScope === 'all_salon'
-              ? `${branchCustomers.length} this branch · ${Math.max(0, activeCustomerPool.length - branchCustomers.length)} other branches`
-              : `${branchCustomers.length} in this branch (${salonCustomers.length} across salon)`}
+            {customerScope === 'all_salon' && isMultiBranchAllowed
+              ? `${branchCustomers.length} this branch · ${Math.max(0, activeCustomerPool.length - branchCustomers.length)} other permitted`
+              : `${branchCustomers.length} in this branch (${salonCustomers.length} permitted)`}
           </div>
         </div>
 
@@ -689,37 +760,57 @@ function ReceptionistView({
                 </button>
               </div>
 
-              <select
-                value={customerScope}
-                onChange={(e) => {
-                  setCustomerScope(e.target.value);
-                  setSearchTerm('');
-                }}
-                style={{
-                  background: 'var(--bg-card)',
-                  border: '1px solid var(--border-gold)',
-                  color: 'var(--accent-gold)',
-                  borderRadius: '8px',
-                  padding: '7px 12px',
-                  fontSize: '0.84rem',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  outline: 'none',
-                  width: '100%'
-                }}
-              >
-                <option value="my_branch" style={{ background: '#1c1c1c', color: '#fff' }}>
-                  🏢 My Branch Customers ({branchCustomers.length})
-                </option>
-                <option value="all_salon" style={{ background: '#1c1c1c', color: '#fff' }}>
-                  🌐 All Salon Customers — Cross-Branch ({salonCustomers.length})
-                </option>
-                {otherBranches.map(b => (
-                  <option key={b.id} value={`branch_${b.id}`} style={{ background: '#1c1c1c', color: '#fff' }}>
-                    🏢 {b.name} ({salonCustomers.filter(c => String(c.branch_id) === String(b.id)).length} customers)
+              {isMultiBranchAllowed ? (
+                <select
+                  value={customerScope}
+                  onChange={(e) => {
+                    setCustomerScope(e.target.value);
+                    setSearchTerm('');
+                  }}
+                  style={{
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-gold)',
+                    color: 'var(--accent-gold)',
+                    borderRadius: '8px',
+                    padding: '7px 12px',
+                    fontSize: '0.84rem',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    width: '100%'
+                  }}
+                >
+                  <option value="my_branch" style={{ background: '#1c1c1c', color: '#fff' }}>
+                    🏢 {myBranch?.name || 'My Branch'} Customers ({branchCustomers.length})
                   </option>
-                ))}
-              </select>
+                  <option value="all_salon" style={{ background: '#1c1c1c', color: '#fff' }}>
+                    {hasAllBranchesPermission
+                      ? `🌐 All Salon Customers (${salonCustomers.length})`
+                      : `🏢 All Permitted Branches Customers (${salonCustomers.length})`}
+                  </option>
+                  {otherBranches.map(b => (
+                    <option key={b.id} value={`branch_${b.id}`} style={{ background: '#1c1c1c', color: '#fff' }}>
+                      🏢 {b.name} ({salonCustomers.filter(c => String(c.branch_id) === String(b.id)).length} customers)
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 12px',
+                  background: 'rgba(56, 189, 248, 0.08)',
+                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                  borderRadius: '8px',
+                  color: '#38bdf8',
+                  fontSize: '0.82rem',
+                  fontWeight: '700'
+                }}>
+                  <Lock size={13} style={{ color: '#38bdf8' }} />
+                  <span>Assigned Branch: <strong>{myBranch?.name || `Branch #${currentBranchId || 1}`}</strong> ({branchCustomers.length} clients)</span>
+                </div>
+              )}
             </div>
           )}
 
@@ -1378,7 +1469,28 @@ function ReceptionistView({
           </div>
 
           {/* Search & Filter Bar */}
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {isMultiBranchAllowed && (
+              <select
+                value={queueBranchFilter}
+                onChange={e => {
+                  setQueueBranchFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="select-filter"
+                style={{ fontSize: '0.82rem', padding: '6px 12px', borderColor: 'var(--border-gold)', color: 'var(--accent-gold)', fontWeight: '700' }}
+              >
+                <option value="all">
+                  {hasAllBranchesPermission ? '🌐 All Salon Branches' : '🏢 All Permitted Branches'}
+                </option>
+                {branches.map(b => (
+                  <option key={b.id} value={String(b.id)}>
+                    🏢 {b.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
             <div className="search-input-wrapper" style={{ width: '220px' }}>
               <Search size={15} className="search-icon" />
               <input
@@ -1421,6 +1533,7 @@ function ReceptionistView({
             <thead>
               <tr style={{ background: 'rgba(255,255,255,0.03)', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
                 <th style={{ padding: '12px 16px' }}>Customer</th>
+                {isMultiBranchAllowed && <th style={{ padding: '12px 16px' }}>Branch</th>}
                 <th style={{ padding: '12px 16px' }}>Service</th>
                 <th style={{ padding: '12px 16px' }}>Assigned Stylist</th>
                 <th style={{ padding: '12px 16px' }}>Time</th>
@@ -1432,7 +1545,7 @@ function ReceptionistView({
             <tbody>
               {loadingBackend ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '40px' }}>
+                  <td colSpan={isMultiBranchAllowed ? 8 : 7} style={{ textAlign: 'center', padding: '40px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
                       <Loader2 size={28} style={{ animation: 'spin 0.8s linear infinite', color: 'var(--accent)' }} />
                       <span style={{ fontSize: '0.85rem', color: 'var(--text-sub)', fontWeight: '700' }}>
@@ -1443,7 +1556,7 @@ function ReceptionistView({
                 </tr>
               ) : paginatedQueue.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                  <td colSpan={isMultiBranchAllowed ? 8 : 7} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
                     No check-ins in queue matching criteria.
                   </td>
                 </tr>
@@ -1507,6 +1620,24 @@ function ReceptionistView({
                         </div>
                       </div>
                     </td>
+
+                    {/* Branch Badge (only when receptionist has access to multiple branches) */}
+                    {isMultiBranchAllowed && (
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{
+                          fontSize: '0.74rem',
+                          background: 'rgba(56, 189, 248, 0.12)',
+                          color: '#38bdf8',
+                          border: '1px solid rgba(56, 189, 248, 0.25)',
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          fontWeight: '700',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          🏢 {branches.find(b => String(b.id) === String(app.branch_id))?.name || `Branch #${app.branch_id || '—'}`}
+                        </span>
+                      </td>
+                    )}
 
                     {/* Service */}
                     <td style={{ padding: '12px 16px', fontWeight: '600', fontSize: '0.88rem' }}>
@@ -2293,44 +2424,48 @@ function ReceptionistView({
               </div>
 
               {/* Scope & Search Bar Row */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '14px', marginBottom: '20px' }}>
-                <div>
-                  <label style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-sub)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Building size={14} style={{ color: 'var(--accent-gold)' }} />
-                    Directory Scope:
-                  </label>
-                  <select
-                    value={customerScope}
-                    onChange={(e) => {
-                      setCustomerScope(e.target.value);
-                      setDirectoryPage(1);
-                    }}
-                    style={{
-                      width: '100%',
-                      background: 'var(--bg-card)',
-                      border: '1px solid var(--border-gold)',
-                      color: 'var(--accent-gold)',
-                      borderRadius: '8px',
-                      padding: '9px 12px',
-                      fontSize: '0.84rem',
-                      fontWeight: '700',
-                      cursor: 'pointer',
-                      outline: 'none'
-                    }}
-                  >
-                    <option value="my_branch" style={{ background: '#1c1c1c', color: '#fff' }}>
-                      🏢 My Branch Customers ({branchCustomers.length})
-                    </option>
-                    <option value="all_salon" style={{ background: '#1c1c1c', color: '#fff' }}>
-                      🌐 All Salon Customers — Cross-Branch ({salonCustomers.length})
-                    </option>
-                    {otherBranches.map(b => (
-                      <option key={b.id} value={`branch_${b.id}`} style={{ background: '#1c1c1c', color: '#fff' }}>
-                        🏢 {b.name} ({salonCustomers.filter(c => String(c.branch_id) === String(b.id)).length} customers)
+              <div style={{ display: 'grid', gridTemplateColumns: isMultiBranchAllowed ? '1fr 1.2fr' : '1fr', gap: '14px', marginBottom: '20px' }}>
+                {isMultiBranchAllowed ? (
+                  <div>
+                    <label style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-sub)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Building size={14} style={{ color: 'var(--accent-gold)' }} />
+                      Directory Scope:
+                    </label>
+                    <select
+                      value={customerScope}
+                      onChange={(e) => {
+                        setCustomerScope(e.target.value);
+                        setDirectoryPage(1);
+                      }}
+                      style={{
+                        width: '100%',
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--border-gold)',
+                        color: 'var(--accent-gold)',
+                        borderRadius: '8px',
+                        padding: '9px 12px',
+                        fontSize: '0.84rem',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        outline: 'none'
+                      }}
+                    >
+                      <option value="my_branch" style={{ background: '#1c1c1c', color: '#fff' }}>
+                        🏢 {myBranch?.name || 'My Branch'} Customers ({branchCustomers.length})
                       </option>
-                    ))}
-                  </select>
-                </div>
+                      <option value="all_salon" style={{ background: '#1c1c1c', color: '#fff' }}>
+                        {hasAllBranchesPermission
+                          ? `🌐 All Salon Customers (${salonCustomers.length})`
+                          : `🏢 All Permitted Branches Customers (${salonCustomers.length})`}
+                      </option>
+                      {otherBranches.map(b => (
+                        <option key={b.id} value={`branch_${b.id}`} style={{ background: '#1c1c1c', color: '#fff' }}>
+                          🏢 {b.name} ({salonCustomers.filter(c => String(c.branch_id) === String(b.id)).length} customers)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
 
                 <div>
                   <label style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-sub)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>

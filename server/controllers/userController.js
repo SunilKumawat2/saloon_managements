@@ -30,7 +30,7 @@ export const getRoles = async (req, res) => {
 
 export const createUser = async (req, res) => {
   try {
-    const { name, email, phone, role_id, branch_id, password, allowed_branch_ids } = req.body;
+    const { name, email, phone, role_id, branch_id, password, allowed_branch_ids, specialization, service_ids } = req.body;
     if (!name || !email || !role_id) {
       return res.status(400).json({ status: 'error', message: 'Name, email and role are required' });
     }
@@ -62,6 +62,16 @@ export const createUser = async (req, res) => {
       }
     }
 
+    let parsedServiceIds = [];
+    if (Array.isArray(service_ids)) {
+      parsedServiceIds = service_ids.map(Number).filter(n => !isNaN(n));
+    } else if (typeof service_ids === 'string') {
+      try {
+        const p = JSON.parse(service_ids);
+        if (Array.isArray(p)) parsedServiceIds = p.map(Number).filter(n => !isNaN(n));
+      } catch (e) {}
+    }
+
     const newUser = await UserModel.create({
       name,
       email,
@@ -71,7 +81,9 @@ export const createUser = async (req, res) => {
       password,
       admin_id: adminId,
       created_by_user_id: createdByUserId,
-      allowed_branch_ids: parsedAllowed
+      allowed_branch_ids: parsedAllowed,
+      specialization: specialization || '',
+      service_ids: parsedServiceIds
     });
     return res.status(201).json({ status: 'success', message: 'User created successfully', data: newUser });
   } catch (error) {
@@ -85,7 +97,7 @@ export const createUser = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { name, email, phone, role_id, branch_id, allowed_branch_ids } = req.body;
+    const { name, email, phone, role_id, branch_id, allowed_branch_ids, specialization, service_ids } = req.body;
 
     const reqUser = req.user;
     const isMaster = Boolean(reqUser?.is_super_admin === true || reqUser?.email === 'admin@saloon.com' || String(reqUser?.role || reqUser?.role_name || '').toLowerCase() === 'super admin' || String(reqUser?.role || reqUser?.role_name || '').toLowerCase() === 'superadmin');
@@ -115,13 +127,31 @@ export const updateUser = async (req, res) => {
       }
     }
 
+    let parsedServiceIds = undefined;
+    if (service_ids !== undefined) {
+      if (Array.isArray(service_ids)) {
+        parsedServiceIds = service_ids.map(Number).filter(n => !isNaN(n));
+      } else if (typeof service_ids === 'string') {
+        try {
+          const p = JSON.parse(service_ids);
+          if (Array.isArray(p)) parsedServiceIds = p.map(Number).filter(n => !isNaN(n));
+        } catch (e) {
+          parsedServiceIds = [];
+        }
+      } else {
+        parsedServiceIds = [];
+      }
+    }
+
     const updated = await UserModel.update(id, {
       name,
       email,
       phone: cleanPhone || phone,
       role_id,
       branch_id,
-      allowed_branch_ids: parsedAllowed
+      allowed_branch_ids: parsedAllowed,
+      specialization,
+      service_ids: parsedServiceIds
     });
     if (!updated) return res.status(404).json({ status: 'error', message: 'User not found' });
     return res.json({ status: 'success', message: 'User updated successfully', data: updated });

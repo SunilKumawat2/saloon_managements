@@ -47,7 +47,7 @@ function ServicesPackagesView({
   currentUser
 }) {
   const [activeCategory, setActiveCategory] = useState('All');
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
+  const [viewMode, setViewMode] = useState('table'); // 'table' (default) or 'grid'
   const [searchQuery, setSearchQuery] = useState('');
 
   // Standalone Services Server-side Pagination State
@@ -607,22 +607,8 @@ function ServicesPackagesView({
             />
           </div>
 
-          {/* Grid / Table View Switcher */}
+          {/* Table / Grid View Switcher */}
           <div style={{ display: 'flex', background: 'var(--input-bg)', borderRadius: '10px', border: '1px solid var(--border)', padding: '2px' }}>
-            <button
-              onClick={() => setViewMode('grid')}
-              style={{
-                padding: '6px 10px',
-                borderRadius: '8px',
-                border: 'none',
-                background: viewMode === 'grid' ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
-                color: viewMode === 'grid' ? 'var(--primary-indigo)' : 'var(--text-muted)',
-                cursor: 'pointer'
-              }}
-              title="Grid Cards View"
-            >
-              <LayoutGrid size={16} />
-            </button>
             <button
               onClick={() => setViewMode('table')}
               style={{
@@ -636,6 +622,20 @@ function ServicesPackagesView({
               title="Table List View"
             >
               <List size={16} />
+            </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              style={{
+                padding: '6px 10px',
+                borderRadius: '8px',
+                border: 'none',
+                background: viewMode === 'grid' ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
+                color: viewMode === 'grid' ? 'var(--primary-indigo)' : 'var(--text-muted)',
+                cursor: 'pointer'
+              }}
+              title="Grid Cards View"
+            >
+              <LayoutGrid size={16} />
             </button>
           </div>
 

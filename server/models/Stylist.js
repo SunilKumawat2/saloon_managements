@@ -34,7 +34,7 @@ export const StylistModel = {
     }
   },
 
-  async create({ name, phone, email, specialization, branch_id, is_active = true, rating = 5.0, admin_id, created_by_admin_id }) {
+  async create({ name, phone, email, specialization, branch_id, is_active = true, rating = 5.0, admin_id, created_by_admin_id, service_ids = [] }) {
     try {
       let validBranchId = null;
       if (branch_id) {
@@ -50,8 +50,8 @@ export const StylistModel = {
       }
 
       const insertSql = `
-        INSERT INTO stylists (name, phone, email, specialization, branch_id, is_active, is_available, rating, admin_id, created_by_admin_id)
-        VALUES ($1, $2, $3, $4, $5, $6, $6, $7, $8, $9)
+        INSERT INTO stylists (name, phone, email, specialization, branch_id, is_active, is_available, rating, admin_id, created_by_admin_id, service_ids)
+        VALUES ($1, $2, $3, $4, $5, $6, $6, $7, $8, $9, $10)
         RETURNING *
       `;
       const insertParams = [
@@ -63,7 +63,8 @@ export const StylistModel = {
         is_active,
         rating,
         admin_id ? parseInt(admin_id) : null,
-        created_by_admin_id ? parseInt(created_by_admin_id) : null
+        created_by_admin_id ? parseInt(created_by_admin_id) : null,
+        JSON.stringify(Array.isArray(service_ids) ? service_ids : [])
       ];
 
       const { rows } = await pool.query(insertSql, insertParams);
@@ -83,6 +84,7 @@ export const StylistModel = {
         specialization: specialization || '',
         branch_id: branch_id ? parseInt(branch_id) : null,
         is_active: true, rating: rating || 5.0,
+        service_ids: Array.isArray(service_ids) ? service_ids : [],
         created_at: new Date().toISOString()
       };
       DEMO_STYLISTS.unshift(newStylist);
@@ -90,7 +92,7 @@ export const StylistModel = {
     }
   },
 
-  async update(id, { name, phone, email, specialization, branch_id, is_active, rating }) {
+  async update(id, { name, phone, email, specialization, branch_id, is_active, rating, service_ids }) {
     const numId = parseInt(id);
     try {
       await pool.query(
@@ -100,9 +102,18 @@ export const StylistModel = {
              specialization = COALESCE($3, specialization),
              branch_id = COALESCE($4, branch_id),
              is_active = COALESCE($5, is_active),
-             is_available = COALESCE($5, is_available)
-         WHERE id = $6`,
-        [name, phone, specialization, branch_id ? parseInt(branch_id) : null, is_active, numId]
+             is_available = COALESCE($5, is_available),
+             service_ids = COALESCE($6, service_ids)
+         WHERE id = $7`,
+        [
+          name,
+          phone,
+          specialization,
+          branch_id ? parseInt(branch_id) : null,
+          is_active,
+          service_ids !== undefined ? JSON.stringify(Array.isArray(service_ids) ? service_ids : []) : null,
+          numId
+        ]
       );
       const enriched = await pool.query(
         `SELECT s.*, b.name as branch_name FROM stylists s LEFT JOIN branches b ON s.branch_id = b.id WHERE s.id = $1`,

@@ -14,11 +14,19 @@ export const getStylists = async (req, res) => {
 // POST /api/stylists/create
 export const createStylist = async (req, res) => {
   try {
-    const { name, phone, email, specialization, branch_id, rating } = req.body;
+    const { name, phone, email, specialization, branch_id, rating, service_ids } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ status: 'error', message: 'Stylist name is required' });
     }
-    const created = await StylistModel.create({ name: name.trim(), phone, email, specialization, branch_id, rating });
+    const created = await StylistModel.create({
+      name: name.trim(),
+      phone,
+      email,
+      specialization,
+      branch_id,
+      rating,
+      service_ids: Array.isArray(service_ids) ? service_ids : []
+    });
     return res.status(201).json({ status: 'success', message: 'Stylist added successfully', data: created });
   } catch (err) {
     return res.status(500).json({ status: 'error', message: err.message || 'Failed to create stylist' });
@@ -29,8 +37,17 @@ export const createStylist = async (req, res) => {
 export const updateStylist = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, phone, email, specialization, branch_id, is_active, rating } = req.body;
-    const updated = await StylistModel.update(id, { name, phone, email, specialization, branch_id, is_active, rating });
+    const { name, phone, email, specialization, branch_id, is_active, rating, service_ids } = req.body;
+    const updated = await StylistModel.update(id, {
+      name,
+      phone,
+      email,
+      specialization,
+      branch_id,
+      is_active,
+      rating,
+      service_ids: Array.isArray(service_ids) ? service_ids : undefined
+    });
     return res.json({ status: 'success', message: 'Stylist updated successfully', data: updated });
   } catch (err) {
     return res.status(500).json({ status: 'error', message: err.message || 'Failed to update stylist' });

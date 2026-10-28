@@ -25,7 +25,8 @@ import {
   Lock,
   Clock,
   Package,
-  CreditCard
+  CreditCard,
+  ClipboardCheck
 } from 'lucide-react';
 
 
@@ -50,6 +51,7 @@ import StylistManagementView from './views/StylistManagementView';
 import TimeSlotsManagementView from './views/TimeSlotsManagementView';
 import AssetsTrackingManagementView from './views/AssetsTrackingManagementView';
 import UserProfileModal from './views/UserProfileModal';
+import StaffAttendanceView from './views/StaffAttendanceView';
 
 import {
   Admin_Get_Users,
@@ -66,6 +68,8 @@ import {
   Admin_Create_Customer,
   Admin_Update_Customer,
   Admin_Delete_Customer,
+  Admin_Toggle_Block_Customer,
+  Admin_Toggle_Abandon_Customer,
   Admin_Upload_Customer_Avatar,
   Admin_Get_Leads,
   Admin_Create_Lead,
@@ -184,9 +188,22 @@ export const isManager = (user) => {
   return role.includes('manager') || user.role_id === 2;
 };
 
+export const isReceptionist = (user) => {
+  if (!user) return false;
+  const role = String(user.role || user.role_name || '').toLowerCase();
+  return role.includes('reception') || user.role_id === 3;
+};
+
 export const isBranchScopedUser = (user) => {
   if (!user) return false;
   if (isMasterAdmin(user) || isSalonAdmin(user) || isManager(user)) return false;
+  if (isReceptionist(user)) {
+    let allowed = user.allowed_branch_ids;
+    if (typeof allowed === 'string') {
+      try { allowed = JSON.parse(allowed); } catch (e) { allowed = []; }
+    }
+    if (Array.isArray(allowed) && allowed.length > 1) return false;
+  }
   return true;
 };
 
@@ -329,7 +346,7 @@ export default function App() {
       const adminOwnerId = currentUser.admin_id || currentUser.created_by_user_id;
       // Get all branches created by / belonging to the manager's admin
       const adminBranches = branches.filter(b =>
-        String(b.created_by_admin_id || b.admin_id || b.owner_id || b.created_by) === String(adminOwnerId)
+        String(b.created_by_admin_id || b.admin_id || b.owner_id || b.created_by_user_id || b.created_by) === String(adminOwnerId)
       );
 
       // Check allowed_branch_ids
@@ -350,14 +367,50 @@ export default function App() {
       return branches.filter(b => String(b.id) === String(currentUser.branch_id));
     }
 
+    if (isReceptionist(currentUser)) {
+      const adminOwnerId = currentUser.admin_id || currentUser.created_by_user_id;
+      const adminBranches = branches.filter(b =>
+        String(b.created_by_admin_id || b.admin_id || b.owner_id || b.created_by_user_id || b.created_by) === String(adminOwnerId)
+      );
+
+      let allowed = currentUser.allowed_branch_ids;
+      if (typeof allowed === 'string') {
+        try { allowed = JSON.parse(allowed); } catch (e) { allowed = []; }
+      }
+      if (Array.isArray(allowed) && allowed.length > 0) {
+        const allowedSet = new Set(allowed.map(String));
+        const pool = adminBranches.length > 0 ? adminBranches : branches;
+        const filtered = pool.filter(b => allowedSet.has(String(b.id)));
+        if (filtered.length > 0) return filtered;
+      }
+
+      // Default for Receptionist is strictly their assigned branch
+      const single = branches.filter(b => String(b.id) === String(currentUser.branch_id));
+      if (single.length > 0) return single;
+      if (adminBranches.length > 0) return [adminBranches[0]];
+      return branches.slice(0, 1);
+    }
+
     // Salon Admin (Salon Owner)
+    const adminUid = String(currentUser.id || currentUser.admin_id || '');
     return branches.filter(b =>
-      String(b.created_by_admin_id || b.admin_id || b.owner_id || b.created_by) === String(currentUser.id) ||
-      String(b.id) === String(currentUser.branch_id)
+      String(b.created_by_admin_id || b.admin_id || b.owner_id || b.created_by_user_id || b.created_by) === adminUid ||
+      (currentUser.branch_id && String(b.id) === String(currentUser.branch_id))
     );
   }, [branches, currentUser]);
 
   const combinedStylists = useMemo(() => {
+    const parseServiceIds = (raw) => {
+      if (Array.isArray(raw)) return raw.map(Number).filter(n => !isNaN(n));
+      if (typeof raw === 'string') {
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) return parsed.map(Number).filter(n => !isNaN(n));
+        } catch (e) {}
+      }
+      return [];
+    };
+
     const staffUsers = (users || []).filter(u => {
       if (!u) return false;
       const rName = String(u.role || u.role_name || '').toLowerCase();
@@ -370,6 +423,7 @@ export default function App() {
       name: u.name,
       phone: u.phone,
       specialization: u.specialization || u.designation || 'Staff Stylist',
+      service_ids: parseServiceIds(u.service_ids),
       rating: u.rating || 5.0,
       is_available: u.is_active !== false
     }));
@@ -379,7 +433,10 @@ export default function App() {
 
     const extraStylists = (stylists || []).filter(st =>
       st && !existingIds.has(String(st.id)) && !existingNames.has(String(st.name || '').toLowerCase())
-    );
+    ).map(st => ({
+      ...st,
+      service_ids: parseServiceIds(st.service_ids)
+    }));
 
     return [...staffUsers, ...extraStylists];
   }, [users, stylists]);
@@ -602,9 +659,13 @@ export default function App() {
     if (!currentUser) return list;
 
     const isMaster = isMasterAdmin(currentUser);
-    const isScoped = isBranchScopedUser(currentUser);
     const isOwner = isSalonAdmin(currentUser) && !isMaster;
     const isMgr = isManager(currentUser);
+    const isMultiBranchRec = isReceptionist(currentUser) && (
+      (Array.isArray(currentUser.allowed_branch_ids) && currentUser.allowed_branch_ids.length > 1) ||
+      (accessibleBranches && accessibleBranches.length > 1)
+    );
+    const isScoped = isBranchScopedUser(currentUser) && !isMultiBranchRec;
 
     // 1. Super Admin sees everything
     if (isMaster) {
@@ -614,17 +675,8 @@ export default function App() {
       return list;
     }
 
-    // 2. Branch-Scoped User (Receptionist, Staff)
-    if (isScoped) {
-      const userBranchId = String(currentUser.branch_id || '');
-      return list.filter(item => {
-        if (!item) return false;
-        return String(item.branch_id) === userBranchId;
-      });
-    }
-
-    // 3. Manager (Multi-Branch Access scoped to their Admin's permitted branches)
-    if (isMgr) {
+    // 2. Multi-Branch Users (Manager or Multi-Branch Receptionist)
+    if (isMgr || isMultiBranchRec) {
       const myBranchIds = new Set(accessibleBranches.map(b => String(b.id)));
       const currentAdminId = String(currentUser.admin_id || currentUser.created_by_user_id || '');
 
@@ -634,24 +686,31 @@ export default function App() {
         // Hide Super Admin items / accounts
         if (item.is_super_admin || item.email === 'admin@saloon.com') return false;
 
-        // 1. If item has branch_id, check if it belongs to one of manager's permitted branches
-        if (item.branch_id && myBranchIds.has(String(item.branch_id))) {
+        // 1. If item has branch_id, it MUST strictly belong to user's permitted branches
+        if (item.branch_id) {
+          if (!myBranchIds.has(String(item.branch_id))) return false;
           if (selectedBranchId !== 'all' && String(item.branch_id) !== String(selectedBranchId)) {
             return false;
           }
           return true;
         }
 
-        // 2. Check explicit admin creator ID matching manager's admin
+        // 2. For global items without branch_id (e.g. global services), check salon admin match
         const itemAdminId = item.created_by_admin_id || item.admin_id || item.created_by_user_id || item.created_by;
         if (itemAdminId && currentAdminId && String(itemAdminId) === currentAdminId) {
-          if (selectedBranchId !== 'all' && item.branch_id && String(item.branch_id) !== String(selectedBranchId)) {
-            return false;
-          }
           return true;
         }
 
         return false;
+      });
+    }
+
+    // 3. Single Branch Scoped User (Standard Single-Branch Receptionist, Staff)
+    if (isScoped) {
+      const userBranchId = String(currentUser.branch_id || '');
+      return list.filter(item => {
+        if (!item) return false;
+        return String(item.branch_id) === userBranchId;
       });
     }
 
@@ -922,6 +981,57 @@ export default function App() {
       await Admin_Delete_Customer(id).catch(() => null);
     } catch (e) { console.error(e); }
     setCustomers(prev => prev.filter(c => String(c.id) !== String(id)));
+  };
+
+  const handleToggleBlockCustomer = async (id, reason = '') => {
+    try {
+      const res = await Admin_Toggle_Block_Customer(id, reason).catch(() => null);
+      if (res?.data?.data) {
+        const updated = res.data.data;
+        setCustomers(prev => prev.map(c => String(c.id) === String(id) ? { ...c, ...updated } : c));
+        return updated;
+      }
+    } catch (e) { console.error(e); }
+    let fallbackUpdated = null;
+    setCustomers(prev => prev.map(c => {
+      if (String(c.id) === String(id)) {
+        const nextBlocked = !c.is_blocked;
+        fallbackUpdated = {
+          ...c,
+          is_blocked: nextBlocked,
+          status: nextBlocked ? 'Blocked' : (c.is_abandoned ? 'Abandoned' : 'Active'),
+          block_reason: nextBlocked ? reason : null
+        };
+        return fallbackUpdated;
+      }
+      return c;
+    }));
+    return fallbackUpdated;
+  };
+
+  const handleToggleAbandonCustomer = async (id) => {
+    try {
+      const res = await Admin_Toggle_Abandon_Customer(id).catch(() => null);
+      if (res?.data?.data) {
+        const updated = res.data.data;
+        setCustomers(prev => prev.map(c => String(c.id) === String(id) ? { ...c, ...updated } : c));
+        return updated;
+      }
+    } catch (e) { console.error(e); }
+    let fallbackUpdated = null;
+    setCustomers(prev => prev.map(c => {
+      if (String(c.id) === String(id)) {
+        const nextAbandoned = !c.is_abandoned;
+        fallbackUpdated = {
+          ...c,
+          is_abandoned: nextAbandoned,
+          status: nextAbandoned ? 'Abandoned' : (c.is_blocked ? 'Blocked' : 'Active')
+        };
+        return fallbackUpdated;
+      }
+      return c;
+    }));
+    return fallbackUpdated;
   };
 
   const handleAddLead = async (leadData, avatarFile) => {
@@ -1297,7 +1407,7 @@ export default function App() {
       return aDate === targetDate && aTime === targetTime && isStylistMatch;
     });
 
-    if (isConflict) {
+    if (isConflict && !newApp.stylist_override_confirmed) {
       alert(`⚠️ Cannot book appointment: Staff member is ALREADY BOOKED for ${targetDate} at ${targetTime}. Double booking is blocked.`);
       return null;
     }
@@ -1688,11 +1798,11 @@ export default function App() {
             {canAccess('manage_appointments') && (
               <div style={{ marginTop: '4px' }}>
                 <button
-                  className={`nav-dropdown-toggle ${isBookingOpen ? 'open' : ''} ${['appointments', 'stylists', 'time_slots'].includes(activeTab) ? 'active' : ''}`}
+                  className={`nav-dropdown-toggle ${isBookingOpen ? 'open' : ''} ${['appointments', 'stylists', 'staff_attendance', 'time_slots'].includes(activeTab) ? 'active' : ''}`}
                   onClick={() => toggleSidebarDropdown('booking')}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Calendar size={17} style={{ color: ['appointments', 'stylists', 'time_slots'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
+                    <Calendar size={17} style={{ color: ['appointments', 'stylists', 'staff_attendance', 'time_slots'].includes(activeTab) ? 'var(--accent-gold)' : 'var(--text-sub)' }} />
                     <span>Booking & Calendar</span>
                   </div>
                   {isBookingOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
@@ -1705,6 +1815,9 @@ export default function App() {
                     </button>
                     <button className={`sub-nav-btn ${activeTab === 'stylists' ? 'active' : ''}`} onClick={() => setActiveTab('stylists')}>
                       <UserCheck size={14} /> Stylists & Staff ({filterByBranch(combinedStylists).length})
+                    </button>
+                    <button className={`sub-nav-btn ${activeTab === 'staff_attendance' ? 'active' : ''}`} onClick={() => setActiveTab('staff_attendance')}>
+                      <ClipboardCheck size={14} /> Staff Attendance
                     </button>
                     <button className={`sub-nav-btn ${activeTab === 'time_slots' ? 'active' : ''}`} onClick={() => setActiveTab('time_slots')}>
                       <Clock size={14} /> Time Slots & Schedule ({filterByBranch(timeSlots).length})
@@ -1990,7 +2103,7 @@ export default function App() {
                       👑 Global Super Admin (All Salons)
                     </div>
                   );
-                } else if (isSalonAdmin(currentUser) || isManager(currentUser)) {
+                } else if (isSalonAdmin(currentUser) || isManager(currentUser) || (isReceptionist(currentUser) && accessibleBranches.length > 1)) {
                   return (
                     <select
                       value={selectedBranchId || 'all'}
@@ -2010,7 +2123,7 @@ export default function App() {
                       }}
                     >
                       <option value="all" style={{ background: '#1a1a1a', color: '#fff' }}>
-                        🌐 {isManager(currentUser) ? 'All Permitted Branches' : 'All My Branches'}
+                        🌐 {(isManager(currentUser) || isReceptionist(currentUser)) ? 'All Permitted Branches' : 'All My Branches'}
                       </option>
                       {accessibleBranches.map(b => (
                         <option key={b.id} value={b.id} style={{ background: '#1a1a1a', color: '#fff' }}>
@@ -2139,8 +2252,9 @@ export default function App() {
             canAccess('manage_users') ? (
               <UsersManagementView
                 users={filterByBranch(users)}
-                branches={branches}
+                branches={isMasterAdmin(currentUser) ? branches : accessibleBranches}
                 roles={roles}
+                services={services}
                 selectedBranchId={selectedBranchId}
                 currentUser={currentUser}
                 onAddUser={(u) => handleAddUser({ ...u, branch_id: u.branch_id || activeBranchId })}
@@ -2195,6 +2309,8 @@ export default function App() {
                 onAddCustomer={(c, file) => handleAddCustomer({ ...c, branch_id: c.branch_id || activeBranchId }, file)}
                 onUpdateCustomer={handleUpdateCustomer}
                 onDeleteCustomer={handleDeleteCustomer}
+                onToggleBlockCustomer={handleToggleBlockCustomer}
+                onToggleAbandonCustomer={handleToggleAbandonCustomer}
               />
             ) : (
               <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
@@ -2270,13 +2386,29 @@ export default function App() {
             canAccess(['manage_appointments', 'manage_users', 'all']) ? (
               <StylistManagementView
                 stylists={filterByBranch(combinedStylists)}
-                branches={branches}
+                branches={isMasterAdmin(currentUser) ? branches : accessibleBranches}
+                services={services}
                 onAddStylist={handleAddStylist}
                 onUpdateStylist={handleUpdateStylist}
                 onDeleteStylist={handleDeleteStylist}
                 onToggleActive={handleToggleStylistActive}
+                onNavigateAttendance={() => setActiveTab('staff_attendance')}
                 currentUser={currentUser}
                 userBranch={branches.find(b => String(b.id) === String(currentUser?.branch_id))}
+              />
+            ) : (
+              <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+            )
+          )}
+
+          {activeTab === 'staff_attendance' && (
+            canAccess(['manage_appointments', 'manage_users', 'all']) ? (
+              <StaffAttendanceView
+                stylists={filterByBranch(combinedStylists)}
+                branches={isMasterAdmin(currentUser) ? branches : accessibleBranches}
+                timeSlots={timeSlots}
+                currentUser={currentUser}
+                activeBranchId={activeBranchId}
               />
             ) : (
               <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
@@ -2306,8 +2438,12 @@ export default function App() {
             canAccess(['manage_appointments', 'manage_billing']) ? (
               <ReceptionistView
                 customers={filterByBranch(customers)}
-                allAdminCustomers={customers}
-                branches={branches}
+                allAdminCustomers={
+                  isReceptionist(currentUser) && accessibleBranches.length > 0
+                    ? customers.filter(c => accessibleBranches.some(b => String(b.id) === String(c.branch_id)))
+                    : customers
+                }
+                branches={accessibleBranches}
                 currentUser={currentUser}
                 stylists={filterByBranch(combinedStylists)}
                 services={filterByBranch(services)}

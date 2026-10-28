@@ -259,164 +259,183 @@ function BillingHistoryView({
 
   return (
     <div>
-      {/* ─── Summary Financial Metrics Cards (Module 5) ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '28px' }}>
-        <div className="glass-card" style={{ padding: '18px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-            <TrendingUp size={18} style={{ color: 'var(--accent-gold)' }} />
-            <span style={{ fontWeight: '700', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Total Sales Revenue</span>
+      {/* ─── Compact Financial Metrics Strip ─── */}
+      <div className="glass-panel" style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+        gap: '8px',
+        padding: '8px 14px',
+        borderRadius: '10px',
+        marginBottom: '8px',
+        alignItems: 'center'
+      }}>
+        {/* Metric 1: Total Sales Revenue */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 4px' }}>
+          <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: 'rgba(245,158,11,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <TrendingUp size={14} style={{ color: 'var(--accent-gold)' }} />
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: '900', color: 'var(--accent-gold)' }}>
-            ₹{totalRevenue.toFixed(2)}
-          </div>
-        </div>
-
-        <div className="glass-card" style={{ padding: '18px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-            <Receipt size={18} style={{ color: '#818cf8' }} />
-            <span style={{ fontWeight: '700', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Total Invoices</span>
-          </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#fff' }}>
-            {bills.length}
-          </div>
-        </div>
-
-        <div className="glass-card" style={{ padding: '18px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-            <DollarSign size={18} style={{ color: '#38bdf8' }} />
-            <span style={{ fontWeight: '700', fontSize: '0.85rem', color: 'var(--text-sub)' }}>GST Collected</span>
-          </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#38bdf8' }}>
-            ₹{totalTax.toFixed(2)}
+          <div>
+            <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Total Revenue</div>
+            <div style={{ fontSize: '0.98rem', fontWeight: '900', color: 'var(--accent-gold)', lineHeight: 1.2 }}>₹{totalRevenue.toFixed(2)}</div>
           </div>
         </div>
 
-        <div className="glass-card" style={{ padding: '18px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-            <Tag size={18} style={{ color: '#ec4899' }} />
-            <span style={{ fontWeight: '700', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Discount & Tips</span>
+        {/* Metric 2: Total Invoices */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 4px', borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: 'rgba(129,140,248,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Receipt size={14} style={{ color: '#818cf8' }} />
           </div>
-          <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '4px' }}>
-            <div>🏷️ Discounts: <strong style={{ color: '#ef4444' }}>₹{totalDiscounts.toFixed(0)}</strong></div>
-            <div>✨ Stylist Tips: <strong style={{ color: 'var(--accent-gold)' }}>₹{totalTips.toFixed(0)}</strong></div>
+          <div>
+            <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Total Invoices</div>
+            <div style={{ fontSize: '0.98rem', fontWeight: '900', color: '#ffffff', lineHeight: 1.2 }}>{bills.length}</div>
+          </div>
+        </div>
+
+        {/* Metric 3: GST Collected */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 4px', borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: 'rgba(56,189,248,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <DollarSign size={14} style={{ color: '#38bdf8' }} />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.03em' }}>GST Collected</div>
+            <div style={{ fontSize: '0.98rem', fontWeight: '900', color: '#38bdf8', lineHeight: 1.2 }}>₹{totalTax.toFixed(2)}</div>
+          </div>
+        </div>
+
+        {/* Metric 4: Discounts & Tips */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 4px', borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: 'rgba(236,72,153,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Tag size={14} style={{ color: '#ec4899' }} />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Discounts & Tips</div>
+            <div style={{ fontSize: '0.78rem', fontWeight: '800', display: 'flex', gap: '5px', alignItems: 'center', lineHeight: 1.2 }}>
+              <span style={{ color: '#ef4444' }}>-₹{totalDiscounts.toFixed(0)}</span>
+              <span style={{ color: 'var(--text-muted)' }}>·</span>
+              <span style={{ color: 'var(--accent-gold)' }}>+₹{totalTips.toFixed(0)} Tip</span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* ─── Search & Filter Bar ─── */}
-      <div className="controls-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', flex: 1, minWidth: '280px' }}>
-          <div style={{ position: 'relative', flex: '1 1 240px', minWidth: '220px' }}>
-            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-            <input
-              type="text"
-              placeholder="Search invoice #, customer, stylist, coupon, payment..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: '100%', paddingLeft: '36px', paddingRight: '12px', paddingTop: '8px', paddingBottom: '8px',
-                background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '10px', color: 'var(--text-main)', fontSize: '0.85rem'
-              }}
-            />
-          </div>
-
-          {/* Salon Branch Selector (if multi-branch) */}
-          {allBranches.length > 1 && (
-            <select
-              className="select-filter"
-              value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value)}
-              style={{
-                background: 'var(--input-bg)',
-                border: branchFilter !== 'all' && branchFilter !== 'All' ? '1px solid #38bdf8' : '1px solid var(--border)',
-                borderRadius: '10px',
-                padding: '8px 12px',
-                color: branchFilter !== 'all' && branchFilter !== 'All' ? '#38bdf8' : 'var(--text-main)',
-                fontSize: '0.85rem',
-                fontWeight: '700',
-                cursor: 'pointer'
-              }}
-              title="Filter by Salon Branch"
-            >
-              <option value="all">🏢 All Branches</option>
-              {allBranches.map(br => (
-                <option key={br.id} value={br.id}>
-                  🏢 {br.name} {br.code ? `(${br.code})` : ''}
-                </option>
-              ))}
-            </select>
-          )}
-
-          <select className="select-filter" value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value)}>
-            <option value="All">All Payment Modes</option>
-            <option value="Cash">Cash</option>
-            <option value="UPI">UPI / QR Code</option>
-            <option value="Card">Card Checkout</option>
-            <option value="Online Gateway">Online Gateway</option>
-            <option value="Membership Wallet Credit">👑 Membership Wallet Credit</option>
-            <option value="Split">Split Payment</option>
-          </select>
-
-          {onClearAllBills && bills.length > 0 && (
-            <button
-              onClick={() => {
-                if (window.confirm('⚠️ Are you sure you want to CLEAR ALL billing history & invoices from the database? This action cannot be undone.')) {
-                  onClearAllBills();
-                }
-              }}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '8px 14px',
-                background: 'rgba(239, 68, 68, 0.15)',
-                border: '1px solid rgba(239, 68, 68, 0.4)',
-                borderRadius: '10px',
-                color: '#ef4444',
-                fontWeight: '800',
-                fontSize: '0.82rem',
-                cursor: 'pointer'
-              }}
-            >
-              <Trash2 size={14} /> Clear All Invoices
-            </button>
-          )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+        <div style={{ position: 'relative', flex: '1 1 200px', minWidth: '160px' }}>
+          <Search size={12} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <input
+            type="text"
+            className="compact-filter-input"
+            placeholder="Search invoice, customer, stylist..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: '100%', height: '28px', paddingLeft: '26px', paddingRight: '8px',
+              background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-main)', fontSize: '0.72rem'
+            }}
+          />
         </div>
+
+        {/* Salon Branch Selector (if multi-branch) */}
+        {allBranches.length > 1 && (
+          <select
+            className="compact-filter-select"
+            value={branchFilter}
+            onChange={(e) => setBranchFilter(e.target.value)}
+            style={{
+              height: '28px',
+              maxWidth: '140px',
+              border: branchFilter !== 'all' && branchFilter !== 'All' ? '1px solid #38bdf8' : '1px solid var(--border)',
+              color: branchFilter !== 'all' && branchFilter !== 'All' ? '#38bdf8' : 'var(--text-main)',
+              fontSize: '0.72rem'
+            }}
+            title="Filter by Salon Branch"
+          >
+            <option value="all">🏢 All Branches</option>
+            {allBranches.map(br => (
+              <option key={br.id} value={br.id}>
+                🏢 {br.name} {br.code ? `(${br.code})` : ''}
+              </option>
+            ))}
+          </select>
+        )}
+
+        <select
+          className="compact-filter-select"
+          value={paymentFilter}
+          onChange={(e) => setPaymentFilter(e.target.value)}
+          style={{ height: '28px', maxWidth: '150px', fontSize: '0.72rem' }}
+        >
+          <option value="All">All Payment Modes</option>
+          <option value="Cash">Cash</option>
+          <option value="UPI">UPI / QR</option>
+          <option value="Card">Card Checkout</option>
+          <option value="Online Gateway">Online Gateway</option>
+          <option value="Membership Wallet Credit">👑 Member Wallet</option>
+          <option value="Split">Split</option>
+        </select>
+
+        {onClearAllBills && bills.length > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm('⚠️ Are you sure you want to CLEAR ALL billing history & invoices from the database? This action cannot be undone.')) {
+                onClearAllBills();
+              }
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              height: '28px',
+              padding: '2px 8px',
+              background: 'rgba(239, 68, 68, 0.12)',
+              border: '1px solid rgba(239, 68, 68, 0.35)',
+              borderRadius: '6px',
+              color: '#ef4444',
+              fontWeight: '700',
+              fontSize: '0.70rem',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <Trash2 size={11} /> Clear All
+          </button>
+        )}
       </div>
 
       {/* ─── Billing History Table ─── */}
-      <div className="glass-panel" style={{ overflow: 'hidden', padding: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)' }}>
-            <Receipt size={18} style={{ color: 'var(--accent-gold)' }} />
+      <div className="glass-panel" style={{ overflow: 'hidden', padding: '10px 14px', borderRadius: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <h3 style={{ fontSize: '0.88rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-main)' }}>
+            <Receipt size={16} style={{ color: 'var(--accent-gold)' }} />
             POS Invoice History & Audit Logs
           </h3>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
             Showing {filteredBills.length} of {bills.length} invoices
           </span>
         </div>
 
         <div style={{ overflowX: 'auto' }}>
-          <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.76rem' }}>
             <thead>
               <tr style={{ background: 'var(--input-bg)', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
-                <th style={{ padding: '12px 14px' }}>Invoice ID</th>
-                <th style={{ padding: '12px 14px' }}>Customer Name</th>
-                <th style={{ padding: '12px 14px' }}>Stylist</th>
-                <th style={{ padding: '12px 14px' }}>Subtotal</th>
-                <th style={{ padding: '12px 14px' }}>Discount</th>
-                <th style={{ padding: '12px 14px' }}>GST</th>
-                <th style={{ padding: '12px 14px' }}>Total Paid</th>
-                <th style={{ padding: '12px 14px' }}>Payment Mode</th>
-                <th style={{ padding: '12px 14px' }}>Status</th>
-                <th style={{ padding: '12px 14px' }}>Date</th>
-                <th style={{ padding: '12px 14px', textAlign: 'right' }}>Actions</th>
+                <th style={{ padding: '7px 10px', fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Invoice ID</th>
+                <th style={{ padding: '7px 10px', fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Customer Name</th>
+                <th style={{ padding: '7px 10px', fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Stylist</th>
+                <th style={{ padding: '7px 10px', fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Subtotal</th>
+                <th style={{ padding: '7px 10px', fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Discount</th>
+                <th style={{ padding: '7px 10px', fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>GST</th>
+                <th style={{ padding: '7px 10px', fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Paid</th>
+                <th style={{ padding: '7px 10px', fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Payment Mode</th>
+                <th style={{ padding: '7px 10px', fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Status</th>
+                <th style={{ padding: '7px 10px', fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Date</th>
+                <th style={{ padding: '7px 10px', textAlign: 'right', fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {totalItems === 0 ? (
                 <tr>
-                  <td colSpan="11" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                  <td colSpan="11" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
                     No billing invoices generated yet.
                   </td>
                 </tr>
@@ -425,64 +444,64 @@ function BillingHistoryView({
                   const calc = getBillCalculations(b);
                   return (
                     <tr key={b.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '12px 14px' }}>
+                      <td style={{ padding: '7px 10px' }}>
                         <span style={{ fontWeight: '800', color: 'var(--accent-gold)' }}>#INV-{b.id}</span>
                       </td>
-                      <td style={{ padding: '12px 14px', fontWeight: '700', color: 'var(--text-main)' }}>
+                      <td style={{ padding: '7px 10px', fontWeight: '700', color: 'var(--text-main)' }}>
                         <div>{calc.custName}</div>
                         {calc.membershipName && (
                           <div style={{
-                            fontSize: '0.68rem',
+                            fontSize: '0.62rem',
                             color: '#f59e0b',
                             background: 'rgba(245, 158, 11, 0.15)',
                             border: '1px solid rgba(245, 158, 11, 0.35)',
-                            padding: '1px 6px',
-                            borderRadius: '6px',
+                            padding: '1px 5px',
+                            borderRadius: '4px',
                             fontWeight: '800',
-                            marginTop: '3px',
+                            marginTop: '2px',
                             width: 'fit-content',
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '3px'
                           }}>
-                            <Crown size={10} /> {calc.membershipName}
+                            <Crown size={9} /> {calc.membershipName}
                           </div>
                         )}
                         {calc.branchName && calc.branchName !== 'Main Salon' && (
-                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                            <Building size={10} /> {calc.branchName}
+                          <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', marginTop: '1px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                            <Building size={9} /> {calc.branchName}
                           </div>
                         )}
                       </td>
-                      <td style={{ padding: '12px 14px', fontSize: '0.85rem', color: 'var(--text-sub)' }}>
+                      <td style={{ padding: '7px 10px', fontSize: '0.76rem', color: 'var(--text-sub)' }}>
                         {calc.stylistName}
                         {parseFloat(b.commission_amount || 0) > 0 && (
-                          <div style={{ fontSize: '0.72rem', color: 'var(--accent-gold)' }}>Tag: ₹{parseFloat(b.commission_amount).toFixed(0)}</div>
+                          <div style={{ fontSize: '0.66rem', color: 'var(--accent-gold)' }}>Tag: ₹{parseFloat(b.commission_amount).toFixed(0)}</div>
                         )}
                       </td>
-                      <td style={{ padding: '12px 14px', fontSize: '0.85rem' }}>
+                      <td style={{ padding: '7px 10px', fontSize: '0.76rem', fontWeight: '700' }}>
                         ₹{calc.subtotal.toFixed(2)}
                       </td>
-                      <td style={{ padding: '12px 14px', fontSize: '0.85rem', color: (calc.discount > 0 || calc.isMemberMode) ? '#ef4444' : 'var(--text-muted)' }}>
+                      <td style={{ padding: '7px 10px', fontSize: '0.76rem', color: (calc.discount > 0 || calc.isMemberMode) ? '#ef4444' : 'var(--text-muted)' }}>
                         {(calc.discount > 0 || calc.isMemberMode) ? `-₹${calc.discount.toFixed(2)}` : '—'}
                         {(b.discount_code || calc.isMemberMode) && (
-                          <div style={{ fontSize: '0.7rem', color: '#f59e0b', fontWeight: '800', marginTop: '2px' }}>
+                          <div style={{ fontSize: '0.64rem', color: '#f59e0b', fontWeight: '800', marginTop: '1px' }}>
                             {calc.isMemberMode || b.discount_code === 'MEMBERSHIP_WALLET_REDEMPTION' ? '👑 Membership Wallet Credit' : b.discount_code === 'MEMBERSHIP_TIER' ? '👑 Member OFF' : b.discount_code}
                           </div>
                         )}
                       </td>
-                      <td style={{ padding: '12px 14px', fontSize: '0.85rem', color: calc.isMemberMode ? 'var(--text-muted)' : '#38bdf8' }}>
+                      <td style={{ padding: '7px 10px', fontSize: '0.76rem', color: calc.isMemberMode ? 'var(--text-muted)' : '#38bdf8' }}>
                         ₹{calc.tax.toFixed(2)}
                       </td>
-                      <td style={{ padding: '12px 14px', fontWeight: '900', color: calc.isMemberMode ? '#10b981' : 'var(--text-main)' }}>
+                      <td style={{ padding: '7px 10px', fontWeight: '800', color: calc.isMemberMode ? '#10b981' : 'var(--text-main)', fontSize: '0.78rem' }}>
                         <div>₹{calc.total.toFixed(2)}</div>
                         {calc.isMemberMode && (
-                          <div style={{ fontSize: '0.68rem', color: '#f59e0b', fontWeight: '800', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <div style={{ fontSize: '0.64rem', color: '#f59e0b', fontWeight: '800', marginTop: '1px', display: 'flex', alignItems: 'center', gap: '3px' }}>
                             👑 Wallet Settled
                           </div>
                         )}
                       </td>
-                      <td style={{ padding: '12px 14px' }}>
+                      <td style={{ padding: '7px 10px' }}>
                         {(() => {
                           const isMemberMode = b.payment_mode === 'Membership Wallet Credit' || String(b.payment_mode || '').toLowerCase().includes('membership');
                           const isCash = b.payment_mode === 'Cash';
@@ -495,15 +514,15 @@ function BillingHistoryView({
                               background: isMemberMode ? 'rgba(245, 158, 11, 0.18)' : isCash ? 'rgba(37,99,235,0.15)' : isUPI ? 'rgba(16,185,129,0.15)' : isSplit ? 'rgba(236,72,153,0.15)' : 'rgba(129,140,248,0.15)',
                               color: isMemberMode ? '#f59e0b' : isCash ? '#38bdf8' : isUPI ? '#10b981' : isSplit ? '#ec4899' : '#818cf8',
                               border: `1px solid ${isMemberMode ? '#f59e0b' : 'transparent'}`,
-                              padding: '3px 10px',
-                              borderRadius: '10px',
-                              fontSize: '0.78rem',
-                              fontWeight: '800',
+                              padding: '2px 7px',
+                              borderRadius: '6px',
+                              fontSize: '0.7rem',
+                              fontWeight: '700',
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '4px'
+                              gap: '3px'
                             }}>
-                              {isMemberMode && <Crown size={12} />}
+                              {isMemberMode && <Crown size={10} />}
                               {isCash && '💵 '}
                               {isUPI && '📱 '}
                               {isCard && '💳 '}
@@ -513,45 +532,45 @@ function BillingHistoryView({
                           );
                         })()}
                       </td>
-                      <td style={{ padding: '12px 14px' }}>
+                      <td style={{ padding: '7px 10px' }}>
                         <span style={{
                           background: 'rgba(16, 185, 129, 0.15)',
                           color: '#10b981',
                           border: '1px solid #10b981',
-                          padding: '3px 10px',
-                          borderRadius: '10px',
-                          fontSize: '0.76rem',
+                          padding: '2px 7px',
+                          borderRadius: '6px',
+                          fontSize: '0.7rem',
                           fontWeight: '800',
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '4px'
+                          gap: '3px'
                         }}>
-                          <CheckCircle2 size={12} /> Paid
+                          <CheckCircle2 size={10} /> Paid
                         </span>
                       </td>
-                      <td style={{ padding: '12px 14px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      <td style={{ padding: '7px 10px', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                         {new Date(b.created_at || Date.now()).toLocaleDateString('en-IN')}
                       </td>
-                      <td style={{ padding: '12px 14px', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                      <td style={{ padding: '7px 10px', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
                           <button
                             onClick={() => setSelectedBill(b)}
                             title="View Invoice Receipt"
                             style={{
-                              display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 10px',
+                              display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '3px 7px',
                               background: 'rgba(99,102,241,0.12)', border: '1px solid var(--primary-indigo)',
-                              borderRadius: '8px', color: 'var(--primary-indigo)', fontSize: '0.76rem', fontWeight: '700', cursor: 'pointer'
+                              borderRadius: '5px', color: 'var(--primary-indigo)', fontSize: '0.7rem', fontWeight: '700', cursor: 'pointer'
                             }}
                           >
-                            <Eye size={12} /> View
+                            <Eye size={11} /> View
                           </button>
                           <button
                             onClick={() => handleDownloadPDF(b)}
                             title="Download PDF Invoice"
                             style={{
-                              display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 10px',
+                              display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '3px 7px',
                               background: 'rgba(37,99,235,0.15)', border: '1px solid rgba(37,99,235,0.4)',
-                              borderRadius: '8px', color: '#38bdf8', fontSize: '0.76rem', fontWeight: '800', cursor: 'pointer'
+                              borderRadius: '5px', color: '#38bdf8', fontSize: '0.7rem', fontWeight: '800', cursor: 'pointer'
                             }}
                           >
                             📥 PDF
@@ -565,12 +584,12 @@ function BillingHistoryView({
                               }}
                               title="Delete Invoice Record"
                               style={{
-                                display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 10px',
+                                display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '3px 7px',
                                 background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)',
-                                borderRadius: '8px', color: '#ef4444', fontSize: '0.76rem', fontWeight: '800', cursor: 'pointer'
+                                borderRadius: '5px', color: '#ef4444', fontSize: '0.7rem', fontWeight: '800', cursor: 'pointer'
                               }}
                             >
-                              <Trash2 size={12} /> Delete
+                              <Trash2 size={11} /> Delete
                             </button>
                           )}
                         </div>
@@ -589,15 +608,15 @@ function BillingHistoryView({
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '16px',
-          marginTop: '20px',
-          paddingTop: '16px',
+          gap: '10px',
+          marginTop: '10px',
+          paddingTop: '10px',
           borderTop: '1px solid var(--border)',
-          fontSize: '0.85rem',
+          fontSize: '0.74rem',
           color: 'var(--text-sub)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600' }}>
               <span>Show invoices:</span>
               <select
                 value={pageSize}
@@ -610,8 +629,10 @@ function BillingHistoryView({
                   background: 'var(--input-bg)',
                   color: 'var(--text-main)',
                   border: '1px solid var(--border)',
-                  borderRadius: '8px',
-                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  padding: '2px 8px',
+                  height: '26px',
+                  fontSize: '0.72rem',
                   fontWeight: '700',
                   cursor: 'pointer'
                 }}
@@ -633,33 +654,33 @@ function BillingHistoryView({
           </div>
 
           {!isAll && totalPages > 1 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <button
                 disabled={safePage === 1}
                 onClick={() => setCurrentPage(1)}
                 style={{
-                  padding: '5px 8px', borderRadius: '6px', border: '1px solid var(--border)',
+                  padding: '3px 6px', borderRadius: '5px', border: '1px solid var(--border)',
                   background: 'var(--input-bg)', color: 'var(--text-main)',
                   cursor: safePage === 1 ? 'not-allowed' : 'pointer', opacity: safePage === 1 ? 0.4 : 1
                 }}
                 title="First Page"
               >
-                <ChevronsLeft size={14} />
+                <ChevronsLeft size={13} />
               </button>
               <button
                 disabled={safePage === 1}
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 style={{
-                  padding: '5px 8px', borderRadius: '6px', border: '1px solid var(--border)',
+                  padding: '3px 6px', borderRadius: '5px', border: '1px solid var(--border)',
                   background: 'var(--input-bg)', color: 'var(--text-main)',
                   cursor: safePage === 1 ? 'not-allowed' : 'pointer', opacity: safePage === 1 ? 0.4 : 1
                 }}
                 title="Previous Page"
               >
-                <ChevronLeft size={14} />
+                <ChevronLeft size={13} />
               </button>
 
-              <span style={{ padding: '0 8px', fontWeight: '700', color: 'var(--text-main)' }}>
+              <span style={{ padding: '0 6px', fontWeight: '700', color: 'var(--text-main)', fontSize: '0.72rem' }}>
                 Page {safePage} of {totalPages}
               </span>
 
@@ -667,25 +688,25 @@ function BillingHistoryView({
                 disabled={safePage >= totalPages}
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 style={{
-                  padding: '5px 8px', borderRadius: '6px', border: '1px solid var(--border)',
+                  padding: '3px 6px', borderRadius: '5px', border: '1px solid var(--border)',
                   background: 'var(--input-bg)', color: 'var(--text-main)',
                   cursor: safePage >= totalPages ? 'not-allowed' : 'pointer', opacity: safePage >= totalPages ? 0.4 : 1
                 }}
                 title="Next Page"
               >
-                <ChevronRight size={14} />
+                <ChevronRight size={13} />
               </button>
               <button
                 disabled={safePage >= totalPages}
                 onClick={() => setCurrentPage(totalPages)}
                 style={{
-                  padding: '5px 8px', borderRadius: '6px', border: '1px solid var(--border)',
+                  padding: '3px 6px', borderRadius: '5px', border: '1px solid var(--border)',
                   background: 'var(--input-bg)', color: 'var(--text-main)',
                   cursor: safePage >= totalPages ? 'not-allowed' : 'pointer', opacity: safePage >= totalPages ? 0.4 : 1
                 }}
                 title="Last Page"
               >
-                <ChevronsRight size={14} />
+                <ChevronsRight size={13} />
               </button>
             </div>
           )}

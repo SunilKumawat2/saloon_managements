@@ -139,7 +139,7 @@ export const UserModel = {
     }
   },
 
-  async create({ name, email, phone, role_id, branch_id, password, admin_id, created_by_user_id, allowed_branch_ids = [] }) {
+  async create({ name, email, phone, role_id, branch_id, password, admin_id, created_by_user_id, allowed_branch_ids = [], specialization = '', service_ids = [] }) {
     let safeBranchId = (branch_id && !isNaN(parseInt(branch_id)) && parseInt(branch_id) > 0) ? parseInt(branch_id) : null;
     const safeRoleId = parseInt(role_id) || 1;
     const cleanPhone = phone ? String(phone).replace(/\D/g, '') : null;
@@ -165,8 +165,8 @@ export const UserModel = {
 
     const query = `
       WITH inserted AS (
-        INSERT INTO users (name, email, phone, role_id, branch_id, password, admin_id, created_by_user_id, allowed_branch_ids)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        INSERT INTO users (name, email, phone, role_id, branch_id, password, admin_id, created_by_user_id, allowed_branch_ids, specialization, service_ids)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING *
       )
       SELECT u.*, r.name as role_name, b.name as branch_name
@@ -177,12 +177,14 @@ export const UserModel = {
     const { rows } = await pool.query(query, [
       name, email, cleanPhone, safeRoleId, safeBranchId, password || 'default123',
       admin_id || null, created_by_user_id || null,
-      JSON.stringify(Array.isArray(allowed_branch_ids) ? allowed_branch_ids : [])
+      JSON.stringify(Array.isArray(allowed_branch_ids) ? allowed_branch_ids : []),
+      specialization || '',
+      JSON.stringify(Array.isArray(service_ids) ? service_ids : [])
     ]);
     return rows[0];
   },
 
-  async update(id, { name, email, phone, role_id, branch_id, allowed_branch_ids }) {
+  async update(id, { name, email, phone, role_id, branch_id, allowed_branch_ids, specialization, service_ids }) {
     try {
       const query = `
         WITH updated AS (
@@ -192,8 +194,10 @@ export const UserModel = {
               phone = COALESCE($3, phone),
               role_id = COALESCE($4, role_id),
               branch_id = COALESCE($5, branch_id),
-              allowed_branch_ids = COALESCE($6, allowed_branch_ids)
-          WHERE id = $7
+              allowed_branch_ids = COALESCE($6, allowed_branch_ids),
+              specialization = COALESCE($7, specialization),
+              service_ids = COALESCE($8, service_ids)
+          WHERE id = $9
           RETURNING *
         )
         SELECT u.*, r.name as role_name, b.name as branch_name
@@ -208,12 +212,14 @@ export const UserModel = {
         role_id ? parseInt(role_id) : null,
         branch_id ? parseInt(branch_id) : null,
         allowed_branch_ids !== undefined ? JSON.stringify(allowed_branch_ids) : null,
+        specialization !== undefined ? specialization : null,
+        service_ids !== undefined ? JSON.stringify(Array.isArray(service_ids) ? service_ids : []) : null,
         id
       ]);
       return rows[0];
     } catch (err) {
       console.error('UserModel.update DB error:', err);
-      DEMO_USERS = DEMO_USERS.map(u => u.id === id ? { ...u, name, email, phone, role_id, branch_id, allowed_branch_ids } : u);
+      DEMO_USERS = DEMO_USERS.map(u => u.id === id ? { ...u, name, email, phone, role_id, branch_id, allowed_branch_ids, specialization, service_ids } : u);
       return DEMO_USERS.find(u => u.id === id);
     }
   },
