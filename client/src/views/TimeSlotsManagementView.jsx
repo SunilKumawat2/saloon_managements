@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Clock, Plus, Search, Edit2, Trash2, CheckCircle2, XCircle,
-  Sparkles, Filter, Building2, AlertCircle, X, Zap, Calendar, RefreshCw, Timer, CalendarDays
+  Sparkles, Filter, Building2, AlertCircle, X, Zap, Calendar, RefreshCw, Timer, CalendarDays,
+  LayoutList, LayoutGrid
 } from 'lucide-react';
 
 const TimeSlotsManagementView = ({
@@ -18,6 +19,19 @@ const TimeSlotsManagementView = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('ALL');
   const [selectedDay, setSelectedDay] = useState('ALL');
+  const [viewMode, setViewMode] = useState(() => {
+    return localStorage.getItem('salon_slots_view_mode') || 'table';
+  });
+
+  const handleSetViewMode = (mode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('salon_slots_view_mode', mode);
+    } catch (e) {
+      console.warn('Could not save viewMode to localStorage', e);
+    }
+  };
+
   const [showModal, setShowModal] = useState(false);
   const [showGenModal, setShowGenModal] = useState(false);
   const [editingSlot, setEditingSlot] = useState(null);
@@ -267,6 +281,17 @@ const TimeSlotsManagementView = ({
 
     return matchesSearch && matchesBranch && matchesDay;
   });
+
+  // Sort slots chronologically by start time, then day
+  const sortedFilteredSlots = useMemo(() => {
+    return [...filteredSlots].sort((a, b) => {
+      const startA = a.start_time || a.slot_time || '00:00';
+      const startB = b.start_time || b.slot_time || '00:00';
+      const diff = parseMins(startA) - parseMins(startB);
+      if (diff !== 0) return diff;
+      return (a.day_of_week || '').localeCompare(b.day_of_week || '');
+    });
+  }, [filteredSlots]);
 
   const totalSlots = timeSlots.length;
   const activeSlots = timeSlots.filter(s => s.is_active !== false).length;
@@ -542,10 +567,62 @@ const TimeSlotsManagementView = ({
             </select>
           </div>
         )}
+
+        {/* View Switcher: Table View [Default] vs Cards View */}
+        <div style={{
+          display: 'flex',
+          background: 'rgba(15, 23, 42, 0.75)',
+          borderRadius: '10px',
+          padding: '4px',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          alignItems: 'center',
+          marginLeft: 'auto'
+        }}>
+          <button
+            type="button"
+            onClick={() => handleSetViewMode('table')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 14px',
+              borderRadius: '8px',
+              border: 'none',
+              background: viewMode === 'table' ? '#6366f1' : 'transparent',
+              color: viewMode === 'table' ? '#ffffff' : '#94a3b8',
+              fontWeight: '700',
+              fontSize: '13px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+          >
+            <LayoutList size={15} /> Table View
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSetViewMode('cards')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 14px',
+              borderRadius: '8px',
+              border: 'none',
+              background: viewMode === 'cards' ? '#6366f1' : 'transparent',
+              color: viewMode === 'cards' ? '#ffffff' : '#94a3b8',
+              fontWeight: '700',
+              fontSize: '13px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+          >
+            <LayoutGrid size={15} /> Cards View
+          </button>
+        </div>
       </div>
 
-      {/* Slots Grid */}
-      {filteredSlots.length === 0 ? (
+      {/* Slots Content (Table or Cards) */}
+      {sortedFilteredSlots.length === 0 ? (
         <div style={{
           background: 'rgba(30, 41, 59, 0.5)',
           border: '1px dashed rgba(255, 255, 255, 0.15)',
@@ -589,13 +666,244 @@ const TimeSlotsManagementView = ({
             </button>
           </div>
         </div>
+      ) : viewMode === 'table' ? (
+        /* ─── 1. MODERN TABLE FORMAT ─── */
+        <div style={{
+          background: 'rgba(30, 41, 59, 0.7)',
+          backdropFilter: 'blur(12px)',
+          borderRadius: '16px',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          overflow: 'hidden',
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.35)'
+        }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '850px' }}>
+              <thead>
+                <tr style={{
+                  background: 'rgba(15, 23, 42, 0.9)',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+                  color: '#94a3b8',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em'
+                }}>
+                  <th style={{ padding: '14px 16px', width: '50px', textAlign: 'center' }}>#</th>
+                  <th style={{ padding: '14px 16px' }}>Time Slot (12H Interval)</th>
+                  <th style={{ padding: '14px 16px' }}>Applicable Days / Date Scope</th>
+                  <th style={{ padding: '14px 16px' }}>Duration</th>
+                  <th style={{ padding: '14px 16px' }}>Branch</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'center' }}>Status</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedFilteredSlots.map((slot, idx) => {
+                  const isActive = slot.is_active !== false;
+                  const branchObj = branches.find(b => String(b.id) === String(slot.branch_id));
+                  const details = getSlotDetails(slot);
+
+                  return (
+                    <tr
+                      key={slot.id}
+                      style={{
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                        background: idx % 2 === 0 ? 'rgba(30, 41, 59, 0.4)' : 'rgba(15, 23, 42, 0.3)',
+                        opacity: isActive ? 1 : 0.65,
+                        transition: 'background 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(99, 102, 241, 0.12)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = idx % 2 === 0 ? 'rgba(30, 41, 59, 0.4)' : 'rgba(15, 23, 42, 0.3)';
+                      }}
+                    >
+                      {/* Index */}
+                      <td style={{ padding: '12px 16px', textAlign: 'center', color: '#64748b', fontSize: '13px', fontWeight: '600' }}>
+                        {idx + 1}
+                      </td>
+
+                      {/* Time Slot */}
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{
+                            fontSize: '14px',
+                            fontWeight: '700',
+                            color: '#ffffff',
+                            fontFamily: 'monospace',
+                            background: 'rgba(99, 102, 241, 0.15)',
+                            border: '1px solid rgba(99, 102, 241, 0.35)',
+                            padding: '4px 10px',
+                            borderRadius: '8px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}>
+                            <Clock size={14} style={{ color: '#818cf8' }} />
+                            {format12H(details.startTime)} – {format12H(details.endTime)}
+                          </span>
+                          <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'monospace' }}>
+                            ({details.startTime} - {details.endTime})
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Applicable Days / Scope */}
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          color: slot.specific_date ? '#f59e0b' : (slot.day_of_week && slot.day_of_week !== 'ALL' ? '#818cf8' : '#34d399'),
+                          background: slot.specific_date ? 'rgba(245, 158, 11, 0.15)' : (slot.day_of_week && slot.day_of_week !== 'ALL' ? 'rgba(99, 102, 241, 0.15)' : 'rgba(52, 211, 153, 0.12)'),
+                          border: `1px solid ${slot.specific_date ? 'rgba(245, 158, 11, 0.35)' : (slot.day_of_week && slot.day_of_week !== 'ALL' ? 'rgba(99, 102, 241, 0.35)' : 'rgba(52, 211, 153, 0.3)')}`,
+                          padding: '4px 10px',
+                          borderRadius: '8px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}>
+                          <CalendarDays size={13} />
+                          {slot.specific_date ? (
+                            <>
+                              <strong>Date: {formatDateYMD(slot.specific_date)}</strong>
+                              {slot.day_of_week && slot.day_of_week !== 'ALL' ? ` (${slot.day_of_week})` : ''}
+                            </>
+                          ) : (
+                            slot.day_of_week && slot.day_of_week !== 'ALL'
+                              ? `Day: ${slot.day_of_week}`
+                              : 'All 7 Days (Mon - Sun)'
+                          )}
+                        </span>
+                      </td>
+
+                      {/* Duration */}
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{
+                          fontSize: '12px',
+                          fontWeight: '700',
+                          color: '#fbbf24',
+                          background: 'rgba(245, 158, 11, 0.15)',
+                          border: '1px solid rgba(245, 158, 11, 0.3)',
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          <Timer size={13} /> {details.durationMinutes} min
+                        </span>
+                      </td>
+
+                      {/* Branch */}
+                      <td style={{ padding: '12px 16px', fontSize: '13px', color: '#cbd5e1' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Building2 size={14} style={{ color: '#818cf8' }} />
+                          <span>{branchObj ? branchObj.name : (slot.branch_name || 'All Branches')}</span>
+                        </div>
+                      </td>
+
+                      {/* Status Toggle Button */}
+                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleToggle(slot.id)}
+                          title={isActive ? 'Click to disable slot' : 'Click to enable slot'}
+                          style={{
+                            background: isActive ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                            border: `1px solid ${isActive ? 'rgba(34, 197, 94, 0.35)' : 'rgba(239, 68, 68, 0.35)'}`,
+                            color: isActive ? '#4ade80' : '#f87171',
+                            borderRadius: '20px',
+                            padding: '4px 12px',
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px'
+                          }}
+                        >
+                          {isActive ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+                          {isActive ? 'Active' : 'Disabled'}
+                        </button>
+                      </td>
+
+                      {/* Actions */}
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: '8px' }}>
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(slot)}
+                            title="Edit Time Slot"
+                            style={{
+                              background: 'rgba(99, 102, 241, 0.15)',
+                              border: '1px solid rgba(99, 102, 241, 0.3)',
+                              color: '#a5b4fc',
+                              borderRadius: '6px',
+                              padding: '5px 10px',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <Edit2 size={12} /> Edit
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setDeleteConfirmId(slot.id)}
+                            title="Delete Time Slot"
+                            style={{
+                              background: 'rgba(239, 68, 68, 0.12)',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                              color: '#f87171',
+                              borderRadius: '6px',
+                              padding: '5px 10px',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <Trash2 size={12} /> Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Table Footer Summary */}
+          <div style={{
+            padding: '12px 18px',
+            background: 'rgba(15, 23, 42, 0.8)',
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            fontSize: '12px',
+            color: '#94a3b8'
+          }}>
+            <span>Showing <strong>{sortedFilteredSlots.length}</strong> time slot{sortedFilteredSlots.length !== 1 ? 's' : ''} (Sorted chronologically by start time)</span>
+            <span style={{ color: '#64748b' }}>Click on Status pill to toggle active/disabled state instantly</span>
+          </div>
+        </div>
       ) : (
+        /* ─── 2. CARDS GRID VIEW ─── */
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
           gap: '16px'
         }}>
-          {filteredSlots.map(slot => {
+          {sortedFilteredSlots.map(slot => {
             const isActive = slot.is_active !== false;
             const branchObj = branches.find(b => String(b.id) === String(slot.branch_id));
             const details = getSlotDetails(slot);
