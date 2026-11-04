@@ -1101,10 +1101,10 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix, currentUser, branches: 
               type="submit"
               disabled={gatewaySaving}
               style={{
-                padding: '12px 28px', background: '#2563eb',
+                padding: '12px 28px', background: 'var(--accent-gold)',
                 color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '700',
                 cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px',
-                boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)'
+                boxShadow: 'var(--shadow-glow)'
               }}
             >
               <Save size={18} /> {gatewaySaving ? 'Saving Configuration...' : 'Save & Activate Payment Gateway'}
@@ -1364,8 +1364,9 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix, currentUser, branches: 
               onClick={handleCreateBackup}
               disabled={backupProcessing}
               style={{
-                padding: '8px 16px', background: '#2563eb',
-                color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer'
+                padding: '8px 16px', background: 'var(--accent-gold)',
+                color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer',
+                boxShadow: 'var(--shadow-glow)'
               }}
             >
               <Database size={16} style={{ marginRight: '6px' }} /> Create On-Demand Backup
@@ -1475,7 +1476,7 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix, currentUser, branches: 
               <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
                 <button
                   type="submit"
-                  style={{ flex: 1, padding: '12px', background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}
+                  style={{ flex: 1, padding: '12px', background: 'var(--accent-gold)', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', boxShadow: 'var(--shadow-glow)' }}
                 >
                   Create System User
                 </button>

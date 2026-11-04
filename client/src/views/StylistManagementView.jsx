@@ -164,7 +164,7 @@ const StylistManagementView = ({
       }}>
         <div>
           <h1 style={{ fontSize: '28px', fontWeight: '700', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Scissors style={{ color: '#6366f1' }} size={28} />
+            <Scissors style={{ color: 'var(--accent-gold)' }} size={28} />
             Stylist & Staff Management
           </h1>
           <p style={{ color: '#94a3b8', fontSize: '14px', marginTop: '4px' }}>
@@ -199,7 +199,7 @@ const StylistManagementView = ({
           <button
             onClick={openAddModal}
             style={{
-              background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+              background: 'var(--accent-gold)',
               color: '#ffffff',
               border: 'none',
               borderRadius: '10px',
@@ -210,7 +210,7 @@ const StylistManagementView = ({
               alignItems: 'center',
               gap: '8px',
               cursor: 'pointer',
-              boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)',
+              boxShadow: '0 4px 14px var(--accent-gold-glow)',
               transition: 'transform 0.2s, boxShadow 0.2s'
             }}
           >
@@ -409,12 +409,13 @@ const StylistManagementView = ({
           <button
             onClick={openAddModal}
             style={{
-              background: '#6366f1',
+              background: 'var(--accent-gold)',
               color: '#ffffff',
               border: 'none',
               borderRadius: '8px',
               padding: '10px 18px',
               fontWeight: '600',
+              boxShadow: '0 2px 8px var(--accent-gold-glow)',
               cursor: 'pointer'
             }}
           >
@@ -1114,12 +1115,13 @@ const StylistManagementView = ({
                   type="submit"
                   disabled={isSubmitting}
                   style={{
-                    background: '#6366f1',
+                    background: 'var(--accent-gold)',
                     color: '#ffffff',
                     border: 'none',
                     borderRadius: '8px',
                     padding: '10px 20px',
                     fontWeight: '600',
+                    boxShadow: '0 2px 10px var(--accent-gold-glow)',
                     cursor: isSubmitting ? 'not-allowed' : 'pointer',
                     opacity: isSubmitting ? 0.7 : 1
                   }}

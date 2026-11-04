@@ -2154,7 +2154,7 @@ function POSBillingView({
                       padding: '12px',
                       marginBottom: '16px',
                       borderRadius: '12px',
-                      background: '#2563eb',
+                      background: 'var(--accent-gold)',
                       color: '#ffffff',
                       border: 'none',
                       fontWeight: '800',
@@ -2164,7 +2164,7 @@ function POSBillingView({
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '8px',
-                      boxShadow: '0 4px 15px rgba(2, 132, 199, 0.4)'
+                      boxShadow: '0 4px 15px var(--accent-gold-glow)'
                     }}
                   >
                     <Sparkles size={18} /> Open Official {(gatewayConfig?.gateway_name || 'Gateway').toUpperCase()} Window (Online Bank Deposit)
@@ -2521,9 +2521,9 @@ function POSBillingView({
                 }}
                 disabled={isSubmitting}
                 style={{
-                  width: '100%', padding: '14px', borderRadius: '12px', background: '#2563eb',
+                  width: '100%', padding: '14px', borderRadius: '12px', background: 'var(--accent-gold)', color: '#ffffff',
                   fontWeight: '900', fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                  boxShadow: '0 4px 16px rgba(16, 185, 129, 0.4)'
+                  boxShadow: '0 4px 16px var(--accent-gold-glow)', border: 'none', cursor: 'pointer'
                 }}
               >
                 {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <><CheckCircle2 size={18} /> Pay ₹{grandTotal.toFixed(2)} via Razorpay Gateway</>}

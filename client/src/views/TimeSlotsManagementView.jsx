@@ -397,7 +397,7 @@ const TimeSlotsManagementView = ({
       }}>
         <div>
           <h1 style={{ fontSize: '28px', fontWeight: '700', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Clock style={{ color: '#6366f1' }} size={28} />
+            <Clock style={{ color: 'var(--accent-gold)' }} size={28} />
             Salon Time Slots & Weekly Schedule Setup
           </h1>
           <p style={{ color: '#94a3b8', fontSize: '14px', marginTop: '4px' }}>
@@ -409,9 +409,9 @@ const TimeSlotsManagementView = ({
           <button
             onClick={() => setShowGenModal(true)}
             style={{
-              background: 'rgba(99, 102, 241, 0.15)',
-              border: '1px solid rgba(99, 102, 241, 0.4)',
-              color: '#818cf8',
+              background: 'var(--active-bg)',
+              border: '1px solid var(--border-gold)',
+              color: 'var(--accent-gold)',
               borderRadius: '10px',
               padding: '12px 18px',
               fontWeight: '600',
@@ -428,7 +428,7 @@ const TimeSlotsManagementView = ({
           <button
             onClick={openAddModal}
             style={{
-              background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+              background: 'var(--accent-gold)',
               color: '#ffffff',
               border: 'none',
               borderRadius: '10px',
@@ -439,7 +439,7 @@ const TimeSlotsManagementView = ({
               alignItems: 'center',
               gap: '8px',
               cursor: 'pointer',
-              boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)'
+              boxShadow: '0 4px 14px var(--accent-gold-glow)'
             }}
           >
             <Plus size={18} /> Add Custom Slot
@@ -548,9 +548,9 @@ const TimeSlotsManagementView = ({
             style={{
               padding: '8px 16px',
               borderRadius: '20px',
-              border: selectedDay === day.key ? '1px solid #6366f1' : '1px solid rgba(255, 255, 255, 0.12)',
-              background: selectedDay === day.key ? 'rgba(99, 102, 241, 0.25)' : 'rgba(30, 41, 59, 0.6)',
-              color: selectedDay === day.key ? '#818cf8' : '#94a3b8',
+              border: selectedDay === day.key ? '1px solid var(--border-gold)' : '1px solid rgba(255, 255, 255, 0.12)',
+              background: selectedDay === day.key ? 'var(--active-bg)' : 'rgba(30, 41, 59, 0.6)',
+              color: selectedDay === day.key ? 'var(--accent-gold)' : '#94a3b8',
               fontSize: '13px',
               fontWeight: selectedDay === day.key ? '700' : '500',
               cursor: 'pointer',
@@ -638,11 +638,12 @@ const TimeSlotsManagementView = ({
               padding: '8px 14px',
               borderRadius: '8px',
               border: 'none',
-              background: viewMode === 'table' ? '#6366f1' : 'transparent',
+              background: viewMode === 'table' ? 'var(--accent-gold)' : 'transparent',
               color: viewMode === 'table' ? '#ffffff' : '#94a3b8',
               fontWeight: '700',
               fontSize: '13px',
               cursor: 'pointer',
+              boxShadow: viewMode === 'table' ? '0 1px 6px var(--accent-gold-glow)' : 'none',
               transition: 'all 0.2s'
             }}
           >
@@ -658,11 +659,12 @@ const TimeSlotsManagementView = ({
               padding: '8px 14px',
               borderRadius: '8px',
               border: 'none',
-              background: viewMode === 'cards' ? '#6366f1' : 'transparent',
+              background: viewMode === 'cards' ? 'var(--accent-gold)' : 'transparent',
               color: viewMode === 'cards' ? '#ffffff' : '#94a3b8',
               fontWeight: '700',
               fontSize: '13px',
               cursor: 'pointer',
+              boxShadow: viewMode === 'cards' ? '0 1px 6px var(--accent-gold-glow)' : 'none',
               transition: 'all 0.2s'
             }}
           >
@@ -689,9 +691,9 @@ const TimeSlotsManagementView = ({
             <button
               onClick={() => setShowGenModal(true)}
               style={{
-                background: 'rgba(99, 102, 241, 0.2)',
-                border: '1px solid rgba(99, 102, 241, 0.4)',
-                color: '#818cf8',
+                background: 'var(--active-bg)',
+                border: '1px solid var(--border-gold)',
+                color: 'var(--accent-gold)',
                 borderRadius: '8px',
                 padding: '10px 18px',
                 fontWeight: '600',
@@ -703,12 +705,13 @@ const TimeSlotsManagementView = ({
             <button
               onClick={openAddModal}
               style={{
-                background: '#6366f1',
+                background: 'var(--accent-gold)',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: '8px',
                 padding: '10px 18px',
                 fontWeight: '600',
+                boxShadow: '0 2px 8px var(--accent-gold-glow)',
                 cursor: 'pointer'
               }}
             >
@@ -1497,13 +1500,13 @@ const TimeSlotsManagementView = ({
                 </div>
 
                 <div style={{
-                  background: '#6366f1',
+                  background: 'var(--accent-gold)',
                   color: '#ffffff',
                   fontWeight: '800',
                   fontSize: '14px',
                   padding: '6px 12px',
                   borderRadius: '8px',
-                  boxShadow: '0 2px 8px rgba(99, 102, 241, 0.4)'
+                  boxShadow: '0 2px 8px var(--accent-gold-glow)'
                 }}>
                   {getDurationMins(formData.start_time, formData.end_time)} Mins
                 </div>
@@ -1562,7 +1565,7 @@ const TimeSlotsManagementView = ({
                   id="is_active_cb"
                   checked={formData.is_active}
                   onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  style={{ width: '18px', height: '18px', accentColor: '#6366f1', cursor: 'pointer' }}
+                  style={{ width: '18px', height: '18px', accentColor: 'var(--accent-gold)', cursor: 'pointer' }}
                 />
                 <label htmlFor="is_active_cb" style={{ fontSize: '14px', color: '#cbd5e1', cursor: 'pointer' }}>
                   Available for Customer Appointment Booking
@@ -1590,12 +1593,13 @@ const TimeSlotsManagementView = ({
                   type="submit"
                   disabled={isSubmitting}
                   style={{
-                    background: '#6366f1',
+                    background: 'var(--accent-gold)',
                     color: '#ffffff',
                     border: 'none',
                     borderRadius: '8px',
                     padding: '10px 20px',
                     fontWeight: '600',
+                    boxShadow: '0 2px 10px var(--accent-gold-glow)',
                     cursor: isSubmitting ? 'not-allowed' : 'pointer',
                     opacity: isSubmitting ? 0.7 : 1
                   }}
@@ -1840,12 +1844,13 @@ const TimeSlotsManagementView = ({
                   type="submit"
                   disabled={isSubmitting}
                   style={{
-                    background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                    background: 'var(--accent-gold)',
                     color: '#ffffff',
                     border: 'none',
                     borderRadius: '8px',
                     padding: '10px 20px',
                     fontWeight: '600',
+                    boxShadow: '0 4px 14px var(--accent-gold-glow)',
                     cursor: isSubmitting ? 'not-allowed' : 'pointer',
                     opacity: isSubmitting ? 0.7 : 1
                   }}

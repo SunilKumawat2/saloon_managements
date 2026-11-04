@@ -430,7 +430,7 @@ const AssetsTrackingManagementView = ({
       }}>
         <div>
           <h1 style={{ fontSize: '1rem', fontWeight: '700', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-            <Package style={{ color: '#6366f1' }} size={18} />
+            <Package style={{ color: 'var(--accent-gold)' }} size={18} />
             Salon Assets & Equipment Tracking
           </h1>
           <p style={{ color: '#94a3b8', fontSize: '0.74rem', marginTop: '2px', marginBottom: 0 }}>
@@ -451,7 +451,7 @@ const AssetsTrackingManagementView = ({
               type="button"
               onClick={() => setViewMode('table')}
               style={{
-                background: viewMode === 'table' ? '#6366f1' : 'transparent',
+                background: viewMode === 'table' ? 'var(--accent-gold)' : 'transparent',
                 color: viewMode === 'table' ? '#ffffff' : '#94a3b8',
                 border: 'none',
                 borderRadius: '4px',
@@ -462,7 +462,8 @@ const AssetsTrackingManagementView = ({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '4px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                boxShadow: viewMode === 'table' ? '0 1px 6px var(--accent-gold-glow)' : 'none'
               }}
               title="Data Table View"
             >
@@ -472,7 +473,7 @@ const AssetsTrackingManagementView = ({
               type="button"
               onClick={() => setViewMode('cards')}
               style={{
-                background: viewMode === 'cards' ? '#6366f1' : 'transparent',
+                background: viewMode === 'cards' ? 'var(--accent-gold)' : 'transparent',
                 color: viewMode === 'cards' ? '#ffffff' : '#94a3b8',
                 border: 'none',
                 borderRadius: '4px',
@@ -483,7 +484,8 @@ const AssetsTrackingManagementView = ({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '4px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                boxShadow: viewMode === 'cards' ? '0 1px 6px var(--accent-gold-glow)' : 'none'
               }}
               title="Cards View"
             >
@@ -512,11 +514,11 @@ const AssetsTrackingManagementView = ({
             >
               {isAllExpanded ? (
                 <>
-                  <Minimize2 size={12} style={{ color: '#818cf8' }} /> Minimize All
+                  <Minimize2 size={12} style={{ color: 'var(--accent-gold)' }} /> Minimize All
                 </>
               ) : (
                 <>
-                  <Maximize2 size={12} style={{ color: '#818cf8' }} /> Expand All
+                  <Maximize2 size={12} style={{ color: 'var(--accent-gold)' }} /> Expand All
                 </>
               )}
             </button>
@@ -526,7 +528,7 @@ const AssetsTrackingManagementView = ({
             <button
               onClick={openAddRentalModal}
               style={{
-                background: 'linear-gradient(135deg, #38bdf8 0%, #0284c7 100%)',
+                background: 'var(--accent-gold)',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: '6px',
@@ -537,7 +539,7 @@ const AssetsTrackingManagementView = ({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                boxShadow: '0 2px 8px rgba(56, 189, 248, 0.3)',
+                boxShadow: '0 2px 8px var(--accent-gold-glow)',
                 cursor: 'pointer'
               }}
             >
@@ -547,7 +549,7 @@ const AssetsTrackingManagementView = ({
             <button
               onClick={openAddOwnedModal}
               style={{
-                background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                background: 'var(--accent-gold)',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: '6px',
@@ -558,7 +560,7 @@ const AssetsTrackingManagementView = ({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                boxShadow: '0 2px 8px rgba(99, 102, 241, 0.3)',
+                boxShadow: '0 2px 8px var(--accent-gold-glow)',
                 cursor: 'pointer'
               }}
             >
@@ -603,7 +605,7 @@ const AssetsTrackingManagementView = ({
             borderRadius: '6px',
             border: 'none',
             background: activeTab === 'RENTAL_HUB'
-              ? 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)'
+              ? 'var(--accent-gold)'
               : 'rgba(30, 41, 59, 0.6)',
             color: '#ffffff',
             fontWeight: '600',
@@ -612,15 +614,15 @@ const AssetsTrackingManagementView = ({
             display: 'inline-flex',
             alignItems: 'center',
             gap: '6px',
-            boxShadow: activeTab === 'RENTAL_HUB' ? '0 2px 8px rgba(99, 102, 241, 0.3)' : 'none'
+            boxShadow: activeTab === 'RENTAL_HUB' ? '0 2px 8px var(--accent-gold-glow)' : 'none'
           }}
         >
           <ArrowRightLeft size={14} />
           Asset Loans & Rental Tracking Hub
           {activeLoansRentals > 0 && (
             <span style={{
-              background: '#38bdf8',
-              color: '#0f172a',
+              background: activeTab === 'RENTAL_HUB' ? 'rgba(0, 0, 0, 0.25)' : 'var(--accent-gold)',
+              color: '#ffffff',
               borderRadius: '6px',
               padding: '1px 6px',
               fontSize: '0.64rem',
@@ -639,7 +641,7 @@ const AssetsTrackingManagementView = ({
             borderRadius: '6px',
             border: 'none',
             background: activeTab === 'INVENTORY'
-              ? 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)'
+              ? 'var(--accent-gold)'
               : 'rgba(30, 41, 59, 0.6)',
             color: '#ffffff',
             fontWeight: '600',
@@ -648,7 +650,7 @@ const AssetsTrackingManagementView = ({
             display: 'inline-flex',
             alignItems: 'center',
             gap: '6px',
-            boxShadow: activeTab === 'INVENTORY' ? '0 2px 8px rgba(99, 102, 241, 0.3)' : 'none'
+            boxShadow: activeTab === 'INVENTORY' ? '0 2px 8px var(--accent-gold-glow)' : 'none'
           }}
         >
           <Package size={14} />
@@ -964,7 +966,8 @@ const AssetsTrackingManagementView = ({
           <button
             onClick={() => activeTab === 'RENTAL_HUB' ? openAddRentalModal() : openAddOwnedModal()}
             style={{
-              background: '#6366f1',
+              background: 'var(--accent-gold)',
+              boxShadow: '0 2px 8px var(--accent-gold-glow)',
               color: '#ffffff',
               border: 'none',
               borderRadius: '6px',
@@ -1033,9 +1036,9 @@ const AssetsTrackingManagementView = ({
                           fontSize: '0.70rem',
                           fontWeight: '800',
                           fontFamily: 'monospace',
-                          color: '#6366f1',
-                          background: 'rgba(99, 102, 241, 0.15)',
-                          border: '1px solid rgba(99, 102, 241, 0.3)',
+                          color: 'var(--accent-gold)',
+                          background: 'var(--active-bg)',
+                          border: '1px solid var(--border-gold)',
                           padding: '2px 7px',
                           borderRadius: '5px',
                           display: 'inline-block'
@@ -1170,9 +1173,9 @@ const AssetsTrackingManagementView = ({
                             onClick={() => openTransferModal(asset)}
                             title="Reassign or Transfer Asset"
                             style={{
-                              background: 'rgba(99, 102, 241, 0.15)',
-                              border: '1px solid rgba(99, 102, 241, 0.3)',
-                              color: '#818cf8',
+                              background: 'var(--active-bg)',
+                              border: '1px solid var(--border-gold)',
+                              color: 'var(--accent-gold)',
                               borderRadius: '4px',
                               height: '24px',
                               padding: '0 6px',
@@ -1259,7 +1262,7 @@ const AssetsTrackingManagementView = ({
                 style={{
                   background: isExpanded ? 'rgba(30, 41, 59, 0.75)' : 'rgba(15, 23, 42, 0.65)',
                   backdropFilter: 'blur(12px)',
-                  border: isExpanded ? '1px solid rgba(99, 102, 241, 0.35)' : '1px solid rgba(255, 255, 255, 0.08)',
+                  border: isExpanded ? '1px solid var(--border-gold)' : '1px solid rgba(255, 255, 255, 0.08)',
                   borderRadius: isExpanded ? '10px' : '6px',
                   padding: isExpanded ? '10px 12px' : '6px 10px',
                   display: 'flex',
@@ -1290,9 +1293,9 @@ const AssetsTrackingManagementView = ({
                         fontSize: '9px',
                         fontWeight: '800',
                         fontFamily: 'monospace',
-                        color: '#6366f1',
-                        background: 'rgba(99, 102, 241, 0.15)',
-                        border: '1px solid rgba(99, 102, 241, 0.3)',
+                        color: 'var(--accent-gold)',
+                        background: 'var(--active-bg)',
+                        border: '1px solid var(--border-gold)',
                         padding: '1px 5px',
                         borderRadius: '4px',
                         flexShrink: 0
@@ -1353,9 +1356,9 @@ const AssetsTrackingManagementView = ({
                         }}
                         title="Expand Card"
                         style={{
-                          background: 'rgba(99, 102, 241, 0.2)',
-                          border: '1px solid rgba(99, 102, 241, 0.4)',
-                          color: '#818cf8',
+                          background: 'var(--active-bg)',
+                          border: '1px solid var(--border-gold)',
+                          color: 'var(--accent-gold)',
                           borderRadius: '4px',
                           padding: '2px 6px',
                           cursor: 'pointer',
@@ -1393,9 +1396,9 @@ const AssetsTrackingManagementView = ({
                             fontSize: '11px',
                             fontWeight: '800',
                             fontFamily: 'monospace',
-                            color: '#6366f1',
-                            background: 'rgba(99, 102, 241, 0.15)',
-                            border: '1px solid rgba(99, 102, 241, 0.3)',
+                            color: 'var(--accent-gold)',
+                            background: 'var(--active-bg)',
+                            border: '1px solid var(--border-gold)',
                             padding: '3px 8px',
                             borderRadius: '6px',
                             display: 'inline-flex',
@@ -1774,9 +1777,9 @@ const AssetsTrackingManagementView = ({
                 height: '24px',
                 padding: '2px 8px',
                 borderRadius: '4px',
-                border: (isAll || safePage <= 1) ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(99, 102, 241, 0.4)',
-                background: (isAll || safePage <= 1) ? 'rgba(255, 255, 255, 0.02)' : 'rgba(99, 102, 241, 0.2)',
-                color: (isAll || safePage <= 1) ? '#64748b' : '#818cf8',
+                border: (isAll || safePage <= 1) ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid var(--border-gold)',
+                background: (isAll || safePage <= 1) ? 'rgba(255, 255, 255, 0.02)' : 'var(--active-bg)',
+                color: (isAll || safePage <= 1) ? '#64748b' : 'var(--accent-gold)',
                 cursor: (isAll || safePage <= 1) ? 'not-allowed' : 'pointer',
                 fontSize: '0.70rem',
                 fontWeight: '700',
@@ -1814,9 +1817,9 @@ const AssetsTrackingManagementView = ({
                 height: '24px',
                 padding: '2px 8px',
                 borderRadius: '4px',
-                border: (isAll || safePage >= totalPages) ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(99, 102, 241, 0.4)',
-                background: (isAll || safePage >= totalPages) ? 'rgba(255, 255, 255, 0.02)' : 'rgba(99, 102, 241, 0.2)',
-                color: (isAll || safePage >= totalPages) ? '#64748b' : '#818cf8',
+                border: (isAll || safePage >= totalPages) ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid var(--border-gold)',
+                background: (isAll || safePage >= totalPages) ? 'rgba(255, 255, 255, 0.02)' : 'var(--active-bg)',
+                color: (isAll || safePage >= totalPages) ? '#64748b' : 'var(--accent-gold)',
                 cursor: (isAll || safePage >= totalPages) ? 'not-allowed' : 'pointer',
                 fontSize: '0.70rem',
                 fontWeight: '700',
@@ -2174,7 +2177,7 @@ const AssetsTrackingManagementView = ({
                       openEditModal(cur);
                     }}
                     style={{
-                      background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                      background: 'var(--accent-gold)',
                       border: 'none',
                       color: '#ffffff',
                       borderRadius: '6px',
@@ -2185,6 +2188,7 @@ const AssetsTrackingManagementView = ({
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '4px',
+                      boxShadow: '0 2px 8px var(--accent-gold-glow)',
                       cursor: 'pointer'
                     }}
                   >
@@ -2214,7 +2218,7 @@ const AssetsTrackingManagementView = ({
         }}>
           <div style={{
             background: '#1e293b',
-            border: '1px solid rgba(99, 102, 241, 0.3)',
+            border: '1px solid var(--border-gold)',
             borderRadius: '16px',
             width: '100%',
             maxWidth: '540px',
@@ -2232,7 +2236,7 @@ const AssetsTrackingManagementView = ({
               alignItems: 'center'
             }}>
               <h2 style={{ fontSize: '17px', fontWeight: '600', color: '#ffffff', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Package size={18} style={{ color: '#6366f1' }} />
+                <Package size={18} style={{ color: 'var(--accent-gold)' }} />
                 {editingAsset ? 'Edit Owned Salon Asset' : 'Add New Owned Salon Asset'}
               </h2>
               <button onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
@@ -2523,13 +2527,14 @@ const AssetsTrackingManagementView = ({
                   type="submit"
                   disabled={isSubmitting}
                   style={{
-                    background: '#6366f1',
+                    background: 'var(--accent-gold)',
                     color: '#ffffff',
                     border: 'none',
                     borderRadius: '8px',
                     padding: '10px 24px',
                     fontWeight: '600',
                     fontSize: '13px',
+                    boxShadow: '0 2px 8px var(--accent-gold-glow)',
                     cursor: isSubmitting ? 'not-allowed' : 'pointer'
                   }}
                 >
@@ -2939,15 +2944,15 @@ const AssetsTrackingManagementView = ({
                   type="submit"
                   disabled={isSubmitting}
                   style={{
-                    background: '#38bdf8',
-                    color: '#0f172a',
+                    background: 'var(--accent-gold)',
+                    color: '#ffffff',
                     border: 'none',
                     borderRadius: '8px',
                     padding: '10px 24px',
-                    fontWeight: '800',
+                    fontWeight: '700',
                     fontSize: '13px',
                     cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 4px 14px rgba(56, 189, 248, 0.3)'
+                    boxShadow: '0 4px 14px var(--accent-gold-glow)'
                   }}
                 >
                   {isSubmitting ? 'Saving...' : (editingAsset ? 'Update Rental Entry' : 'Save Rental Entry')}
@@ -3131,13 +3136,14 @@ const AssetsTrackingManagementView = ({
                   type="submit"
                   disabled={isSubmitting}
                   style={{
-                    background: '#818cf8',
+                    background: 'var(--accent-gold)',
                     color: '#ffffff',
                     border: 'none',
                     borderRadius: '8px',
                     padding: '8px 20px',
                     fontWeight: '600',
                     fontSize: '13px',
+                    boxShadow: '0 2px 8px var(--accent-gold-glow)',
                     cursor: isSubmitting ? 'not-allowed' : 'pointer'
                   }}
                 >
