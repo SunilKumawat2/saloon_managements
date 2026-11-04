@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Clock, Plus, Search, Edit2, Trash2, CheckCircle2, XCircle,
   Sparkles, Filter, Building2, AlertCircle, X, Zap, Calendar, RefreshCw, Timer, CalendarDays,
-  LayoutList, LayoutGrid
+  LayoutList, LayoutGrid, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 
 const TimeSlotsManagementView = ({
@@ -31,6 +31,29 @@ const TimeSlotsManagementView = ({
       console.warn('Could not save viewMode to localStorage', e);
     }
   };
+
+  // Pagination State
+  const [pageSize, setPageSize] = useState(() => {
+    const saved = localStorage.getItem('salon_slots_page_size');
+    return saved === 'all' ? 'all' : (Number(saved) || 10);
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const handlePageSizeChange = (val) => {
+    const newVal = val === 'all' ? 'all' : Number(val);
+    setPageSize(newVal);
+    setCurrentPage(1);
+    try {
+      localStorage.setItem('salon_slots_page_size', String(newVal));
+    } catch (e) {
+      console.warn('Could not save pageSize to localStorage', e);
+    }
+  };
+
+  // Reset to page 1 whenever search, branch, day filter or page size changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedBranch, selectedDay, pageSize]);
 
   const [showModal, setShowModal] = useState(false);
   const [showGenModal, setShowGenModal] = useState(false);
@@ -295,6 +318,33 @@ const TimeSlotsManagementView = ({
 
   const totalSlots = timeSlots.length;
   const activeSlots = timeSlots.filter(s => s.is_active !== false).length;
+
+  // Pagination Math
+  const isAll = pageSize === 'all';
+  const totalItems = sortedFilteredSlots.length;
+  const effectivePageSize = isAll ? totalItems : (Number(pageSize) || 10);
+  const totalPages = isAll || effectivePageSize <= 0 ? 1 : Math.max(1, Math.ceil(totalItems / effectivePageSize));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = isAll ? 0 : (safePage - 1) * effectivePageSize;
+  const endIndex = isAll ? totalItems : Math.min(startIndex + effectivePageSize, totalItems);
+  const paginatedSlots = isAll ? sortedFilteredSlots : sortedFilteredSlots.slice(startIndex, endIndex);
+
+  // Helper for generating page numbers with ellipsis
+  const getPageNumbers = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    const pages = [1];
+    if (safePage > 3) pages.push('...');
+    const start = Math.max(2, safePage - 1);
+    const end = Math.min(totalPages - 1, safePage + 1);
+    for (let p = start; p <= end; p++) {
+      if (!pages.includes(p)) pages.push(p);
+    }
+    if (safePage < totalPages - 2) pages.push('...');
+    if (!pages.includes(totalPages)) pages.push(totalPages);
+    return pages;
+  };
 
   const getSlotDetails = (slot) => {
     let start = slot.start_time || slot.slot_time;
@@ -698,7 +748,8 @@ const TimeSlotsManagementView = ({
                 </tr>
               </thead>
               <tbody>
-                {sortedFilteredSlots.map((slot, idx) => {
+                {paginatedSlots.map((slot, idx) => {
+                  const globalIdx = startIndex + idx + 1;
                   const isActive = slot.is_active !== false;
                   const branchObj = branches.find(b => String(b.id) === String(slot.branch_id));
                   const details = getSlotDetails(slot);
@@ -721,7 +772,7 @@ const TimeSlotsManagementView = ({
                     >
                       {/* Index */}
                       <td style={{ padding: '12px 16px', textAlign: 'center', color: '#64748b', fontSize: '13px', fontWeight: '600' }}>
-                        {idx + 1}
+                        {globalIdx}
                       </td>
 
                       {/* Time Slot */}
@@ -892,7 +943,7 @@ const TimeSlotsManagementView = ({
             fontSize: '12px',
             color: '#94a3b8'
           }}>
-            <span>Showing <strong>{sortedFilteredSlots.length}</strong> time slot{sortedFilteredSlots.length !== 1 ? 's' : ''} (Sorted chronologically by start time)</span>
+            <span>Showing <strong>{totalItems > 0 ? startIndex + 1 : 0}</strong> – <strong>{endIndex}</strong> of <strong>{totalItems}</strong> time slots {!isAll && `(Page ${safePage} of ${totalPages})`}</span>
             <span style={{ color: '#64748b' }}>Click on Status pill to toggle active/disabled state instantly</span>
           </div>
         </div>
@@ -903,7 +954,7 @@ const TimeSlotsManagementView = ({
           gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
           gap: '16px'
         }}>
-          {sortedFilteredSlots.map(slot => {
+          {paginatedSlots.map(slot => {
             const isActive = slot.is_active !== false;
             const branchObj = branches.find(b => String(b.id) === String(slot.branch_id));
             const details = getSlotDetails(slot);
@@ -1072,6 +1123,194 @@ const TimeSlotsManagementView = ({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ─── PAGINATION BAR ─── */}
+      {totalItems > 0 && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+          marginTop: '16px',
+          padding: '10px 16px',
+          background: 'rgba(30, 41, 59, 0.7)',
+          backdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '12px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)'
+        }}>
+          {/* Left: Rows per page selector */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#94a3b8' }}>
+            <span>Rows per page:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => handlePageSizeChange(e.target.value)}
+              style={{
+                background: 'rgba(15, 23, 42, 0.8)',
+                border: '1px solid rgba(99, 102, 241, 0.35)',
+                borderRadius: '6px',
+                height: '30px',
+                padding: '2px 8px',
+                color: '#ffffff',
+                fontSize: '13px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={15}>15</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value="all">All</option>
+            </select>
+          </div>
+
+          {/* Middle: Showing Range Info */}
+          <div style={{ fontSize: '13px', color: '#cbd5e1', fontWeight: '500' }}>
+            Showing <strong style={{ color: '#ffffff' }}>{totalItems > 0 ? startIndex + 1 : 0}</strong> – <strong style={{ color: '#ffffff' }}>{endIndex}</strong> of <strong style={{ color: '#818cf8' }}>{totalItems}</strong> time slots
+          </div>
+
+          {/* Right: Page Navigation Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            {/* First Page */}
+            <button
+              disabled={isAll || safePage <= 1}
+              onClick={() => setCurrentPage(1)}
+              style={{
+                height: '30px',
+                padding: '0 10px',
+                borderRadius: '6px',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                background: (isAll || safePage <= 1) ? 'rgba(255, 255, 255, 0.02)' : 'rgba(255, 255, 255, 0.08)',
+                color: (isAll || safePage <= 1) ? '#64748b' : '#cbd5e1',
+                cursor: (isAll || safePage <= 1) ? 'not-allowed' : 'pointer',
+                fontSize: '12px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                opacity: (isAll || safePage <= 1) ? 0.4 : 1,
+                transition: 'all 0.15s ease'
+              }}
+              title="First Page"
+            >
+              <ChevronsLeft size={14} /> First
+            </button>
+
+            {/* Prev Page */}
+            <button
+              disabled={isAll || safePage <= 1}
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              style={{
+                height: '30px',
+                padding: '0 10px',
+                borderRadius: '6px',
+                border: (isAll || safePage <= 1) ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(99, 102, 241, 0.4)',
+                background: (isAll || safePage <= 1) ? 'rgba(255, 255, 255, 0.02)' : 'rgba(99, 102, 241, 0.2)',
+                color: (isAll || safePage <= 1) ? '#64748b' : '#818cf8',
+                cursor: (isAll || safePage <= 1) ? 'not-allowed' : 'pointer',
+                fontSize: '12px',
+                fontWeight: '700',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                opacity: (isAll || safePage <= 1) ? 0.4 : 1,
+                transition: 'all 0.15s ease'
+              }}
+              title="Previous Page"
+            >
+              <ChevronLeft size={14} /> Prev
+            </button>
+
+            {/* Numbered Page Buttons */}
+            {!isAll && getPageNumbers().map((pageNum, idx) => {
+              if (pageNum === '...') {
+                return (
+                  <span key={`ellipsis-${idx}`} style={{ padding: '0 4px', color: '#64748b', fontSize: '13px' }}>
+                    ...
+                  </span>
+                );
+              }
+              const isCurrent = pageNum === safePage;
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  style={{
+                    minWidth: '30px',
+                    height: '30px',
+                    padding: '0 6px',
+                    borderRadius: '6px',
+                    border: isCurrent ? '1px solid #6366f1' : '1px solid rgba(255, 255, 255, 0.12)',
+                    background: isCurrent ? 'linear-gradient(135deg, #6366f1, #4f46e5)' : 'rgba(255, 255, 255, 0.05)',
+                    color: '#ffffff',
+                    fontWeight: isCurrent ? '800' : '600',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    boxShadow: isCurrent ? '0 2px 10px rgba(99, 102, 241, 0.4)' : 'none',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+
+            {/* Next Page */}
+            <button
+              disabled={isAll || safePage >= totalPages}
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              style={{
+                height: '30px',
+                padding: '0 10px',
+                borderRadius: '6px',
+                border: (isAll || safePage >= totalPages) ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(99, 102, 241, 0.4)',
+                background: (isAll || safePage >= totalPages) ? 'rgba(255, 255, 255, 0.02)' : 'rgba(99, 102, 241, 0.2)',
+                color: (isAll || safePage >= totalPages) ? '#64748b' : '#818cf8',
+                cursor: (isAll || safePage >= totalPages) ? 'not-allowed' : 'pointer',
+                fontSize: '12px',
+                fontWeight: '700',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                opacity: (isAll || safePage >= totalPages) ? 0.4 : 1,
+                transition: 'all 0.15s ease'
+              }}
+              title="Next Page"
+            >
+              Next <ChevronRight size={14} />
+            </button>
+
+            {/* Last Page */}
+            <button
+              disabled={isAll || safePage >= totalPages}
+              onClick={() => setCurrentPage(totalPages)}
+              style={{
+                height: '30px',
+                padding: '0 10px',
+                borderRadius: '6px',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                background: (isAll || safePage >= totalPages) ? 'rgba(255, 255, 255, 0.02)' : 'rgba(255, 255, 255, 0.08)',
+                color: (isAll || safePage >= totalPages) ? '#64748b' : '#cbd5e1',
+                cursor: (isAll || safePage >= totalPages) ? 'not-allowed' : 'pointer',
+                fontSize: '12px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                opacity: (isAll || safePage >= totalPages) ? 0.4 : 1,
+                transition: 'all 0.15s ease'
+              }}
+              title="Last Page"
+            >
+              Last <ChevronsRight size={14} />
+            </button>
+          </div>
         </div>
       )}
 
