@@ -377,7 +377,7 @@ function ReceptionistView({
   };
 
   // Add to Queue (Create Appointment)
-  const handleAddToQueue = async (skipPastCheck = false) => {
+  const handleAddToQueue = async () => {
     if (!selectedCustomer || isAddingToQueue) return;
 
     if (selectedServices.length === 0) {
@@ -385,26 +385,13 @@ function ReceptionistView({
       return;
     }
 
-    if (selectedStylist && isStylistBookedAtSlot(selectedStylist, bookingDate, bookingTime)) {
-      const stName = stylists.find(s => String(s.id) === String(selectedStylist))?.name || 'Selected Stylist';
-      setCustomAlert({
-        title: 'Stylist Time Slot Conflict',
-        message: `⛔ Double-Booking Blocked: ${stName} is already booked for an appointment on ${bookingDate} at ${bookingTime}. Please choose another time slot or staff member.`,
-        type: 'warning'
-      });
-      return;
-    }
-
-    // Past Date / Time Slot Confirmation Alert
-    if (!skipPastCheck && isPastDateTime(bookingDate, bookingTime)) {
-      setPastConfirmModal({
-        isOpen: true,
-        pendingDate: bookingDate,
-        pendingTime: bookingTime,
-        onConfirmAction: () => handleAddToQueue(true)
-      });
-      return;
-    }
+    const now = new Date();
+    const liveDate = now.toISOString().split('T')[0];
+    let hours = now.getHours();
+    let minutes = now.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = (hours % 12) || 12;
+    const liveTime = `${displayHours.toString().padStart(2, '0')}:${minutes < 10 ? '0' + minutes : minutes} ${ampm}`;
 
     setIsAddingToQueue(true);
     try {
@@ -428,12 +415,12 @@ function ReceptionistView({
         stylist_name: styl ? styl.name : (stylists[0]?.name || 'Unassigned Staff'),
         service_id: selectedServices[0] ? parseInt(selectedServices[0]) : 1,
         service_name: combinedName,
-        booking_type: bookingType,
-        appointment_date: bookingDate || new Date().toISOString().split('T')[0],
-        appointment_time: bookingTime || '10:00 AM',
+        booking_type: 'Walk-in',
+        appointment_date: liveDate,
+        appointment_time: liveTime,
         status: 'Scheduled',
         total_amount: combinedTotal > 0 ? combinedTotal : 350.00,
-        notes: `Reception ${bookingType} Check-in (${selectedServiceObjs.length} services: ${combinedName})`
+        notes: `Reception Walk-in Check-in (${selectedServiceObjs.length} services: ${combinedName})`
       };
 
       if (onAddAppointment) {
@@ -1032,163 +1019,6 @@ function ReceptionistView({
                 </div>
               </div>
 
-              {/* ─── Booking Type, Date & Time Slot Selection ─── */}
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px 18px', marginBottom: '16px' }}>
-                <div style={{ marginBottom: '14px' }}>
-                  <label style={{ fontSize: '0.82rem', fontWeight: '700', color: 'var(--text-sub)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Calendar size={14} style={{ color: 'var(--accent-gold)' }} />
-                    Booking Type / Source *
-                  </label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-                    {[
-                      { id: 'Walk-in', label: '🚶 Walk-in (Today)', color: '#10b981' },
-                      { id: 'Scheduled', label: '📅 Scheduled Slot', color: '#818cf8' },
-                      { id: 'Phone', label: '📞 Phone Booking', color: '#f59e0b' }
-                    ].map(type => (
-                      <button
-                        key={type.id}
-                        type="button"
-                        onClick={() => setBookingType(type.id)}
-                        style={{
-                          padding: '8px 10px',
-                          borderRadius: '8px',
-                          fontSize: '0.78rem',
-                          fontWeight: '800',
-                          cursor: 'pointer',
-                          border: bookingType === type.id ? `1.5px solid ${type.color}` : '1px solid var(--border)',
-                          background: bookingType === type.id ? `${type.color}22` : 'var(--input-bg)',
-                          color: bookingType === type.id ? type.color : 'var(--text-sub)',
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        {type.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  {/* Appointment Date */}
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>Appointment Date *</span>
-                      <div style={{ display: 'flex', gap: '4px' }}>
-                        <button
-                          type="button"
-                          onClick={() => setBookingDate(new Date().toISOString().split('T')[0])}
-                          style={{ fontSize: '0.68rem', background: 'rgba(255,255,255,0.06)', border: 'none', color: 'var(--accent-gold)', borderRadius: '4px', padding: '1px 6px', cursor: 'pointer', fontWeight: '700' }}
-                        >
-                          Today
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const tm = new Date();
-                            tm.setDate(tm.getDate() + 1);
-                            setBookingDate(tm.toISOString().split('T')[0]);
-                          }}
-                          style={{ fontSize: '0.68rem', background: 'rgba(255,255,255,0.06)', border: 'none', color: 'var(--text-sub)', borderRadius: '4px', padding: '1px 6px', cursor: 'pointer', fontWeight: '700' }}
-                        >
-                          Tomorrow
-                        </button>
-                      </div>
-                    </label>
-                    <input
-                      type="date"
-                      value={bookingDate}
-                      onChange={e => handleDateChange(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        background: 'var(--input-bg)',
-                        border: '1px solid var(--border)',
-                        borderRadius: '8px',
-                        color: 'var(--text-main)',
-                        fontSize: '0.85rem',
-                        fontWeight: '600'
-                      }}
-                    />
-                  </div>
-
-                  {/* Time Slot Picker */}
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>Time Slot *</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const d = new Date();
-                          let h = d.getHours();
-                          let m = d.getMinutes();
-                          const ampm = h >= 12 ? 'PM' : 'AM';
-                          h = h % 12; h = h ? h : 12;
-                          m = m < 10 ? '0' + m : m;
-                          const newT = `${h.toString().padStart(2, '0')}:${m} ${ampm}`;
-                          handleTimeChange(newT);
-                        }}
-                        style={{ fontSize: '0.68rem', background: 'rgba(255,255,255,0.06)', border: 'none', color: '#10b981', borderRadius: '4px', padding: '1px 6px', cursor: 'pointer', fontWeight: '700' }}
-                      >
-                        Now
-                      </button>
-                    </label>
-                    <select
-                      value={bookingTime}
-                      onChange={e => handleTimeChange(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        background: 'var(--input-bg)',
-                        border: '1px solid var(--border)',
-                        borderRadius: '8px',
-                        color: 'var(--text-main)',
-                        fontSize: '0.85rem',
-                        fontWeight: '600'
-                      }}
-                    >
-                      <option value={bookingTime}>{bookingTime} (Selected Slot)</option>
-                      {[
-                        '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
-                        '12:00 PM', '12:30 PM', '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM',
-                        '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM', '05:00 PM', '05:30 PM',
-                        '06:00 PM', '06:30 PM', '07:00 PM', '07:30 PM', '08:00 PM', '08:30 PM', '09:00 PM'
-                      ].map(slot => {
-                        const isSlotTaken = selectedStylist ? isStylistBookedAtSlot(selectedStylist, bookingDate, slot) : false;
-                        return (
-                          <option key={slot} value={slot} disabled={isSlotTaken}>
-                            {slot} {isSlotTaken ? '🔴 (Stylist Booked)' : ''}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Conflict Warning Banner if Selected Stylist is already booked at this Date & Time */}
-              {selectedStylist && isStylistBookedAtSlot(selectedStylist, bookingDate, bookingTime) && (
-                <div style={{
-                  marginBottom: '16px',
-                  padding: '12px 16px',
-                  background: 'rgba(239, 68, 68, 0.12)',
-                  border: '1.5px solid rgba(239, 68, 68, 0.4)',
-                  borderRadius: '12px',
-                  color: '#ef4444',
-                  fontSize: '0.84rem',
-                  fontWeight: '700',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px'
-                }}>
-                  <AlertCircle size={18} style={{ flexShrink: 0 }} />
-                  <div>
-                    <div style={{ fontWeight: '800', fontSize: '0.9rem' }}>⛔ Stylist Time Slot Conflict!</div>
-                    <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.8)', marginTop: '2px' }}>
-                      <strong>{stylists.find(s => String(s.id) === String(selectedStylist))?.name || 'Selected Stylist'}</strong> is already booked on <strong>{bookingDate}</strong> at <strong>{bookingTime}</strong>. Please pick a different time slot or another staff member.
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* Multi-Service Required & Stylist Selection */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
@@ -1258,20 +1088,14 @@ function ReceptionistView({
                   <div>
                     <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span>Assign Stylist / Staff</span>
-                      {selectedStylist && isStylistBookedAtSlot(selectedStylist, bookingDate, bookingTime) && (
-                        <span style={{ fontSize: '0.72rem', color: '#ef4444', fontWeight: '800' }}>
-                          ⛔ Already Booked
-                        </span>
-                      )}
                     </label>
                     <select value={selectedStylist} onChange={e => setSelectedStylist(e.target.value)}>
                       <option value="">— Any Stylist —</option>
                       {stylists.map(s => {
-                        const isBooked = isStylistBookedAtSlot(s.id, bookingDate, bookingTime);
                         const isOffline = s.is_available === false;
                         return (
-                          <option key={s.id} value={s.id} disabled={isOffline || isBooked}>
-                            {s.name} {isBooked ? '⛔ (Booked at ' + bookingTime + ')' : isOffline ? '⚠️ (Busy/Offline)' : ''}
+                          <option key={s.id} value={s.id} disabled={isOffline}>
+                            {s.name} {isOffline ? '⚠️ (Busy/Offline)' : '🟢 (Available)'}
                           </option>
                         );
                       })}
