@@ -1692,12 +1692,33 @@ export default function App() {
       <aside className="sidebar">
         <div>
           <div className="brand-header">
-            <div className="brand-icon" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div
+              className="brand-icon"
+              style={{
+                width: '42px',
+                height: '42px',
+                minWidth: '42px',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0,
+                background: brandSettings?.logo_url ? 'transparent' : 'var(--accent-gold, #2563eb)',
+                boxShadow: brandSettings?.logo_url ? '0 2px 8px rgba(0,0,0,0.3)' : '0 4px 20px rgba(37, 99, 235, 0.4)'
+              }}
+            >
               {brandSettings?.logo_url ? (
                 <img
                   src={brandSettings.logo_url}
                   alt={brandSettings?.salon_name || 'Salon'}
-                  style={{ maxHeight: '24px', maxWidth: '24px', objectFit: 'contain' }}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    display: 'block',
+                    borderRadius: '12px'
+                  }}
                 />
               ) : (
                 <Scissors size={22} />

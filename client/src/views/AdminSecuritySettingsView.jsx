@@ -619,18 +619,18 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix, currentUser, branches: 
                       <div style={{
                         width: '56px',
                         height: '56px',
-                        background: '#111827',
-                        borderRadius: '8px',
-                        padding: '6px',
+                        borderRadius: '10px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
+                        overflow: 'hidden',
+                        padding: 0,
                         border: '1px solid rgba(255,255,255,0.1)'
                       }}>
                         <img
                           src={settings.logo_url}
                           alt="Logo Preview"
-                          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', borderRadius: '10px' }}
                         />
                       </div>
                       <div>
@@ -790,19 +790,24 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix, currentUser, branches: 
                   {/* Brand Header */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '14px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                     <div style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '10px',
-                      background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid var(--accent-gold)',
-                      boxShadow: '0 0 15px var(--accent-gold-glow)',
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '12px',
+                      background: settings.logo_url ? 'transparent' : 'rgba(255,255,255,0.05)',
+                      border: settings.logo_url ? 'none' : '1px solid var(--accent-gold)',
+                      boxShadow: settings.logo_url ? 'none' : '0 0 15px var(--accent-gold-glow)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      overflow: 'hidden'
+                      overflow: 'hidden',
+                      padding: 0
                     }}>
                       {settings.logo_url ? (
-                        <img src={settings.logo_url} alt="Logo" style={{ maxHeight: '28px', maxWidth: '28px', objectFit: 'contain' }} />
+                        <img
+                          src={settings.logo_url}
+                          alt="Logo"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', borderRadius: '12px' }}
+                        />
                       ) : (
                         <Scissors size={20} color="var(--accent-gold)" />
                       )}

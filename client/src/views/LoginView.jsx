@@ -126,12 +126,33 @@ function LoginView({ users = [], onLoginSuccess, theme = 'dark', onToggleTheme }
 
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '32px' }}>
-              <div className="brand-icon" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div
+                className="brand-icon"
+                style={{
+                  width: '46px',
+                  height: '46px',
+                  minWidth: '46px',
+                  borderRadius: '14px',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 0,
+                  background: brandSettings?.logo_url ? 'transparent' : 'var(--accent-gold, #2563eb)',
+                  boxShadow: brandSettings?.logo_url ? '0 2px 10px rgba(0,0,0,0.3)' : undefined
+                }}
+              >
                 {brandSettings?.logo_url ? (
                   <img
                     src={brandSettings.logo_url}
                     alt={brandSettings?.salon_name || 'Salon'}
-                    style={{ maxHeight: '28px', maxWidth: '28px', objectFit: 'contain' }}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      display: 'block',
+                      borderRadius: '14px'
+                    }}
                   />
                 ) : (
                   <Scissors size={26} />
