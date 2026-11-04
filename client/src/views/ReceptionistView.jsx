@@ -1133,7 +1133,8 @@ function ReceptionistView({
                     alignItems: 'center',
                     justify: 'center',
                     gap: '6px',
-                    background: '#2563eb',
+                    background: 'var(--accent-gold)',
+                    boxShadow: '0 2px 10px var(--accent-gold-glow)',
                     opacity: isAddingToQueue ? 0.75 : 1,
                     cursor: isAddingToQueue ? 'not-allowed' : 'pointer'
                   }}

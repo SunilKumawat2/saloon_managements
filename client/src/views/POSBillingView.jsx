@@ -1109,10 +1109,10 @@ function POSBillingView({
                 onClick={() => { setIsWalkIn(true); setSelectedCustomer(null); }}
                 style={{
                   padding: '4px 10px', borderRadius: '6px', border: 'none',
-                  background: isWalkIn ? '#2563eb' : 'transparent',
+                  background: isWalkIn ? 'var(--accent-gold)' : 'transparent',
                   color: isWalkIn ? '#ffffff' : 'var(--text-sub)',
                   fontWeight: '800', fontSize: '0.74rem', cursor: 'pointer',
-                  boxShadow: isWalkIn ? '0 2px 6px rgba(37, 99, 235, 0.35)' : 'none',
+                  boxShadow: isWalkIn ? '0 2px 6px var(--accent-gold-glow)' : 'none',
                   transition: 'all 0.15s'
                 }}
               >
@@ -1123,10 +1123,10 @@ function POSBillingView({
                 onClick={() => { setIsWalkIn(false); }}
                 style={{
                   padding: '4px 10px', borderRadius: '6px', border: 'none',
-                  background: !isWalkIn ? '#2563eb' : 'transparent',
+                  background: !isWalkIn ? 'var(--accent-gold)' : 'transparent',
                   color: !isWalkIn ? '#ffffff' : 'var(--text-sub)',
                   fontWeight: '800', fontSize: '0.74rem', cursor: 'pointer',
-                  boxShadow: !isWalkIn ? '0 2px 6px rgba(37, 99, 235, 0.35)' : 'none',
+                  boxShadow: !isWalkIn ? '0 2px 6px var(--accent-gold-glow)' : 'none',
                   transition: 'all 0.15s'
                 }}
               >
@@ -1263,9 +1263,10 @@ function POSBillingView({
                   onClick={() => setActiveCategory(cat)}
                   style={{
                     padding: '6px 14px', borderRadius: '20px', border: activeCategory === cat ? '1px solid var(--accent-gold)' : '1px solid var(--border)',
-                    background: activeCategory === cat ? 'rgba(245,158,11,0.18)' : 'rgba(255,255,255,0.03)',
+                    background: activeCategory === cat ? 'var(--active-bg)' : 'rgba(255,255,255,0.03)',
                     color: activeCategory === cat ? 'var(--accent-gold)' : 'var(--text-sub)',
-                    fontWeight: '800', fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s'
+                    fontWeight: '800', fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s',
+                    boxShadow: activeCategory === cat ? '0 0 10px var(--accent-gold-glow)' : 'none'
                   }}
                 >
                   {cat}
@@ -1476,7 +1477,7 @@ function POSBillingView({
                               addServiceToCart(s, false);
                             }}
                             style={{
-                              background: '#2563eb',
+                              background: 'var(--accent-gold)',
                               border: 'none',
                               color: '#ffffff',
                               padding: '3px 9px',
@@ -1487,7 +1488,7 @@ function POSBillingView({
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '3px',
-                              boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)'
+                              boxShadow: '0 2px 6px var(--accent-gold-glow)'
                             }}
                           >
                             <Plus size={12} /> Add
@@ -1560,7 +1561,7 @@ function POSBillingView({
                           addServiceToCart(s, false);
                         }}
                         style={{
-                          background: '#2563eb',
+                          background: 'var(--accent-gold)',
                           border: 'none',
                           color: '#ffffff',
                           padding: '3px 8px',
@@ -1571,7 +1572,7 @@ function POSBillingView({
                           display: 'flex',
                           alignItems: 'center',
                           gap: '3px',
-                          boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)'
+                          boxShadow: '0 2px 6px var(--accent-gold-glow)'
                         }}
                       >
                         <Plus size={12} /> Add
@@ -1946,8 +1947,10 @@ function POSBillingView({
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '6px',
-                  background: '#2563eb',
-                  boxShadow: '0 2px 10px rgba(37, 99, 235, 0.3)',
+                  background: 'var(--accent-gold)',
+                  color: '#ffffff',
+                  boxShadow: '0 2px 10px var(--accent-gold-glow)',
+                  border: 'none',
                   cursor: 'pointer'
                 }}
               >

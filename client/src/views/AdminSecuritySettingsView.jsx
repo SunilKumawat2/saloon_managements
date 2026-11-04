@@ -306,8 +306,8 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix, currentUser, branches: 
               onClick={() => setActiveTab(tab.id)}
               style={{
                 padding: '12px 20px', background: 'transparent', border: 'none',
-                borderBottom: isActive ? '3px solid #2563eb' : '3px solid transparent',
-                color: isActive ? '#3b82f6' : '#90A4AE', fontWeight: isActive ? '700' : '500',
+                borderBottom: isActive ? '3px solid var(--accent-gold)' : '3px solid transparent',
+                color: isActive ? 'var(--accent-gold)' : '#90A4AE', fontWeight: isActive ? '700' : '500',
                 cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
                 fontSize: '14px', whiteSpace: 'nowrap', transition: 'all 0.2s'
               }}
@@ -409,9 +409,10 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix, currentUser, branches: 
           <button
             type="submit"
             style={{
-              padding: '12px 24px', background: '#2563eb',
+              padding: '12px 24px', background: 'var(--accent-gold)',
               color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '700',
-              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px'
+              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px',
+              boxShadow: 'var(--shadow-glow)'
             }}
           >
             <Save size={18} /> Save System Settings

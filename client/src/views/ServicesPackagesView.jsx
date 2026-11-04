@@ -655,7 +655,7 @@ function ServicesPackagesView({
           <button 
             onClick={handleOpenAddPackage} 
             className="glass-card" 
-            style={{ padding: '8px 16px', fontSize: '0.84rem', background: '#2563eb', border: 'none', color: '#ffffff', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+            style={{ padding: '8px 16px', fontSize: '0.84rem', background: 'var(--accent-gold)', border: 'none', color: '#ffffff', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: 'var(--shadow-glow)' }}
           >
             <Gift size={16} /> Create Combo Package
           </button>
@@ -1060,7 +1060,7 @@ function ServicesPackagesView({
                             <button
                               onClick={() => handleOpenEditPackage(pkg)}
                               title="Edit Combo Package"
-                              style={{ background: 'rgba(37, 99, 235, 0.15)', border: '1px solid #2563eb', color: '#38bdf8', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer' }}
+                              style={{ background: 'var(--active-bg)', border: '1px solid var(--accent-gold)', color: 'var(--accent-gold)', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer' }}
                             >
                               <Edit3 size={14} />
                             </button>
@@ -1769,7 +1769,7 @@ function ServicesPackagesView({
                   className="btn-primary"
                   style={{
                     padding: '10px 22px',
-                    background: '#2563eb',
+                    background: 'var(--accent-gold)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px',

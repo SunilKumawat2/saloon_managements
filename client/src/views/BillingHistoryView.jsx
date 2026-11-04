@@ -854,7 +854,7 @@ function BillingHistoryView({
                   onClick={() => handleDownloadPDF(selectedBill)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px',
-                    background: 'rgba(37,99,235,0.15)', border: '1px solid #2563eb', color: '#38bdf8',
+                    background: 'var(--active-bg)', border: '1px solid var(--accent-gold)', color: 'var(--accent-gold)',
                     borderRadius: '10px', fontWeight: '800', cursor: 'pointer', fontSize: '0.85rem'
                   }}
                 >

@@ -1246,13 +1246,13 @@ const TimeSlotsManagementView = ({
                     height: '30px',
                     padding: '0 6px',
                     borderRadius: '6px',
-                    border: isCurrent ? '1px solid #6366f1' : '1px solid rgba(255, 255, 255, 0.12)',
-                    background: isCurrent ? 'linear-gradient(135deg, #6366f1, #4f46e5)' : 'rgba(255, 255, 255, 0.05)',
+                    border: isCurrent ? '1px solid var(--accent-gold)' : '1px solid rgba(255, 255, 255, 0.12)',
+                    background: isCurrent ? 'var(--accent-gold)' : 'rgba(255, 255, 255, 0.05)',
                     color: '#ffffff',
                     fontWeight: isCurrent ? '800' : '600',
                     fontSize: '12px',
                     cursor: 'pointer',
-                    boxShadow: isCurrent ? '0 2px 10px rgba(99, 102, 241, 0.4)' : 'none',
+                    boxShadow: isCurrent ? '0 2px 10px var(--accent-gold-glow)' : 'none',
                     transition: 'all 0.15s ease'
                   }}
                 >

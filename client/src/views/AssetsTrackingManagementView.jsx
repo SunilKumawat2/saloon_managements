@@ -1794,12 +1794,13 @@ const AssetsTrackingManagementView = ({
                   height: '24px',
                   padding: '2px 7px',
                   borderRadius: '4px',
-                  border: pageNum === safePage ? '1px solid #6366f1' : '1px solid rgba(255, 255, 255, 0.1)',
-                  background: pageNum === safePage ? '#6366f1' : 'rgba(255, 255, 255, 0.05)',
+                  border: pageNum === safePage ? '1px solid var(--accent-gold)' : '1px solid rgba(255, 255, 255, 0.1)',
+                  background: pageNum === safePage ? 'var(--accent-gold)' : 'rgba(255, 255, 255, 0.05)',
                   color: '#ffffff',
                   fontWeight: '700',
                   fontSize: '0.70rem',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  boxShadow: pageNum === safePage ? '0 2px 8px var(--accent-gold-glow)' : 'none'
                 }}
               >
                 {pageNum}

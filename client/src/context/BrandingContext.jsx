@@ -33,24 +33,33 @@ export const applyThemeToDocument = (colorHex) => {
   if (!colorHex || typeof window === 'undefined') return;
   const root = document.documentElement;
 
-  // Set the primary accent
+  const matched = THEME_PALETTES.find(p => p.hex.toLowerCase() === colorHex.toLowerCase());
+  const lightColor = matched ? matched.light : colorHex;
+  const glow = matched ? matched.glow : `${colorHex}55`;
+  const bgAlpha = `${colorHex}22`;
+  const borderAlpha = `${colorHex}80`;
+
+  // Core Theme Accents across all modules & components
   root.style.setProperty('--accent-gold', colorHex);
+  root.style.setProperty('--accent', colorHex);
+  root.style.setProperty('--primary', colorHex);
   root.style.setProperty('--primary-indigo', colorHex);
   root.style.setProperty('--mint-gradient', colorHex);
   root.style.setProperty('--mint-gradient-btn', colorHex);
   root.style.setProperty('--success', colorHex);
+  root.style.setProperty('--theme-color', colorHex);
+  root.style.setProperty('--brand-color', colorHex);
+  root.style.setProperty('--btn-primary-bg', colorHex);
 
-  const matched = THEME_PALETTES.find(p => p.hex.toLowerCase() === colorHex.toLowerCase());
-  const lightColor = matched ? matched.light : colorHex;
-  const glow = matched ? matched.glow : `${colorHex}55`;
-
+  // Light tints, text active & Glows
   root.style.setProperty('--accent-gold-light', lightColor);
   root.style.setProperty('--primary-purple', lightColor);
   root.style.setProperty('--text-active', lightColor);
   root.style.setProperty('--accent-gold-glow', glow);
   root.style.setProperty('--shadow-glow', `0 0 25px ${glow}`);
-  root.style.setProperty('--border-active', `${colorHex}80`);
-  root.style.setProperty('--active-bg', `${colorHex}22`);
+  root.style.setProperty('--border-active', borderAlpha);
+  root.style.setProperty('--border-gold', colorHex);
+  root.style.setProperty('--active-bg', bgAlpha);
   root.style.setProperty('--success-glow', glow);
 };
 
