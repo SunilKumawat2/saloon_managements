@@ -26,7 +26,8 @@ import {
   Clock,
   Package,
   CreditCard,
-  ClipboardCheck
+  ClipboardCheck,
+  Sparkles
 } from 'lucide-react';
 
 
@@ -1993,7 +1994,13 @@ export default function App() {
                 {isSettingsOpen && (
                   <div className="nav-dropdown-menu">
                     <button
-                      className={`sub-nav-btn ${activeTab === 'settings' && adminSettingsSubTab !== 'gateway' ? 'active' : ''}`}
+                      className={`sub-nav-btn ${activeTab === 'settings' && adminSettingsSubTab === 'branding' ? 'active' : ''}`}
+                      onClick={() => { setActiveTab('settings'); setAdminSettingsSubTab('branding'); }}
+                    >
+                      <Sparkles size={14} style={{ color: 'var(--accent-gold)' }} /> White Label & Brand Setup
+                    </button>
+                    <button
+                      className={`sub-nav-btn ${activeTab === 'settings' && adminSettingsSubTab === 'settings' ? 'active' : ''}`}
                       onClick={() => { setActiveTab('settings'); setAdminSettingsSubTab('settings'); }}
                     >
                       <ShieldCheck size={14} /> System Control & Backups
