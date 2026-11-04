@@ -6,6 +6,7 @@ import {
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Trash2,
   Building, User
 } from 'lucide-react';
+import { useBranding } from '../context/BrandingContext';
 
 function BillingHistoryView({
   bills = [],
@@ -19,6 +20,7 @@ function BillingHistoryView({
   onClearAllBills,
   selectedBranchId = 'all'
 }) {
+  const { brandSettings } = useBranding();
   const [searchQuery, setSearchQuery] = useState('');
   const [paymentFilter, setPaymentFilter] = useState('All');
   const [branchFilter, setBranchFilter] = useState('all');
@@ -171,9 +173,10 @@ function BillingHistoryView({
   <div class="invoice-card">
     <div class="header">
       <div>
-        <div class="brand-title">✂️ SALONPULSE ERP</div>
-        <div class="brand-sub">Multi-Branch Luxury Salon & Spa Enterprise</div>
-        <div class="brand-sub">GSTIN: 07AAAAA0000A1Z5 · Official Tax Invoice</div>
+        ${brandSettings?.logo_url ? `<div style="margin-bottom: 8px;"><img src="${brandSettings.logo_url}" alt="Logo" style="max-height: 48px; max-width: 140px; object-fit: contain;"></div>` : ''}
+        <div class="brand-title">${brandSettings?.salon_name || '✂️ SALONPULSE ERP'}</div>
+        <div class="brand-sub">${brandSettings?.salon_tagline || 'Multi-Branch Luxury Salon & Spa Enterprise'}</div>
+        <div class="brand-sub">GSTIN: ${brandSettings?.gstin_number || '07AAAAA0000A1Z5'} · Official Tax Invoice</div>
       </div>
       <div style="text-align: right;">
         <div class="badge">PAID IN FULL</div>
@@ -731,9 +734,20 @@ function BillingHistoryView({
               {/* Printable Area */}
               <div ref={printRef} style={{ background: '#fff', color: '#000', borderRadius: '12px', padding: '20px', fontFamily: 'Arial, sans-serif' }}>
                 <div style={{ textAlign: 'center', marginBottom: '14px', borderBottom: '2px dashed #ccc', paddingBottom: '10px' }}>
-                  <div style={{ fontSize: '1.4rem', fontWeight: '900', letterSpacing: '0.04em' }}>✂️ SalonPulse ERP</div>
-                  <div style={{ fontSize: '0.78rem', color: '#555', marginTop: '2px' }}>Multi-Branch Luxury Salon & Wellness Spa</div>
-                  <div style={{ fontSize: '0.75rem', color: '#666' }}>GSTIN: 07AAAAA0000A1Z5 · Tax Invoice</div>
+                  {brandSettings?.logo_url && (
+                    <div style={{ marginBottom: '8px' }}>
+                      <img src={brandSettings.logo_url} alt="Logo" style={{ maxHeight: '42px', maxWidth: '120px', objectFit: 'contain' }} />
+                    </div>
+                  )}
+                  <div style={{ fontSize: '1.4rem', fontWeight: '900', letterSpacing: '0.04em' }}>
+                    {brandSettings?.salon_name || '✂️ SalonPulse ERP'}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#555', marginTop: '2px' }}>
+                    {brandSettings?.salon_tagline || 'Multi-Branch Luxury Salon & Wellness Spa'}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#666' }}>
+                    GSTIN: {brandSettings?.gstin_number || '07AAAAA0000A1Z5'} · Tax Invoice
+                  </div>
                 </div>
 
                 <div style={{ fontSize: '0.82rem', color: '#333', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '10px' }}>

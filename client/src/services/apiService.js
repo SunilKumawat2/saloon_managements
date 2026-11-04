@@ -1202,6 +1202,12 @@ export const Admin_Get_Popularity_Peak_Hours_Analytics = async () => {
 };
 
 // <----------------  Module 10 Admin Panel & Security Settings APIs ---------------->
+export const Get_Public_Branding = async () => {
+  try {
+    return await axios.get(`${API_BASE_URL}/settings/branding`);
+  } catch (error) { throw error.response || error; }
+};
+
 export const Admin_Get_System_Settings = async () => {
   try {
     const token = getToken();

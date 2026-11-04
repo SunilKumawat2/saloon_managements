@@ -43,7 +43,7 @@ import {
   getCustomerRetention, getPopularityAndPeakHours
 } from '../controllers/analyticsController.js';
 import {
-  getSystemSettings, updateSystemSettings, getAuditLogs,
+  getSystemSettings, getPublicBranding, updateSystemSettings, getAuditLogs,
   getDatabaseBackups, createDatabaseBackup
 } from '../controllers/settingsController.js';
 import {
@@ -245,6 +245,7 @@ router.get('/analytics/retention', authenticateToken, getCustomerRetention);
 router.get('/analytics/popularity', authenticateToken, getPopularityAndPeakHours);
 
 // -------------------- Admin Panel & Security Settings Routes (Module 10) --------------------
+router.get('/settings/branding', getPublicBranding);
 router.get('/settings', authenticateToken, getSystemSettings);
 router.put('/settings', authenticateToken, requirePermission('all'), updateSystemSettings);
 router.get('/settings/audit-logs', authenticateToken, requirePermission('all'), getAuditLogs);

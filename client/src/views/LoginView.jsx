@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Scissors, Lock, Mail, ArrowRight, ShieldCheck, Sparkles, Building, BarChart3, CheckCircle2, Sun, Moon, Eye, EyeOff } from 'lucide-react';
 import { Admin_Login } from '../services/apiService';
+import { useBranding } from '../context/BrandingContext';
 
 function LoginView({ users = [], onLoginSuccess, theme = 'dark', onToggleTheme }) {
-
+  const { brandSettings } = useBranding();
   const [email, setEmail] = useState('admin@saloon.com');
   const [password, setPassword] = useState('admin123');
   const [showPassword, setShowPassword] = useState(false);
@@ -125,12 +126,20 @@ function LoginView({ users = [], onLoginSuccess, theme = 'dark', onToggleTheme }
 
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '32px' }}>
-              <div className="brand-icon">
-                <Scissors size={26} />
+              <div className="brand-icon" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {brandSettings?.logo_url ? (
+                  <img
+                    src={brandSettings.logo_url}
+                    alt={brandSettings?.salon_name || 'Salon'}
+                    style={{ maxHeight: '28px', maxWidth: '28px', objectFit: 'contain' }}
+                  />
+                ) : (
+                  <Scissors size={26} />
+                )}
               </div>
               <div className="brand-title">
-                <h2>SalonPulse</h2>
-                <span>ERP & CRM Portal</span>
+                <h2>{brandSettings?.salon_name || 'SalonPulse'}</h2>
+                <span>{brandSettings?.salon_tagline || 'ERP & CRM Portal'}</span>
               </div>
             </div>
 

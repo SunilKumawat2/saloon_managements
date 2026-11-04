@@ -216,7 +216,10 @@ export const mergeLists = (apiList = [], localList = []) => {
   return Array.from(map.values());
 };
 
+import { useBranding } from './context/BrandingContext';
+
 export default function App() {
+  const { brandSettings } = useBranding();
   const [currentUser, setCurrentUser] = useState(() => {
     // Only restore user if a JWT token exists — prevents auto-login after logout/cache clear
     const savedToken = localStorage.getItem('saloon_jwt_token');
@@ -1688,12 +1691,20 @@ export default function App() {
       <aside className="sidebar">
         <div>
           <div className="brand-header">
-            <div className="brand-icon">
-              <Scissors size={22} />
+            <div className="brand-icon" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {brandSettings?.logo_url ? (
+                <img
+                  src={brandSettings.logo_url}
+                  alt={brandSettings?.salon_name || 'Salon'}
+                  style={{ maxHeight: '24px', maxWidth: '24px', objectFit: 'contain' }}
+                />
+              ) : (
+                <Scissors size={22} />
+              )}
             </div>
             <div className="brand-title">
-              <h2>SalonPulse</h2>
-              <span>ERP & CRM Portal</span>
+              <h2>{brandSettings?.salon_name || 'SalonPulse'}</h2>
+              <span>{brandSettings?.salon_tagline || 'ERP & CRM Portal'}</span>
             </div>
           </div>
 

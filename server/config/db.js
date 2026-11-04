@@ -54,7 +54,17 @@ const memoryStore = {
   ],
   leads: [],
   products: [],
-  appointments: []
+  appointments: [],
+  system_settings: [
+    { setting_key: 'salon_name', setting_value: 'SalonPulse' },
+    { setting_key: 'salon_tagline', setting_value: 'ERP & CRM Portal' },
+    { setting_key: 'theme_color', setting_value: '#2563eb' },
+    { setting_key: 'theme_palette', setting_value: 'cobalt_blue' },
+    { setting_key: 'currency_symbol', setting_value: '₹' },
+    { setting_key: 'currency_code', setting_value: 'INR' },
+    { setting_key: 'default_gst_rate', setting_value: '18.0' },
+    { setting_key: 'receipt_footer_note', setting_value: 'Thank you for visiting! Please visit again.' }
+  ]
 };
 
 // Smart Pool Proxy with Cloud Fallback
@@ -98,6 +108,7 @@ function handleMemoryQuery(text, params = []) {
     if (lower.includes('from products')) return { rows: memoryStore.products, rowCount: memoryStore.products.length };
     if (lower.includes('from appointments')) return { rows: memoryStore.appointments, rowCount: memoryStore.appointments.length };
     if (lower.includes('from users')) return { rows: memoryStore.users, rowCount: memoryStore.users.length };
+    if (lower.includes('from system_settings')) return { rows: memoryStore.system_settings, rowCount: memoryStore.system_settings.length };
     return { rows: [], rowCount: 0 };
   }
 
@@ -176,6 +187,17 @@ function handleMemoryQuery(text, params = []) {
       tableName = 'categories';
       const maxId = memoryStore.categories.length > 0 ? Math.max(...memoryStore.categories.map(c => Number(c.id) || 0)) + 1 : 1;
       newItem = { id: maxId, name: String(params[0] || 'New Category') };
+    }
+    else if (lower.includes('into system_settings')) {
+      const key = String(params[0]);
+      const val = String(params[1]);
+      const existing = memoryStore.system_settings.find(s => s.setting_key === key);
+      if (existing) {
+        existing.setting_value = val;
+      } else {
+        memoryStore.system_settings.push({ setting_key: key, setting_value: val });
+      }
+      return { rows: [{ setting_key: key, setting_value: val }], rowCount: 1 };
     }
     else if (lower.includes('into appointments')) {
       tableName = 'appointments';

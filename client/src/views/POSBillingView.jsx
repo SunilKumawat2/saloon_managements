@@ -15,6 +15,7 @@ import {
   Admin_Get_Gateway_Config
 } from '../services/apiService';
 import { getPackageExpirationStatus } from '../utils/packageUtils';
+import { useBranding } from '../context/BrandingContext';
 
 // Helper to resolve included service names for a package
 const getIncludedServicesForPackage = (pkg, servicesList = []) => {
@@ -66,6 +67,7 @@ function POSBillingView({
   onViewHistory,
   selectedBranchId = 'all'
 }) {
+  const { brandSettings } = useBranding();
   const [customAlert, setCustomAlert] = useState(null);
   // ─── Customer State ───
   const [selectedCustomer, setSelectedCustomer] = useState(initialCustomer || null);
@@ -778,10 +780,23 @@ function POSBillingView({
             
             {/* Salon Header & Barcode */}
             <div style={{ textAlign: 'center', marginBottom: '14px', borderBottom: '2px dashed #000', paddingBottom: '12px' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: '900', letterSpacing: '0.05em' }}>✂️ SALONPULSE ERP</div>
-              <div style={{ fontSize: '0.75rem', color: '#444', marginTop: '2px' }}>LUXURY SALON & WELLNESS SPA</div>
-              <div style={{ fontSize: '0.72rem', color: '#555', marginTop: '2px' }}>Connaught Place, New Delhi · Tel: 011-23456789</div>
-              <div style={{ fontSize: '0.72rem', color: '#555', fontWeight: '700', marginTop: '2px' }}>GSTIN: 07AAAAA0000A1Z5 · TAX INVOICE</div>
+              {brandSettings?.logo_url && (
+                <div style={{ marginBottom: '8px' }}>
+                  <img src={brandSettings.logo_url} alt="Receipt Logo" style={{ maxHeight: '42px', maxWidth: '120px', objectFit: 'contain' }} />
+                </div>
+              )}
+              <div style={{ fontSize: '1.4rem', fontWeight: '900', letterSpacing: '0.04em' }}>
+                {brandSettings?.salon_name || '✂️ SALONPULSE ERP'}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#444', marginTop: '2px' }}>
+                {brandSettings?.salon_tagline || 'LUXURY SALON & WELLNESS SPA'}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: '#555', marginTop: '2px' }}>
+                {brandSettings?.contact_phone ? `Tel: ${brandSettings.contact_phone}` : 'Connaught Place, New Delhi · Tel: 011-23456789'}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: '#555', fontWeight: '700', marginTop: '2px' }}>
+                GSTIN: {brandSettings?.gstin_number || '07AAAAA0000A1Z5'} · TAX INVOICE
+              </div>
             </div>
 
             {/* Meta Information */}
@@ -891,8 +906,16 @@ function POSBillingView({
 
             <div style={{ textAlign: 'center', marginTop: '14px', fontSize: '0.75rem' }}>
               ************************************<br />
-              THANK YOU FOR VISITING SALONPULSE!<br />
-              HAVE A WONDERFUL DAY ✨<br />
+              {brandSettings?.receipt_footer_note ? (
+                <>
+                  {brandSettings.receipt_footer_note.toUpperCase()}<br />
+                </>
+              ) : (
+                <>
+                  THANK YOU FOR VISITING SALONPULSE!<br />
+                  HAVE A WONDERFUL DAY ✨<br />
+                </>
+              )}
               ************************************
             </div>
           </div>
