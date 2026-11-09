@@ -239,7 +239,7 @@ const SubscriptionPlansView = ({ currentUser }) => {
   const currentPlanId = myUsage?.plan?.id;
 
   return (
-    <div style={{ padding: '20px 24px', color: '#e2e8f0', minHeight: '100vh', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: '12px 4px', color: '#e2e8f0', width: '100%' }}>
       {/* Top Header */}
       <div style={{
         display: 'flex',

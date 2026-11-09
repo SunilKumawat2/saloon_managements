@@ -255,7 +255,7 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix, currentUser, branches: 
   };
 
   return (
-    <div style={{ padding: '24px', color: '#fff', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: '20px 16px', color: '#fff', width: '100%' }}>
       
       {/* Header Banner */}
       <div style={{

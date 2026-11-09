@@ -217,7 +217,7 @@ const TenantsManagementView = ({ currentUser }) => {
     .reduce((acc, t) => acc + (parseFloat(t.price_monthly) || 0), 0);
 
   return (
-    <div style={{ padding: '16px 20px', color: '#e2e8f0', minHeight: '100vh', maxWidth: '1440px', margin: '0 auto' }}>
+    <div style={{ padding: '16px 4px', color: '#e2e8f0', width: '100%' }}>
       {/* Top Banner Header */}
       <div style={{
         display: 'flex',
