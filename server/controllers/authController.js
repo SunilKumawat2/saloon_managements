@@ -46,6 +46,7 @@ export const loginUser = async (req, res) => {
       role: isSuperAdmin ? 'Super Admin' : (user.role_name || 'Staff'),
       role_id: user.role_id,
       is_super_admin: isSuperAdmin,
+      tenant_id: user.tenant_id || 1,
       admin_id: isSuperAdmin ? null : (user.admin_id || user.created_by_user_id || null),
       created_by_user_id: user.created_by_user_id || null,
       allowed_branch_ids: parsedAllowedBranches,
@@ -81,12 +82,14 @@ export const getMe = async (req, res) => {
     // Fetch fresh user data from DB
     const query = `
       SELECT u.id, u.name, u.email, u.phone, u.avatar_url, u.is_active,
-             u.role_id, u.branch_id, u.admin_id, u.created_by_user_id, u.allowed_branch_ids,
+             u.role_id, u.branch_id, u.admin_id, u.created_by_user_id, u.allowed_branch_ids, u.tenant_id,
              r.name as role, r.permissions,
-             b.name as branch_name
+             b.name as branch_name,
+             t.name as tenant_name, t.slug as tenant_slug, t.status as tenant_status, t.plan_id
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.id
       LEFT JOIN branches b ON u.branch_id = b.id
+      LEFT JOIN tenants t ON u.tenant_id = t.id
       WHERE u.id = $1
     `;
     const { rows } = await pool.query(query, [userId]);
@@ -118,6 +121,10 @@ export const getMe = async (req, res) => {
         role: isSuperAdmin ? 'Super Admin' : freshUser.role,
         role_id: freshUser.role_id,
         is_super_admin: isSuperAdmin,
+        tenant_id: freshUser.tenant_id || 1,
+        tenant_name: freshUser.tenant_name || 'Main Salon & Wellness Spa',
+        tenant_status: freshUser.tenant_status || 'Active',
+        plan_id: freshUser.plan_id || 1,
         admin_id: isSuperAdmin ? null : (freshUser.admin_id || freshUser.created_by_user_id || null),
         created_by_user_id: freshUser.created_by_user_id || null,
         allowed_branch_ids: parsedAllowed,

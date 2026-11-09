@@ -1,6 +1,37 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Table: subscription_plans (SaaS Pricing Tiers)
+CREATE TABLE IF NOT EXISTS subscription_plans (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    code VARCHAR(30) NOT NULL UNIQUE,
+    price_monthly DECIMAL(10, 2) NOT NULL DEFAULT 999.00,
+    price_yearly DECIMAL(10, 2) NOT NULL DEFAULT 9999.00,
+    max_branches INT NOT NULL DEFAULT 1,
+    max_staff INT NOT NULL DEFAULT 4,
+    features JSONB DEFAULT '[]'::jsonb,
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table: tenants (SaaS Salon Organizations)
+CREATE TABLE IF NOT EXISTS tenants (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    slug VARCHAR(100) UNIQUE NOT NULL,
+    owner_name VARCHAR(100) NOT NULL,
+    owner_email VARCHAR(100) UNIQUE NOT NULL,
+    owner_phone VARCHAR(20),
+    status VARCHAR(20) DEFAULT 'Trial',
+    plan_id INT REFERENCES subscription_plans(id) DEFAULT 1,
+    trial_ends_at TIMESTAMP WITH TIME ZONE DEFAULT (NOW() + INTERVAL '14 days'),
+    subscription_ends_at TIMESTAMP WITH TIME ZONE,
+    branding_settings JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Table: branches
 CREATE TABLE IF NOT EXISTS branches (
     id SERIAL PRIMARY KEY,

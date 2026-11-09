@@ -18,11 +18,14 @@ export const authenticateToken = async (req, res, next) => {
       role: 'Super Admin',
       role_id: 1,
       is_super_admin: true,
+      tenant_id: 1,
+      tenant_name: 'Main Salon & Wellness Spa',
       branch_id: null,
       admin_id: null,
       permissions: ['all', 'manage_permissions', 'manage_users', 'manage_branches', 'manage_services', 'manage_appointments', 'manage_billing'],
       branch_name: '🌐 Global SaaS System Master'
     };
+    req.tenantId = 1;
     return next();
   }
 
@@ -41,12 +44,14 @@ export const authenticateToken = async (req, res, next) => {
         try {
           const { rows } = await pool.query(`
             SELECT u.id, u.name, u.email, u.phone, u.avatar_url, u.is_active,
-                   u.role_id, u.branch_id, u.admin_id, u.created_by_user_id, u.allowed_branch_ids,
+                   u.role_id, u.branch_id, u.admin_id, u.created_by_user_id, u.allowed_branch_ids, u.tenant_id,
                    r.name as role, r.permissions,
-                   b.name as branch_name
+                   b.name as branch_name,
+                   t.name as tenant_name, t.status as tenant_status
             FROM users u
             LEFT JOIN roles r ON u.role_id = r.id
             LEFT JOIN branches b ON u.branch_id = b.id
+            LEFT JOIN tenants t ON u.tenant_id = t.id
             WHERE u.id = $1
           `, [userId]);
 
@@ -60,6 +65,7 @@ export const authenticateToken = async (req, res, next) => {
               try { parsedAllowed = JSON.parse(u.allowed_branch_ids); } catch (e) { parsedAllowed = []; }
             }
 
+            const activeTenantId = u.tenant_id || 1;
             req.user = {
               id: u.id,
               name: u.name,
@@ -67,6 +73,8 @@ export const authenticateToken = async (req, res, next) => {
               role: isSuper ? 'Super Admin' : (u.role || 'Admin'),
               role_id: u.role_id,
               is_super_admin: isSuper,
+              tenant_id: activeTenantId,
+              tenant_name: u.tenant_name || 'Main Salon & Wellness Spa',
               branch_id: isSuper ? null : u.branch_id,
               admin_id: isSuper ? null : (u.admin_id || u.created_by_user_id || u.id),
               created_by_user_id: u.created_by_user_id || null,
@@ -74,6 +82,7 @@ export const authenticateToken = async (req, res, next) => {
               branch_name: u.branch_name || 'Main Salon',
               permissions: isSuper ? ['all'] : (Array.isArray(u.permissions) ? u.permissions : [])
             };
+            req.tenantId = (isSuper && req.headers['x-tenant-id']) ? parseInt(req.headers['x-tenant-id']) : activeTenantId;
             return next();
           }
         } catch (e) {
@@ -89,17 +98,26 @@ export const authenticateToken = async (req, res, next) => {
         role: 'Super Admin',
         role_id: 1,
         is_super_admin: true,
+        tenant_id: 1,
+        tenant_name: 'Main Salon & Wellness Spa',
         branch_id: null,
         admin_id: null,
         permissions: ['all', 'manage_permissions', 'manage_users', 'manage_branches', 'manage_services', 'manage_appointments', 'manage_billing'],
         branch_name: '🌐 Global SaaS System Master'
       };
+      req.tenantId = 1;
       return next();
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
     try {
-      const uRes = await pool.query('SELECT allowed_branch_ids, branch_id, role_id FROM users WHERE id = $1', [decoded.id]);
+      const uRes = await pool.query(`
+        SELECT u.allowed_branch_ids, u.branch_id, u.role_id, u.tenant_id,
+               t.name as tenant_name, t.status as tenant_status
+        FROM users u
+        LEFT JOIN tenants t ON u.tenant_id = t.id
+        WHERE u.id = $1
+      `, [decoded.id]);
       if (uRes.rows.length > 0) {
         let parsed = uRes.rows[0].allowed_branch_ids;
         if (typeof parsed === 'string') {
@@ -108,9 +126,16 @@ export const authenticateToken = async (req, res, next) => {
         decoded.allowed_branch_ids = Array.isArray(parsed) ? parsed : [];
         if (uRes.rows[0].branch_id) decoded.branch_id = uRes.rows[0].branch_id;
         if (uRes.rows[0].role_id) decoded.role_id = uRes.rows[0].role_id;
+        decoded.tenant_id = uRes.rows[0].tenant_id || 1;
+        decoded.tenant_name = uRes.rows[0].tenant_name || 'Main Salon & Wellness Spa';
       }
     } catch (e) {}
+    
+    if (!decoded.tenant_id) decoded.tenant_id = 1;
     req.user = decoded;
+    req.tenantId = (decoded.is_super_admin && req.headers['x-tenant-id']) 
+      ? parseInt(req.headers['x-tenant-id']) 
+      : (decoded.tenant_id || 1);
     next();
   } catch (err) {
     return res.status(403).json({
