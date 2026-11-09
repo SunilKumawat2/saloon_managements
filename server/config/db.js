@@ -13,7 +13,7 @@ const { Pool } = pg;
 
 const rawPool = process.env.DATABASE_URL
   ? new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString: process.env.DATABASE_URL.trim(),
       ssl: { rejectUnauthorized: false }
     })
   : new Pool({

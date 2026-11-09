@@ -10,9 +10,6 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Auto-verify multi-tenant DB schema on startup
-runSaasMigrationSafely().catch(err => console.error('Migration hook error:', err));
-
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
