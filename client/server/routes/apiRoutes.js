@@ -4,7 +4,7 @@ import express from 'express';
 import { authenticateToken, requirePermission } from '../middleware/authMiddleware.js';
 
 // Controllers Import
-import { loginUser, getMe } from '../controllers/authController.js';
+import { loginUser, getMe, updateProfile } from '../controllers/authController.js';
 import { getUsers, getRoles, createUser, updateUser, deleteUser, toggleUserStatus } from '../controllers/userController.js';
 import { updateRolePermissions } from '../controllers/roleController.js';
 import { getBranches, createBranch, updateBranch, toggleBranchStatus, deleteBranch } from '../controllers/branchController.js';
@@ -24,12 +24,14 @@ import {
   updateCategory, 
   deleteCategory 
 } from '../controllers/categoryController.js';
-import { getStylists, createStylist } from '../controllers/stylistController.js';
+import { getStylists, createStylist, updateStylist, deleteStylist, toggleStylistActive } from '../controllers/stylistController.js';
+import { getTimeSlots, createTimeSlot, updateTimeSlot, deleteTimeSlot, toggleTimeSlotActive, generateTimeSlotRange } from '../controllers/timeSlotController.js';
 import { getCoupons, validateCoupon } from '../controllers/couponController.js';
 import {
-  getMembershipTiers, createMembershipTier, updateMembershipTier,
+  getMembershipTiers, createMembershipTier, updateMembershipTier, deleteMembershipTier,
   getEnrolledMembers, enrollCustomer, getCustomerLoyaltyProfile,
-  getLoyaltyLedger, getReferralList, applyReferralCode
+  getLoyaltyLedger, getReferralList, applyReferralCode, redeemCustomerCredit,
+  updateCustomerEnrollment, deleteCustomerEnrollment, reactivateCustomerEnrollment
 } from '../controllers/loyaltyController.js';
 import {
   getTemplates, createTemplate, updateTemplate,
@@ -41,36 +43,77 @@ import {
   getCustomerRetention, getPopularityAndPeakHours
 } from '../controllers/analyticsController.js';
 import {
-  getSystemSettings, updateSystemSettings, getAuditLogs,
+  getSystemSettings, getPublicBranding, updateSystemSettings, getAuditLogs,
   getDatabaseBackups, createDatabaseBackup
 } from '../controllers/settingsController.js';
 import {
-  getGatewaySettings, updateGatewaySettings, createOrder, verifyPayment
+  getGatewaySettings, getAdminGatewayList, updateGatewaySettings, createOrder, verifyPayment
 } from '../controllers/paymentController.js';
 
-import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '../controllers/customerController.js';
+import { getCustomers, createCustomer, updateCustomer, deleteCustomer, toggleBlockCustomer, toggleAbandonCustomer } from '../controllers/customerController.js';
 import { getLeads, createLead, updateLeadStatus, updateLead, deleteLead } from '../controllers/leadController.js';
 import { getAppointments, createAppointment, updateAppointmentStatus, updateAppointment, deleteAppointment } from '../controllers/appointmentController.js';
-import { getBills, getBillById, createBill } from '../controllers/billingController.js';
+import { getBills, getBillById, createBill, deleteBill, clearBills } from '../controllers/billingController.js';
 import {
   getProducts, createProduct, updateProduct, adjustStock, deleteProduct,
   getSuppliers, createSupplier, updateSupplier, deleteSupplier,
   getPurchaseOrders, createPurchaseOrder, updatePurchaseOrderStatus,
-  getConsumptions, createConsumption, deleteConsumption
+  getConsumptions, createConsumption, updateConsumption, deleteConsumption
 } from '../controllers/inventoryController.js';
 import { uploadUserAvatar, removeUserAvatar, uploadCustomerAvatar, removeCustomerAvatar, uploadLeadAvatar, removeLeadAvatar } from '../controllers/uploadController.js';
 import uploadAvatar, { handleUploadAvatar } from '../middleware/uploadMiddleware.js';
 import { getHealth, checkDatabaseStatus } from '../controllers/healthController.js';
+import { getAssets, getAssetById, createAsset, updateAsset, deleteAsset, transferAsset } from '../controllers/assetController.js';
+import { getStaffTracking, getCustomerTracking } from '../controllers/trackingController.js';
+import {
+  getDailyAttendance,
+  recordAttendance,
+  recordBulkAttendance,
+  getMonthlyReport,
+  deleteAttendanceRecord
+} from '../controllers/staffAttendanceController.js';
+import {
+  getSubscriptionPlans,
+  getPlanById,
+  getCurrentTenantPlanUsage,
+  changeTenantPlan,
+  createSubscriptionPlan,
+  updateSubscriptionPlan,
+  togglePlanStatus
+} from '../controllers/subscriptionPlanController.js';
+import {
+  getTenants,
+  getTenantById,
+  createTenant,
+  updateTenant,
+  toggleTenantStatus,
+  extendTenantTrial,
+  impersonateTenant,
+  getPublicAuthSettings,
+  registerPublicSalon
+} from '../controllers/tenantController.js';
 
 const router = express.Router();
 
 // ==================== 🔓 PUBLIC ROUTES (No Token Needed) ====================
 router.get('/health', getHealth);
 router.get('/db-check', checkDatabaseStatus);
+router.all('/admin/run-saas-migration', async (req, res) => {
+  try {
+    const { runSaasMigrationSafely } = await import('../utils/runSaasMigration.js');
+    await runSaasMigrationSafely();
+    res.json({ success: true, message: 'SaaS multi-tenant migration verified and applied successfully.' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 router.post('/auth/login', loginUser);
+router.get('/auth/public-settings', getPublicAuthSettings);
+router.post('/auth/register-salon', registerPublicSalon);
 
 // ==================== 🔒 PROTECTED ROUTES (Requires JWT Token) ====================
 router.get('/auth/me', authenticateToken, getMe);
+router.put('/auth/profile', authenticateToken, updateProfile);
 
 // -------------------- User & Role Routes (Module 1) --------------------
 router.get('/users', authenticateToken, getUsers);
@@ -111,10 +154,23 @@ router.delete('/packages/:id', authenticateToken, requirePermission('manage_serv
 // -------------------- Stylist / Staff Routes --------------------
 router.get('/stylists', authenticateToken, getStylists);
 router.post('/stylists/create', authenticateToken, requirePermission('manage_users'), createStylist);
+router.put('/stylists/:id', authenticateToken, requirePermission('manage_users'), updateStylist);
+router.delete('/stylists/:id', authenticateToken, requirePermission('manage_users'), deleteStylist);
+router.patch('/stylists/:id/toggle', authenticateToken, requirePermission('manage_users'), toggleStylistActive);
+
+// -------------------- Dynamic Time Slots & Schedule Routes --------------------
+router.get('/time-slots', authenticateToken, getTimeSlots);
+router.post('/time-slots/create', authenticateToken, requirePermission('manage_appointments'), createTimeSlot);
+router.put('/time-slots/:id', authenticateToken, requirePermission('manage_appointments'), updateTimeSlot);
+router.delete('/time-slots/:id', authenticateToken, requirePermission('manage_appointments'), deleteTimeSlot);
+router.patch('/time-slots/:id/toggle', authenticateToken, requirePermission('manage_appointments'), toggleTimeSlotActive);
+router.post('/time-slots/generate-range', authenticateToken, requirePermission('manage_appointments'), generateTimeSlotRange);
 
 // -------------------- Customer CRM Routes (Module 2) --------------------
 router.get('/customers', authenticateToken, getCustomers);
 router.post('/customers/create', authenticateToken, createCustomer);
+router.patch('/customers/:id/toggle-block', authenticateToken, toggleBlockCustomer);
+router.patch('/customers/:id/toggle-abandon', authenticateToken, toggleAbandonCustomer);
 router.put('/customers/:id', authenticateToken, updateCustomer);
 router.delete('/customers/:id', authenticateToken, deleteCustomer);
 
@@ -134,8 +190,10 @@ router.delete('/appointments/:id', authenticateToken, requirePermission('manage_
 
 // -------------------- POS Billing Routes (Receptionist Module) --------------------
 router.get('/billing', authenticateToken, getBills);
+router.delete('/billing/clear/all', authenticateToken, requirePermission('manage_billing'), clearBills);
 router.get('/billing/:id', authenticateToken, getBillById);
 router.post('/billing/create', authenticateToken, requirePermission('manage_billing'), createBill);
+router.delete('/billing/:id', authenticateToken, requirePermission('manage_billing'), deleteBill);
 
 // -------------------- Coupon Routes (Module 5) --------------------
 router.get('/coupons', authenticateToken, getCoupons);
@@ -159,7 +217,12 @@ router.patch('/purchase-orders/:id/status', authenticateToken, requirePermission
 
 router.get('/consumption', authenticateToken, getConsumptions);
 router.post('/consumption/create', authenticateToken, requirePermission('manage_inventory'), createConsumption);
+router.put('/consumption/:id', authenticateToken, requirePermission('manage_inventory'), updateConsumption);
 router.delete('/consumption/:id', authenticateToken, requirePermission('manage_inventory'), deleteConsumption);
+
+// -------------------- Staff & Customer Tracking Routes --------------------
+router.get('/tracking/staff', authenticateToken, getStaffTracking);
+router.get('/tracking/customer', authenticateToken, getCustomerTracking);
 
 // -------------------- User Avatar Upload Routes (Multer) --------------------
 router.post('/users/:id/avatar', authenticateToken, handleUploadAvatar, uploadUserAvatar);
@@ -169,18 +232,27 @@ router.delete('/users/:id/avatar', authenticateToken, removeUserAvatar);
 router.post('/customers/:id/avatar', authenticateToken, handleUploadAvatar, uploadCustomerAvatar);
 router.delete('/customers/:id/avatar', authenticateToken, removeCustomerAvatar);
 
+// -------------------- Lead Photo Upload Routes (Multer) --------------------
+router.post('/leads/:id/avatar', authenticateToken, handleUploadAvatar, uploadLeadAvatar);
+router.delete('/leads/:id/avatar', authenticateToken, removeLeadAvatar);
+
 // -------------------- Loyalty & Membership Program Routes (Module 7) --------------------
 router.get('/loyalty/memberships', authenticateToken, getMembershipTiers);
 router.post('/loyalty/memberships', authenticateToken, createMembershipTier);
 router.put('/loyalty/memberships/:id', authenticateToken, updateMembershipTier);
+router.delete('/loyalty/memberships/:id', authenticateToken, deleteMembershipTier);
 
 router.get('/loyalty/members', authenticateToken, getEnrolledMembers);
 router.post('/loyalty/enroll', authenticateToken, enrollCustomer);
+router.put('/loyalty/members/:id', authenticateToken, updateCustomerEnrollment);
+router.delete('/loyalty/members/:id', authenticateToken, deleteCustomerEnrollment);
+router.post('/loyalty/members/:id/reactivate', authenticateToken, reactivateCustomerEnrollment);
 router.get('/loyalty/customer/:customerId', authenticateToken, getCustomerLoyaltyProfile);
 
 router.get('/loyalty/ledger', authenticateToken, getLoyaltyLedger);
 router.get('/loyalty/referrals', authenticateToken, getReferralList);
 router.post('/loyalty/referrals/apply', authenticateToken, applyReferralCode);
+router.post('/loyalty/memberships/redeem-credit', authenticateToken, redeemCustomerCredit);
 
 // -------------------- Marketing Automation & Communication Routes (Module 8) --------------------
 router.get('/marketing/templates', authenticateToken, getTemplates);
@@ -204,6 +276,7 @@ router.get('/analytics/retention', authenticateToken, getCustomerRetention);
 router.get('/analytics/popularity', authenticateToken, getPopularityAndPeakHours);
 
 // -------------------- Admin Panel & Security Settings Routes (Module 10) --------------------
+router.get('/settings/branding', getPublicBranding);
 router.get('/settings', authenticateToken, getSystemSettings);
 router.put('/settings', authenticateToken, requirePermission('all'), updateSystemSettings);
 router.get('/settings/audit-logs', authenticateToken, requirePermission('all'), getAuditLogs);
@@ -212,9 +285,39 @@ router.post('/settings/backups/create', authenticateToken, requirePermission('al
 
 // -------------------- Razorpay Payment Gateway Routes --------------------
 router.get('/payment/gateway-config', authenticateToken, getGatewaySettings);
-router.put('/payment/gateway-config', authenticateToken, requirePermission('all'), updateGatewaySettings);
+router.get('/payment/gateway-list', authenticateToken, getAdminGatewayList);
+router.put('/payment/gateway-config', authenticateToken, updateGatewaySettings);
 router.post('/payment/create-order', authenticateToken, createOrder);
 router.post('/payment/verify-signature', authenticateToken, verifyPayment);
+// -------------------- Salon Assets & Equipment Tracking Routes --------------------
+router.get('/assets', authenticateToken, getAssets);
+router.get('/assets/:id', authenticateToken, getAssetById);
+router.post('/assets/create', authenticateToken, createAsset);
+router.put('/assets/:id', authenticateToken, updateAsset);
+router.delete('/assets/:id', authenticateToken, deleteAsset);
+// -------------------- Staff Attendance Routes --------------------
+router.get('/staff-attendance/daily', authenticateToken, getDailyAttendance);
+router.post('/staff-attendance/record', authenticateToken, recordAttendance);
+router.post('/staff-attendance/bulk', authenticateToken, recordBulkAttendance);
+router.get('/staff-attendance/monthly', authenticateToken, getMonthlyReport);
+router.delete('/staff-attendance/:id', authenticateToken, deleteAttendanceRecord);
 
+// -------------------- SaaS Subscription Plans Routes --------------------
+router.get('/subscription-plans', getSubscriptionPlans);
+router.get('/subscription-plans/my-usage', authenticateToken, getCurrentTenantPlanUsage);
+router.get('/subscription-plans/:id', getPlanById);
+router.post('/subscription-plans/change-plan', authenticateToken, changeTenantPlan);
+router.post('/subscription-plans', authenticateToken, createSubscriptionPlan);
+router.put('/subscription-plans/:id', authenticateToken, updateSubscriptionPlan);
+router.patch('/subscription-plans/:id/status', authenticateToken, togglePlanStatus);
+
+// -------------------- SaaS Salon Tenants / Organizations Routes --------------------
+router.get('/tenants', authenticateToken, getTenants);
+router.get('/tenants/:id', authenticateToken, getTenantById);
+router.post('/tenants', authenticateToken, createTenant);
+router.put('/tenants/:id', authenticateToken, updateTenant);
+router.patch('/tenants/:id/status', authenticateToken, toggleTenantStatus);
+router.post('/tenants/:id/extend-trial', authenticateToken, extendTenantTrial);
+router.post('/tenants/:id/impersonate', authenticateToken, impersonateTenant);
 
 export default router;

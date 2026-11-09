@@ -1,14 +1,70 @@
 import { pool } from '../config/db.js';
 
 const Product = {
-  getAll: async () => {
-    const res = await pool.query(`
-      SELECT p.*, s.name as supplier_name, s.company_name as supplier_company
+  getAll: async (options = {}) => {
+    const page = Math.max(1, parseInt(options.page || '1'));
+    const limit = options.limit && options.limit !== 'all' ? parseInt(options.limit) : null;
+    const search = options.search ? String(options.search).trim() : '';
+    const category = options.category && options.category !== 'All' ? options.category : null;
+    const type = options.type && options.type !== 'All' ? options.type : null;
+
+    let baseSql = `
       FROM products p
       LEFT JOIN suppliers s ON p.supplier_id = s.id
-      ORDER BY p.created_at DESC
-    `);
-    return res.rows;
+    `;
+
+    const whereConditions = [];
+    const queryParams = [];
+
+    if (search) {
+      queryParams.push(`%${search}%`);
+      const idx = queryParams.length;
+      whereConditions.push(`(p.name ILIKE $${idx} OR p.sku ILIKE $${idx} OR p.category ILIKE $${idx} OR s.name ILIKE $${idx})`);
+    }
+
+    if (category) {
+      queryParams.push(category);
+      whereConditions.push(`p.category = $${queryParams.length}`);
+    }
+
+    if (type) {
+      queryParams.push(type);
+      whereConditions.push(`p.type = $${queryParams.length}`);
+    }
+
+    if (whereConditions.length > 0) {
+      baseSql += ' WHERE ' + whereConditions.join(' AND ');
+    }
+
+    const countRes = await pool.query(`SELECT COUNT(*) ${baseSql}`, queryParams);
+    const total = parseInt(countRes.rows[0]?.count || '0');
+
+    let selectSql = `
+      SELECT p.*, s.name as supplier_name, s.company_name as supplier_company
+      ${baseSql}
+      ORDER BY p.id DESC
+    `;
+
+    if (limit && limit > 0) {
+      const offset = (page - 1) * limit;
+      const pageParams = [...queryParams, limit, offset];
+      selectSql += ` LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
+      const dataRes = await pool.query(selectSql, pageParams);
+      const rows = dataRes.rows || [];
+
+      return {
+        data: rows,
+        pagination: {
+          total: total || rows.length,
+          page,
+          limit,
+          totalPages: Math.ceil((total || rows.length) / limit) || 1
+        }
+      };
+    }
+
+    const dataRes = await pool.query(selectSql, queryParams);
+    return dataRes.rows;
   },
 
   getById: async (id) => {

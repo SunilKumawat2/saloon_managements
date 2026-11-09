@@ -2,28 +2,76 @@ import { pool } from '../config/db.js';
 
 const Bill = {
   // Get all bills with customer name
-  getAll: async () => {
+  // Get all bills with customer, stylist, branch, and admin info
+  getAll: async (currentUser = null) => {
+    let whereClause = '';
+    const params = [];
+
+    if (currentUser) {
+      const currentAdminId = parseInt(currentUser.admin_id || currentUser.id);
+      params.push(currentAdminId);
+      const conditions = [`(COALESCE(b.admin_id, br.admin_id, 1) = $1 OR br.admin_id = $1 OR br.created_by_user_id = $1)`];
+
+      let allowedBranches = [];
+      if (Array.isArray(currentUser.allowed_branch_ids) && currentUser.allowed_branch_ids.length > 0) {
+        allowedBranches = currentUser.allowed_branch_ids.map(Number).filter(n => !isNaN(n));
+      } else if (typeof currentUser.allowed_branch_ids === 'string') {
+        try {
+          const parsed = JSON.parse(currentUser.allowed_branch_ids);
+          if (Array.isArray(parsed)) allowedBranches = parsed.map(Number).filter(n => !isNaN(n));
+        } catch (e) {}
+      }
+
+      const roleStr = String(currentUser.role || currentUser.role_name || '').trim().toLowerCase();
+      const isSuper = currentUser.is_super_admin === true || currentUser.email === 'admin@saloon.com' || roleStr.includes('super');
+      const isOwner = !isSuper && (roleStr === 'admin' || roleStr === 'owner' || roleStr === 'salon admin' || currentUser.role_id === 1);
+      const isManager = !isSuper && !isOwner && (roleStr.includes('manager') || currentUser.role_id === 2);
+
+      if (allowedBranches.length > 0) {
+        params.push(allowedBranches);
+        conditions.push(`b.branch_id = ANY($${params.length}::int[])`);
+      } else if (!isSuper && !isOwner && !isManager && currentUser.branch_id) {
+        params.push(currentUser.branch_id);
+        conditions.push(`b.branch_id = $${params.length}`);
+      }
+
+      whereClause = `WHERE ` + conditions.join(' AND ');
+    }
+
     const result = await pool.query(`
-      SELECT b.*, c.name as customer_name, c.phone as customer_phone,
+      SELECT b.*,
+             COALESCE(b.admin_id, br.admin_id, 1) as admin_id,
+             COALESCE(u.name, 'Sunil Kumar (Admin)') as admin_name,
+             u.email as admin_email,
+             c.name as customer_name, c.phone as customer_phone,
              s.name as stylist_name,
              br.name as branch_name
       FROM bills b
       LEFT JOIN customers c ON b.customer_id = c.id
       LEFT JOIN stylists s ON b.stylist_id = s.id
       LEFT JOIN branches br ON b.branch_id = br.id
+      LEFT JOIN users u ON COALESCE(b.admin_id, br.admin_id, 1) = u.id
+      ${whereClause}
       ORDER BY b.created_at DESC
-    `);
+    `, params);
     return result.rows;
   },
 
-  // Get single bill with its items
+  // Get single bill with its items and admin info
   getById: async (id) => {
     const billRes = await pool.query(`
-      SELECT b.*, c.name as customer_name, c.phone as customer_phone,
-             s.name as stylist_name
+      SELECT b.*,
+             COALESCE(b.admin_id, br.admin_id, 1) as admin_id,
+             COALESCE(u.name, 'Sunil Kumar (Admin)') as admin_name,
+             u.email as admin_email,
+             c.name as customer_name, c.phone as customer_phone,
+             s.name as stylist_name,
+             br.name as branch_name
       FROM bills b
       LEFT JOIN customers c ON b.customer_id = c.id
       LEFT JOIN stylists s ON b.stylist_id = s.id
+      LEFT JOIN branches br ON b.branch_id = br.id
+      LEFT JOIN users u ON COALESCE(b.admin_id, br.admin_id, 1) = u.id
       WHERE b.id = $1
     `, [id]);
 
@@ -39,7 +87,8 @@ const Bill = {
   create: async ({
     branch_id, customer_id, stylist_id, items, payment_mode,
     discount_code, discount_amount = 0, tax_rate = 18.00,
-    tip_amount = 0, commission_amount = 0, split_details = {}, notes
+    tip_amount = 0, commission_amount = 0, split_details = {}, notes,
+    admin_id
   }) => {
     const client = await pool.connect();
     try {
@@ -68,19 +117,29 @@ const Bill = {
         if (sCheck.rows.length > 0) validStylistId = stylist_id;
       }
 
+      // Resolve admin_id fallback from branch if not provided directly
+      let resolvedAdminId = admin_id ? parseInt(admin_id) : null;
+      if (!resolvedAdminId && branch_id) {
+        const bRes = await client.query(`SELECT admin_id, created_by_user_id FROM branches WHERE id = $1`, [branch_id]);
+        if (bRes.rows.length > 0) {
+          resolvedAdminId = bRes.rows[0].admin_id || bRes.rows[0].created_by_user_id;
+        }
+      }
+      if (!resolvedAdminId) resolvedAdminId = 1;
+
       // Insert bill
       const billRes = await client.query(`
         INSERT INTO bills (
           branch_id, customer_id, stylist_id, subtotal, tax_amount, total,
           payment_mode, discount_code, discount_amount, tax_rate, tip_amount,
-          commission_amount, split_details, notes
+          commission_amount, split_details, notes, admin_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         RETURNING *
       `, [
         branch_id || null, validCustomerId, validStylistId, subtotal, tax_amount, total,
         payment_mode || 'Cash', discount_code || null, disc, taxRateNum, tip,
-        comm, JSON.stringify(split_details || {}), notes || null
+        comm, JSON.stringify(split_details || {}), notes || null, resolvedAdminId
       ]);
 
       const bill = billRes.rows[0];
@@ -90,7 +149,7 @@ const Bill = {
         await client.query(`
           INSERT INTO bill_items (bill_id, service_id, service_name, price, qty)
           VALUES ($1, $2, $3, $4, $5)
-        `, [bill.id, item.service_id || null, item.service_name, item.price, item.qty || 1]);
+        `, [bill.id, item.service_id || null, item.service_name || item.name || 'Service', item.price, item.qty || 1]);
       }
 
       // Update customer loyalty points & process redemptions
@@ -133,10 +192,75 @@ const Bill = {
             [validCustomerId, bill.id, earnedPoints, `Earned ${earnedPoints} loyalty points on bill #${bill.id}${multiplier > 1 ? ` (${multiplier}x Tier Multiplier)` : ''}`]
           );
         }
+
+        // Auto-deduct Membership Service Credit if active membership with remaining balance exists
+        const cmRes = await client.query(`
+          SELECT * FROM customer_memberships
+          WHERE customer_id = $1 AND status = 'Active' AND end_date >= CURRENT_DATE AND remaining_service_credit > 0
+          ORDER BY created_at DESC
+          LIMIT 1
+        `, [validCustomerId]);
+
+        if (cmRes.rows.length > 0) {
+          const activeCm = cmRes.rows[0];
+          const availableCredit = parseFloat(activeCm.remaining_service_credit || 0);
+          const deductAmt = Math.min(total, availableCredit);
+          if (deductAmt > 0) {
+            const newUsed = parseFloat(activeCm.used_service_credit || 0) + deductAmt;
+            const newRemaining = availableCredit - deductAmt;
+
+            await client.query(`
+              UPDATE customer_memberships
+              SET used_service_credit = $1,
+                  remaining_service_credit = $2
+              WHERE id = $3
+            `, [newUsed, newRemaining, activeCm.id]);
+
+            const itemNames = items.map(i => i.service_name).filter(Boolean).join(', ') || 'POS Billing Service';
+            await client.query(`
+              INSERT INTO membership_credit_logs (customer_membership_id, customer_id, service_name, amount, notes)
+              VALUES ($1, $2, $3, $4, $5)
+            `, [activeCm.id, validCustomerId, itemNames, deductAmt, `Auto-deducted ₹${deductAmt} on Bill #${bill.id}`]);
+          }
+        }
       }
 
       await client.query('COMMIT');
       return bill;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
+  // Delete single bill + bill_items
+  delete: async (id) => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(`DELETE FROM bill_items WHERE bill_id = $1`, [id]);
+      const res = await client.query(`DELETE FROM bills WHERE id = $1 RETURNING *`, [id]);
+      await client.query('COMMIT');
+      return res.rows[0];
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
+  // Clear all bills + bill_items from DB
+  clearAll: async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(`DELETE FROM bill_items`);
+      await client.query(`DELETE FROM bills`);
+      await client.query('COMMIT');
+      return true;
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;

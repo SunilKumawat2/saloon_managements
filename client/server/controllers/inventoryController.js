@@ -6,8 +6,18 @@ import Consumption from '../models/Consumption.js';
 // ==================== PRODUCTS CONTROLLERS ====================
 export const getProducts = async (req, res) => {
   try {
-    const products = await Product.getAll();
-    res.json({ success: true, data: products });
+    const page = parseInt(req.query.page || '1');
+    const limitQuery = req.query.limit || req.query.per_page;
+    const limit = limitQuery === 'all' ? null : parseInt(limitQuery || '0');
+    const search = req.query.search || '';
+    const category = req.query.category || 'All';
+    const type = req.query.type || 'All';
+
+    const result = await Product.getAll({ page, limit, search, category, type });
+    if (result && result.pagination) {
+      return res.json({ success: true, data: result.data, pagination: result.pagination });
+    }
+    res.json({ success: true, data: result });
   } catch (err) {
     console.error('getProducts error:', err);
     res.status(500).json({ success: false, message: 'Failed to fetch inventory products.' });
@@ -146,6 +156,16 @@ export const createConsumption = async (req, res) => {
   } catch (err) {
     console.error('createConsumption error:', err);
     res.status(500).json({ success: false, message: 'Failed to map product consumption.' });
+  }
+};
+
+export const updateConsumption = async (req, res) => {
+  try {
+    const item = await Consumption.update(req.params.id, req.body);
+    res.json({ success: true, data: item, message: 'Service product consumption updated!' });
+  } catch (err) {
+    console.error('updateConsumption error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update consumption mapping.' });
   }
 };
 

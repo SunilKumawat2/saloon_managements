@@ -29,16 +29,42 @@ export const loginUser = async (req, res) => {
       permissions = [];
     }
 
+    const isSuperAdmin = Boolean(user.is_super_admin === true || user.email === 'admin@saloon.com' || String(user.role_name || user.role || '').toLowerCase() === 'super admin' || String(user.role_name || user.role || '').toLowerCase() === 'superadmin');
+
+    let parsedAllowedBranches = [];
+    if (Array.isArray(user.allowed_branch_ids)) {
+      parsedAllowedBranches = user.allowed_branch_ids;
+    } else if (typeof user.allowed_branch_ids === 'string') {
+      try { parsedAllowedBranches = JSON.parse(user.allowed_branch_ids); } catch (e) { parsedAllowedBranches = []; }
+    }
+
+    let parsedPlanFeatures = ['pos', 'appointments', 'crm'];
+    if (user.plan_features) {
+      if (Array.isArray(user.plan_features)) parsedPlanFeatures = user.plan_features;
+      else if (typeof user.plan_features === 'string') {
+        try { parsedPlanFeatures = JSON.parse(user.plan_features); } catch (e) { parsedPlanFeatures = ['pos', 'appointments', 'crm']; }
+      }
+    }
+
     // Generate real JWT token
     const payload = {
       id: user.id,
       name: user.name,
       email: user.email,
-      role: user.role_name || 'Staff',
+      role: isSuperAdmin ? 'Super Admin' : (user.role_name || 'Staff'),
       role_id: user.role_id,
-      branch_id: user.branch_id,
-      branch_name: user.branch_name || 'Main Salon',
-      permissions
+      is_super_admin: isSuperAdmin,
+      tenant_id: user.tenant_id || 1,
+      tenant_name: user.tenant_name || 'Main Salon & Wellness Spa',
+      plan_id: user.plan_id || 1,
+      plan_name: user.plan_name || 'Starter',
+      plan_features: isSuperAdmin ? ['all'] : parsedPlanFeatures,
+      admin_id: isSuperAdmin ? null : (user.admin_id || user.created_by_user_id || null),
+      created_by_user_id: user.created_by_user_id || null,
+      allowed_branch_ids: parsedAllowedBranches,
+      branch_id: isSuperAdmin ? null : user.branch_id,
+      branch_name: isSuperAdmin ? '🌐 Global SaaS System Master' : (user.branch_name || 'Main Salon'),
+      permissions: isSuperAdmin ? ['all', 'manage_permissions', 'manage_users', 'manage_branches', 'manage_services', 'manage_appointments', 'manage_billing'] : permissions
     };
 
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
@@ -68,12 +94,16 @@ export const getMe = async (req, res) => {
     // Fetch fresh user data from DB
     const query = `
       SELECT u.id, u.name, u.email, u.phone, u.avatar_url, u.is_active,
-             u.role_id, u.branch_id,
+             u.role_id, u.branch_id, u.admin_id, u.created_by_user_id, u.allowed_branch_ids, u.tenant_id,
              r.name as role, r.permissions,
-             b.name as branch_name
+             b.name as branch_name,
+             t.name as tenant_name, t.slug as tenant_slug, t.status as tenant_status, t.plan_id,
+             p.features as plan_features, p.name as plan_name
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.id
       LEFT JOIN branches b ON u.branch_id = b.id
+      LEFT JOIN tenants t ON u.tenant_id = t.id
+      LEFT JOIN subscription_plans p ON t.plan_id = p.id
       WHERE u.id = $1
     `;
     const { rows } = await pool.query(query, [userId]);
@@ -84,6 +114,15 @@ export const getMe = async (req, res) => {
     }
 
     const freshUser = rows[0];
+    const isSuperAdmin = Boolean(freshUser.is_super_admin === true || freshUser.email === 'admin@saloon.com' || String(freshUser.role || freshUser.role_name || '').toLowerCase() === 'super admin' || String(freshUser.role || freshUser.role_name || '').toLowerCase() === 'superadmin');
+    
+    let parsedAllowed = [];
+    if (Array.isArray(freshUser.allowed_branch_ids)) {
+      parsedAllowed = freshUser.allowed_branch_ids;
+    } else if (typeof freshUser.allowed_branch_ids === 'string') {
+      try { parsedAllowed = JSON.parse(freshUser.allowed_branch_ids); } catch (e) { parsedAllowed = []; }
+    }
+
     return res.json({
       status: 'success',
       data: {
@@ -93,17 +132,48 @@ export const getMe = async (req, res) => {
         phone: freshUser.phone,
         avatar_url: freshUser.avatar_url,
         is_active: freshUser.is_active,
-        role: freshUser.role,
+        role: isSuperAdmin ? 'Super Admin' : freshUser.role,
         role_id: freshUser.role_id,
-        branch_id: freshUser.branch_id,
-        branch_name: freshUser.branch_name,
-        permissions: Array.isArray(freshUser.permissions) ? freshUser.permissions : []
+        is_super_admin: isSuperAdmin,
+        tenant_id: freshUser.tenant_id || 1,
+        tenant_name: freshUser.tenant_name || 'Main Salon & Wellness Spa',
+        tenant_status: freshUser.tenant_status || 'Active',
+        plan_id: freshUser.plan_id || 1,
+        plan_name: freshUser.plan_name || 'Starter',
+        plan_features: isSuperAdmin ? ['all'] : (Array.isArray(freshUser.plan_features) ? freshUser.plan_features : (typeof freshUser.plan_features === 'string' ? JSON.parse(freshUser.plan_features) : ['pos', 'appointments', 'crm'])),
+        admin_id: isSuperAdmin ? null : (freshUser.admin_id || freshUser.created_by_user_id || null),
+        created_by_user_id: freshUser.created_by_user_id || null,
+        allowed_branch_ids: parsedAllowed,
+        branch_id: isSuperAdmin ? null : freshUser.branch_id,
+        branch_name: isSuperAdmin ? '🌐 Global SaaS System Master' : (freshUser.branch_name || 'Main Salon'),
+        permissions: isSuperAdmin ? ['all', 'manage_permissions', 'manage_users', 'manage_branches', 'manage_services', 'manage_appointments', 'manage_billing'] : (Array.isArray(freshUser.permissions) ? freshUser.permissions : [])
       }
     });
   } catch (error) {
     // DB error — fallback to JWT payload so user is NOT logged out
     console.error('getMe DB error (using JWT fallback):', error.message);
     return res.json({ status: 'success', data: req.user });
+  }
+};
+
+export const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ status: 'error', message: 'Unauthorized' });
+    }
+    const { name, email, phone, password } = req.body;
+    if (!name || !email) {
+      return res.status(400).json({ status: 'error', message: 'Name and email are required' });
+    }
+    const updated = await UserModel.updateProfile(userId, { name, email, phone, password });
+    return res.json({
+      status: 'success',
+      message: 'Profile updated successfully',
+      data: updated
+    });
+  } catch (error) {
+    return res.status(500).json({ status: 'error', message: error.message });
   }
 };
 

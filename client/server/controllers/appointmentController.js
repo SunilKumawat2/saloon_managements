@@ -2,8 +2,18 @@ import { AppointmentModel } from '../models/Appointment.js';
 
 export const getAppointments = async (req, res) => {
   try {
-    const appointments = await AppointmentModel.findAll();
-    return res.json({ status: 'success', data: appointments });
+    const page = parseInt(req.query.page || '1');
+    const limitQuery = req.query.limit || req.query.per_page;
+    const limit = limitQuery === 'all' ? null : parseInt(limitQuery || '0');
+    const search = req.query.search || '';
+    const status = req.query.status || 'All';
+    const branch_id = req.query.branch_id || '';
+
+    const result = await AppointmentModel.findAll({ page, limit, search, status, branch_id, currentUser: req.user });
+    if (result && result.pagination) {
+      return res.json({ status: 'success', data: result.data, pagination: result.pagination });
+    }
+    return res.json({ status: 'success', data: result });
   } catch (error) {
     return res.status(500).json({ status: 'error', message: error.message });
   }
@@ -11,7 +21,21 @@ export const getAppointments = async (req, res) => {
 
 export const createAppointment = async (req, res) => {
   try {
-    const { branch_id, customer_id, customer_name, stylist_id, service_id, appointment_date, appointment_time, status, total_amount, notes } = req.body;
+    let { branch_id, customer_id, customer_name, stylist_id, service_id, appointment_date, appointment_time, status, total_amount, notes, service_ids, service_name } = req.body;
+
+    if (!branch_id && req.user?.branch_id) {
+      branch_id = req.user.branch_id;
+    }
+
+    let parsedServiceIds = [];
+    if (Array.isArray(service_ids)) {
+      parsedServiceIds = service_ids.map(Number).filter(n => !isNaN(n));
+    } else if (typeof service_ids === 'string') {
+      try {
+        const p = JSON.parse(service_ids);
+        if (Array.isArray(p)) parsedServiceIds = p.map(Number).filter(n => !isNaN(n));
+      } catch (e) {}
+    }
 
     const newAppointment = await AppointmentModel.create({
       branch_id,
@@ -23,7 +47,9 @@ export const createAppointment = async (req, res) => {
       appointment_time: appointment_time || '10:00',
       status: status || 'Scheduled',
       total_amount,
-      notes
+      notes,
+      service_ids: parsedServiceIds,
+      service_name: service_name || ''
     });
     return res.status(201).json({ status: 'success', message: 'Appointment / Check-in created successfully', data: newAppointment });
   } catch (error) {
