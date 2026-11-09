@@ -179,7 +179,12 @@ const TenantsManagementView = ({ currentUser }) => {
       if (res.data?.data?.token) {
         // Save support mode token and reload
         localStorage.setItem('saloon_jwt_token', res.data.data.token);
+        if (res.data?.data?.user) {
+          localStorage.setItem('saloon_user_cache', JSON.stringify(res.data.data.user));
+          localStorage.setItem('saloon_user', JSON.stringify(res.data.data.user));
+        }
         localStorage.setItem('saloon_is_impersonating', 'true');
+        localStorage.setItem('saloon_active_tab', 'dashboard');
         window.location.reload();
       }
     } catch (err) {
@@ -1140,3 +1145,4 @@ const TenantsManagementView = ({ currentUser }) => {
 };
 
 export default TenantsManagementView;
+

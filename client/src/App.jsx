@@ -1691,7 +1691,55 @@ export default function App() {
     : (currentUser?.branch_id || (accessibleBranches && accessibleBranches[0]?.id) || (branches && branches[0]?.id) || 1);
 
   return (
-    <div className="app-container">
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '100%' }}>
+      {localStorage.getItem('saloon_is_impersonating') === 'true' && (
+        <div style={{
+          background: 'linear-gradient(90deg, #b45309 0%, #d97706 100%)',
+          color: '#ffffff',
+          padding: '8px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: '0.82rem',
+          fontWeight: '700',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
+          position: 'sticky',
+          top: 0,
+          zIndex: 99999
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '1rem' }}>🛡️</span>
+            <span>SUPPORT IMPERSONATION ACTIVE:</span>
+            <span style={{ color: '#fef3c7', fontWeight: '800' }}>
+              Viewing as {currentUser?.name} ({currentUser?.tenant_name || 'Tenant'})
+            </span>
+          </div>
+          <button
+            onClick={() => {
+              localStorage.removeItem('saloon_is_impersonating');
+              localStorage.setItem('saloon_jwt_token', 'demo_jwt_token_1');
+              localStorage.removeItem('saloon_user_cache');
+              localStorage.removeItem('saloon_user');
+              localStorage.setItem('saloon_active_tab', 'settings');
+              window.location.reload();
+            }}
+            style={{
+              background: '#ffffff',
+              color: '#92400e',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '4px 14px',
+              fontWeight: '800',
+              cursor: 'pointer',
+              fontSize: '0.78rem',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
+            }}
+          >
+            Exit Support Mode ✕
+          </button>
+        </div>
+      )}
+      <div className="app-container" style={{ flex: 1 }}>
       {/* Sidebar Navigation */}
       <aside className="sidebar">
         <div>
@@ -2691,6 +2739,7 @@ export default function App() {
           }}
         />
       )}
+      </div>
     </div>
   );
 }

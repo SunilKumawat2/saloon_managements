@@ -128,6 +128,14 @@ export const authenticateToken = async (req, res, next) => {
         if (uRes.rows[0].role_id) decoded.role_id = uRes.rows[0].role_id;
         decoded.tenant_id = uRes.rows[0].tenant_id || 1;
         decoded.tenant_name = uRes.rows[0].tenant_name || 'Main Salon & Wellness Spa';
+
+        if (uRes.rows[0].tenant_status === 'Suspended' && !decoded.is_super_admin && !decoded.is_impersonating) {
+          return res.status(403).json({
+            status: 'error',
+            code: 'TENANT_SUSPENDED',
+            message: 'Your salon subscription account has been suspended. Please contact platform support to reactivate.'
+          });
+        }
       }
     } catch (e) {}
     
