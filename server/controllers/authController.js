@@ -38,6 +38,14 @@ export const loginUser = async (req, res) => {
       try { parsedAllowedBranches = JSON.parse(user.allowed_branch_ids); } catch (e) { parsedAllowedBranches = []; }
     }
 
+    let parsedPlanFeatures = ['pos', 'appointments', 'crm'];
+    if (user.plan_features) {
+      if (Array.isArray(user.plan_features)) parsedPlanFeatures = user.plan_features;
+      else if (typeof user.plan_features === 'string') {
+        try { parsedPlanFeatures = JSON.parse(user.plan_features); } catch (e) { parsedPlanFeatures = ['pos', 'appointments', 'crm']; }
+      }
+    }
+
     // Generate real JWT token
     const payload = {
       id: user.id,
@@ -47,6 +55,10 @@ export const loginUser = async (req, res) => {
       role_id: user.role_id,
       is_super_admin: isSuperAdmin,
       tenant_id: user.tenant_id || 1,
+      tenant_name: user.tenant_name || 'Main Salon & Wellness Spa',
+      plan_id: user.plan_id || 1,
+      plan_name: user.plan_name || 'Starter',
+      plan_features: isSuperAdmin ? ['all'] : parsedPlanFeatures,
       admin_id: isSuperAdmin ? null : (user.admin_id || user.created_by_user_id || null),
       created_by_user_id: user.created_by_user_id || null,
       allowed_branch_ids: parsedAllowedBranches,
@@ -85,11 +97,13 @@ export const getMe = async (req, res) => {
              u.role_id, u.branch_id, u.admin_id, u.created_by_user_id, u.allowed_branch_ids, u.tenant_id,
              r.name as role, r.permissions,
              b.name as branch_name,
-             t.name as tenant_name, t.slug as tenant_slug, t.status as tenant_status, t.plan_id
+             t.name as tenant_name, t.slug as tenant_slug, t.status as tenant_status, t.plan_id,
+             p.features as plan_features, p.name as plan_name
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.id
       LEFT JOIN branches b ON u.branch_id = b.id
       LEFT JOIN tenants t ON u.tenant_id = t.id
+      LEFT JOIN subscription_plans p ON t.plan_id = p.id
       WHERE u.id = $1
     `;
     const { rows } = await pool.query(query, [userId]);
@@ -125,6 +139,8 @@ export const getMe = async (req, res) => {
         tenant_name: freshUser.tenant_name || 'Main Salon & Wellness Spa',
         tenant_status: freshUser.tenant_status || 'Active',
         plan_id: freshUser.plan_id || 1,
+        plan_name: freshUser.plan_name || 'Starter',
+        plan_features: isSuperAdmin ? ['all'] : (Array.isArray(freshUser.plan_features) ? freshUser.plan_features : (typeof freshUser.plan_features === 'string' ? JSON.parse(freshUser.plan_features) : ['pos', 'appointments', 'crm'])),
         admin_id: isSuperAdmin ? null : (freshUser.admin_id || freshUser.created_by_user_id || null),
         created_by_user_id: freshUser.created_by_user_id || null,
         allowed_branch_ids: parsedAllowed,

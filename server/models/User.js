@@ -126,10 +126,14 @@ export const UserModel = {
   async findByEmail(email) {
     try {
       const query = `
-        SELECT u.*, r.name as role_name, r.permissions, b.name as branch_name
+        SELECT u.*, r.name as role_name, r.permissions, b.name as branch_name,
+               t.name as tenant_name, t.slug as tenant_slug, t.status as tenant_status, t.plan_id,
+               p.features as plan_features, p.name as plan_name
         FROM users u
         LEFT JOIN roles r ON u.role_id = r.id
         LEFT JOIN branches b ON u.branch_id = b.id
+        LEFT JOIN tenants t ON u.tenant_id = t.id
+        LEFT JOIN subscription_plans p ON t.plan_id = p.id
         WHERE u.email = $1
       `;
       const { rows } = await pool.query(query, [email]);

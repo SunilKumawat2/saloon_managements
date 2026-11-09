@@ -172,12 +172,97 @@ function AccessDeniedView({ role, onGoHome }) {
   );
 }
 
-export const isMasterAdmin = (user) => {
-  if (!user) return false;
-  if (user.is_super_admin === true || user.email === 'admin@saloon.com') return true;
-  const role = String(user.role || user.role_name || '').toLowerCase();
-  return role === 'super admin' || role === 'superadmin';
-};
+export function FeatureLockedView({ featureTitle, planName, onUpgrade, onGoHome }) {
+  return (
+    <div className="glass-panel" style={{
+      padding: '50px 30px',
+      textAlign: 'center',
+      margin: '40px auto',
+      maxWidth: '620px',
+      borderRadius: '20px',
+      border: '1.5px solid rgba(217, 119, 6, 0.35)',
+      background: 'radial-gradient(ellipse at top, rgba(217, 119, 6, 0.08), transparent 70%)'
+    }}>
+      <div style={{
+        width: '64px',
+        height: '64px',
+        borderRadius: '50%',
+        background: 'rgba(217, 119, 6, 0.15)',
+        border: '1.5px solid rgba(217, 119, 6, 0.4)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        margin: '0 auto 20px',
+        color: 'var(--accent-gold)'
+      }}>
+        <Lock size={30} />
+      </div>
+
+      <div style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+        background: 'rgba(217, 119, 6, 0.15)',
+        border: '1px solid rgba(217, 119, 6, 0.3)',
+        borderRadius: '20px',
+        padding: '4px 14px',
+        fontSize: '0.72rem',
+        fontWeight: '700',
+        color: 'var(--accent-gold)',
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        marginBottom: '12px'
+      }}>
+        <Crown size={13} />
+        Plan Upgrade Required
+      </div>
+
+      <h2 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#ffffff', marginBottom: '10px' }}>
+        {featureTitle || 'Premium Module'}
+      </h2>
+      <p style={{ color: 'var(--text-sub)', fontSize: '0.88rem', lineHeight: '1.7', maxWidth: '460px', margin: '0 auto 24px' }}>
+        This capability is not included in your salon's current <strong style={{ color: '#fff' }}>{planName || 'Starter'}</strong> subscription plan. Upgrade your SaaS tier to unlock this module for all your salon branches and staff.
+      </p>
+
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        <button
+          onClick={onUpgrade}
+          className="btn-primary"
+          style={{
+            padding: '11px 24px',
+            fontSize: '0.88rem',
+            fontWeight: '700',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: '0 4px 15px var(--accent-gold-glow)'
+          }}
+        >
+          <Sparkles size={16} />
+          View Subscription Plans & Upgrade
+        </button>
+        <button
+          onClick={onGoHome}
+          style={{
+            padding: '11px 20px',
+            fontSize: '0.88rem',
+            fontWeight: '600',
+            borderRadius: '8px',
+            background: 'rgba(255, 255, 255, 0.06)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            color: '#cbd5e1',
+            cursor: 'pointer'
+          }}
+        >
+          Back to Dashboard
+        </button>
+      </div>
+    </div>
+  );
+}
+
+import { isMasterAdmin, hasPlanFeature } from './utils/planFeatures';
+export { isMasterAdmin, hasPlanFeature };
 
 export const isSalonAdmin = (user) => {
   if (!user) return false;
@@ -1903,6 +1988,11 @@ export default function App() {
                     </button>
                     <button className={`sub-nav-btn ${activeTab === 'staff_attendance' ? 'active' : ''}`} onClick={() => setActiveTab('staff_attendance')}>
                       <ClipboardCheck size={14} /> Staff Attendance
+                      {!hasPlanFeature(currentUser, 'attendance') && (
+                        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.62rem', color: 'var(--accent-gold)' }}>
+                          <Lock size={11} /> Locked
+                        </span>
+                      )}
                     </button>
                     <button className={`sub-nav-btn ${activeTab === 'time_slots' ? 'active' : ''}`} onClick={() => setActiveTab('time_slots')}>
                       <Clock size={14} /> Time Slots & Schedule ({filterByBranch(timeSlots).length})
@@ -1966,9 +2056,19 @@ export default function App() {
                   <div className="nav-dropdown-menu">
                     <button className={`sub-nav-btn ${activeTab === 'inventory' ? 'active' : ''}`} onClick={() => setActiveTab('inventory')}>
                       <Database size={14} /> Stock & Suppliers ({products.length})
+                      {!hasPlanFeature(currentUser, 'inventory') && (
+                        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.62rem', color: 'var(--accent-gold)' }}>
+                          <Lock size={11} /> Locked
+                        </span>
+                      )}
                     </button>
                     <button className={`sub-nav-btn ${activeTab === 'assets_tracking' ? 'active' : ''}`} onClick={() => setActiveTab('assets_tracking')}>
                       <Package size={14} /> Salon Assets & Tracking ({assets.length})
+                      {!hasPlanFeature(currentUser, 'assets') && (
+                        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.62rem', color: 'var(--accent-gold)' }}>
+                          <Lock size={11} /> Locked
+                        </span>
+                      )}
                     </button>
                   </div>
                 )}
@@ -1993,6 +2093,11 @@ export default function App() {
                   <div className="nav-dropdown-menu">
                     <button className={`sub-nav-btn ${activeTab === 'loyalty' ? 'active' : ''}`} onClick={() => setActiveTab('loyalty')}>
                       <Award size={14} /> Tiers & Points Program
+                      {!hasPlanFeature(currentUser, 'loyalty') && (
+                        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.62rem', color: 'var(--accent-gold)' }}>
+                          <Lock size={11} /> Locked
+                        </span>
+                      )}
                     </button>
                   </div>
                 )}
@@ -2017,6 +2122,11 @@ export default function App() {
                   <div className="nav-dropdown-menu">
                     <button className={`sub-nav-btn ${activeTab === 'marketing' ? 'active' : ''}`} onClick={() => setActiveTab('marketing')}>
                       <Send size={14} /> Campaigns & SMS/WhatsApp
+                      {!hasPlanFeature(currentUser, 'marketing') && (
+                        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.62rem', color: 'var(--accent-gold)' }}>
+                          <Lock size={11} /> Locked
+                        </span>
+                      )}
                     </button>
                   </div>
                 )}
@@ -2085,6 +2195,11 @@ export default function App() {
                       onClick={() => { setActiveTab('settings'); setAdminSettingsSubTab('branding'); }}
                     >
                       <Sparkles size={14} style={{ color: 'var(--accent-gold)' }} /> White Label & Brand Setup
+                      {!hasPlanFeature(currentUser, 'whitelabel') && (
+                        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.62rem', color: 'var(--accent-gold)' }}>
+                          <Lock size={11} /> Locked
+                        </span>
+                      )}
                     </button>
                     <button
                       className={`sub-nav-btn ${activeTab === 'settings' && adminSettingsSubTab === 'settings' ? 'active' : ''}`}
@@ -2097,6 +2212,11 @@ export default function App() {
                       onClick={() => { setActiveTab('settings'); setAdminSettingsSubTab('gateway'); }}
                     >
                       <CreditCard size={14} /> Payment Gateway Setup
+                      {!hasPlanFeature(currentUser, 'gateways') && (
+                        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.62rem', color: 'var(--accent-gold)' }}>
+                          <Lock size={11} /> Locked
+                        </span>
+                      )}
                     </button>
                   </div>
                 )}
@@ -2508,7 +2628,14 @@ export default function App() {
           )}
 
           {activeTab === 'staff_attendance' && (
-            canAccess(['manage_appointments', 'manage_users', 'all']) ? (
+            !hasPlanFeature(currentUser, 'attendance') ? (
+              <FeatureLockedView
+                featureTitle="Staff Attendance & Live Availability System"
+                planName={currentUser?.plan_name}
+                onUpgrade={() => { setActiveTab('settings'); setAdminSettingsSubTab('plans'); }}
+                onGoHome={() => setActiveTab('dashboard')}
+              />
+            ) : canAccess(['manage_appointments', 'manage_users', 'all']) ? (
               <StaffAttendanceView
                 stylists={filterByBranch(combinedStylists)}
                 branches={isMasterAdmin(currentUser) ? branches : accessibleBranches}
@@ -2616,7 +2743,14 @@ export default function App() {
           )}
 
           {activeTab === 'inventory' && (
-            canAccess(['manage_inventory', 'all']) ? (
+            !hasPlanFeature(currentUser, 'inventory') ? (
+              <FeatureLockedView
+                featureTitle="Inventory & Product Stock Management"
+                planName={currentUser?.plan_name}
+                onUpgrade={() => { setActiveTab('settings'); setAdminSettingsSubTab('plans'); }}
+                onGoHome={() => setActiveTab('dashboard')}
+              />
+            ) : canAccess(['manage_inventory', 'all']) ? (
               <InventoryStockManagementView
                 products={filterByBranch(products)}
                 suppliers={suppliers}
@@ -2643,7 +2777,14 @@ export default function App() {
           )}
 
           {activeTab === 'assets_tracking' && (
-            canAccess(['manage_inventory', 'all']) ? (
+            !hasPlanFeature(currentUser, 'assets') ? (
+              <FeatureLockedView
+                featureTitle="Salon Assets & Equipment Tracking Hub"
+                planName={currentUser?.plan_name}
+                onUpgrade={() => { setActiveTab('settings'); setAdminSettingsSubTab('plans'); }}
+                onGoHome={() => setActiveTab('dashboard')}
+              />
+            ) : canAccess(['manage_inventory', 'all']) ? (
               <AssetsTrackingManagementView
                 assets={filterByBranch(assets)}
                 branches={branches}
@@ -2660,7 +2801,14 @@ export default function App() {
           )}
 
           {activeTab === 'loyalty' && (
-            canAccess(['manage_customers', 'all']) ? (
+            !hasPlanFeature(currentUser, 'loyalty') ? (
+              <FeatureLockedView
+                featureTitle="Loyalty Points & VIP Membership Program"
+                planName={currentUser?.plan_name}
+                onUpgrade={() => { setActiveTab('settings'); setAdminSettingsSubTab('plans'); }}
+                onGoHome={() => setActiveTab('dashboard')}
+              />
+            ) : canAccess(['manage_customers', 'all']) ? (
               <LoyaltyMembershipView
                 customers={filterByBranch(customers)}
                 bills={filterByBranch(bills)}
@@ -2675,7 +2823,14 @@ export default function App() {
           )}
 
           {activeTab === 'marketing' && (
-            canAccess(['view_customers', 'all']) ? (
+            !hasPlanFeature(currentUser, 'marketing') ? (
+              <FeatureLockedView
+                featureTitle="Marketing Automation & WhatsApp/SMS Campaigns"
+                planName={currentUser?.plan_name}
+                onUpgrade={() => { setActiveTab('settings'); setAdminSettingsSubTab('plans'); }}
+                onGoHome={() => setActiveTab('dashboard')}
+              />
+            ) : canAccess(['view_customers', 'all']) ? (
               <MarketingAutomationView />
             ) : (
               <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />

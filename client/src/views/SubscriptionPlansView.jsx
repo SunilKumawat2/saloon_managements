@@ -28,6 +28,7 @@ import {
   Super_Admin_Update_Plan,
   Super_Admin_Toggle_Plan_Status
 } from '../services/apiService';
+import { AVAILABLE_SYSTEM_FEATURES } from '../utils/planFeatures';
 
 const SubscriptionPlansView = ({ currentUser }) => {
   const [plans, setPlans] = useState([]);
@@ -48,7 +49,8 @@ const SubscriptionPlansView = ({ currentUser }) => {
     price_yearly: '',
     max_branches: '',
     max_staff: '',
-    description: ''
+    description: '',
+    features: []
   });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
@@ -62,7 +64,7 @@ const SubscriptionPlansView = ({ currentUser }) => {
     max_branches: '1',
     max_staff: '4',
     description: '',
-    featuresText: 'Custom Salon Quota, Real-time POS Billing, SMS & WhatsApp Receipts, Multi-Branch Access'
+    features: ['pos', 'appointments', 'crm']
   });
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
 
@@ -128,13 +130,20 @@ const SubscriptionPlansView = ({ currentUser }) => {
   const handleOpenEditModal = (plan, e) => {
     e.stopPropagation();
     setEditingPlan(plan);
+    let parsedFeatures = plan.features;
+    if (typeof parsedFeatures === 'string') {
+      try { parsedFeatures = JSON.parse(parsedFeatures); } catch (e) { parsedFeatures = []; }
+    }
+    if (!Array.isArray(parsedFeatures)) parsedFeatures = [];
+
     setEditFormData({
       name: plan.name,
       price_monthly: plan.price_monthly,
       price_yearly: plan.price_yearly,
       max_branches: plan.max_branches,
       max_staff: plan.max_staff,
-      description: plan.description || ''
+      description: plan.description || '',
+      features: parsedFeatures
     });
   };
 
@@ -143,7 +152,15 @@ const SubscriptionPlansView = ({ currentUser }) => {
     if (!editingPlan) return;
     setIsSavingEdit(true);
     try {
-      const res = await Super_Admin_Update_Plan(editingPlan.id, editFormData);
+      const res = await Super_Admin_Update_Plan(editingPlan.id, {
+        name: editFormData.name,
+        price_monthly: parseFloat(editFormData.price_monthly) || 0,
+        price_yearly: parseFloat(editFormData.price_yearly) || 0,
+        max_branches: parseInt(editFormData.max_branches) ?? 1,
+        max_staff: parseInt(editFormData.max_staff) ?? 4,
+        description: editFormData.description,
+        features: editFormData.features
+      });
       showFeedback('success', res.data?.message || 'Plan settings updated successfully!');
       setEditingPlan(null);
       await loadData();
@@ -158,11 +175,6 @@ const SubscriptionPlansView = ({ currentUser }) => {
     e.preventDefault();
     setIsCreatingPlan(true);
     try {
-      const featuresArray = createPlanForm.featuresText
-        .split(',')
-        .map(f => f.trim())
-        .filter(Boolean);
-
       const payload = {
         name: createPlanForm.name,
         code: createPlanForm.code || createPlanForm.name.toUpperCase().replace(/[^A-Z0-9]/g, '_'),
@@ -171,7 +183,7 @@ const SubscriptionPlansView = ({ currentUser }) => {
         max_branches: parseInt(createPlanForm.max_branches) ?? 1,
         max_staff: parseInt(createPlanForm.max_staff) ?? 4,
         description: createPlanForm.description,
-        features: featuresArray
+        features: createPlanForm.features
       };
 
       const res = await Super_Admin_Create_Plan(payload);
@@ -185,7 +197,7 @@ const SubscriptionPlansView = ({ currentUser }) => {
         max_branches: '1',
         max_staff: '4',
         description: '',
-        featuresText: 'Custom Salon Quota, Real-time POS Billing, SMS & WhatsApp Receipts, Multi-Branch Access'
+        features: ['pos', 'appointments', 'crm']
       });
       await loadData();
     } catch (err) {
@@ -206,44 +218,22 @@ const SubscriptionPlansView = ({ currentUser }) => {
     }
   };
 
-  // Helper for feature bullets
-  const getFeatureListForPlan = (planCode) => {
-    switch (planCode) {
-      case 'STARTER':
-        return [
-          { text: 'Single Salon Branch Outlet', highlight: true },
-          { text: 'Up to 4 Stylists & Staff Members', highlight: true },
-          { text: 'Fast POS Counter Billing & Thermal Receipts', highlight: false },
-          { text: 'Appointments Calendar & Slot Booking', highlight: false },
-          { text: 'Customer CRM & Member Registry', highlight: false },
-          { text: 'Daily Sales & Cash Summary', highlight: false }
-        ];
-      case 'GROWTH':
-        return [
-          { text: 'Up to 3 Active Branch Locations', highlight: true },
-          { text: 'Up to 15 Stylists & Staff Members', highlight: true },
-          { text: 'Everything in Starter, plus:', highlight: false },
-          { text: 'Multi-Branch Inventory & Stock Management', highlight: true },
-          { text: 'Daily Staff Attendance & Overtime Tracker', highlight: true },
-          { text: 'White Label & Custom Brand Palette Themes', highlight: true },
-          { text: 'Bundled Combo Packages & Coupons', highlight: false }
-        ];
-      case 'ENTERPRISE':
-        return [
-          { text: 'Unlimited Branch Outlets & Franchises', highlight: true },
-          { text: 'Unlimited Stylists & Staff Accounts', highlight: true },
-          { text: 'Everything in Growth, plus:', highlight: false },
-          { text: 'WhatsApp & SMS Marketing Automation Engine', highlight: true },
-          { text: 'Salon Assets & Rental Equipment Hub', highlight: true },
-          { text: 'Multi-Tenant Razorpay Payment Gateways', highlight: true },
-          { text: 'PostgreSQL Audit Logs & DB Backups', highlight: true },
-          { text: 'Priority 24/7 Dedicated SaaS Support', highlight: false }
-        ];
-      default:
-        return [
-          { text: 'Full Platform Access', highlight: true }
-        ];
+  // Helper for dynamic feature bullets
+  const getFeatureListForPlan = (plan) => {
+    let raw = plan.features;
+    if (typeof raw === 'string') {
+      try { raw = JSON.parse(raw); } catch (e) { raw = []; }
     }
+    if (!Array.isArray(raw)) raw = [];
+
+    return AVAILABLE_SYSTEM_FEATURES.map(feat => {
+      const isIncluded = raw.includes(feat.id) || raw.includes('all');
+      return {
+        id: feat.id,
+        text: feat.name,
+        included: isIncluded
+      };
+    });
   };
 
   const currentPlanId = myUsage?.plan?.id;
@@ -530,7 +520,7 @@ const SubscriptionPlansView = ({ currentUser }) => {
           const isEnterprise = plan.code === 'ENTERPRISE';
           const price = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
           const cycleLabel = billingCycle === 'yearly' ? '/ year' : '/ month';
-          const features = getFeatureListForPlan(plan.code);
+          const features = getFeatureListForPlan(plan);
 
           return (
             <div
@@ -683,29 +673,40 @@ const SubscriptionPlansView = ({ currentUser }) => {
 
                 {/* Features List */}
                 <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '16px' }}>
-                  <div style={{ fontSize: '0.70rem', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
-                    Features & Platform Capabilities:
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <div style={{ fontSize: '0.70rem', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Features & Platform Modules:
+                    </div>
+                    <span style={{ fontSize: '0.64rem', color: 'var(--accent-gold)', fontWeight: '800' }}>
+                      {features.filter(f => f.included).length}/{features.length} Active
+                    </span>
                   </div>
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {features.map((feat, idx) => (
-                      <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '0.78rem' }}>
+                      <li key={idx} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '0.76rem',
+                        opacity: feat.included ? 1 : 0.45
+                      }}>
                         <div style={{
-                          background: feat.highlight ? 'var(--active-bg)' : 'rgba(34, 197, 94, 0.15)',
-                          color: feat.highlight ? 'var(--accent-gold)' : '#4ade80',
+                          background: feat.included ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                          color: feat.included ? '#4ade80' : '#64748b',
                           borderRadius: '50%',
                           width: '16px',
                           height: '16px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          flexShrink: 0,
-                          marginTop: '2px'
+                          flexShrink: 0
                         }}>
-                          <Check size={11} />
+                          {feat.included ? <Check size={11} /> : <X size={10} />}
                         </div>
                         <span style={{
-                          color: feat.highlight ? '#ffffff' : '#cbd5e1',
-                          fontWeight: feat.highlight ? '600' : '400'
+                          color: feat.included ? '#f1f5f9' : '#64748b',
+                          fontWeight: feat.included ? '500' : '400',
+                          textDecoration: feat.included ? 'none' : 'line-through'
                         }}>
                           {feat.text}
                         </span>
@@ -884,7 +885,9 @@ const SubscriptionPlansView = ({ currentUser }) => {
             border: '1px solid var(--border-gold)',
             borderRadius: '16px',
             width: '100%',
-            maxWidth: '520px',
+            maxWidth: '580px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
             padding: '24px',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)'
           }}>
@@ -968,6 +971,84 @@ const SubscriptionPlansView = ({ currentUser }) => {
                 />
               </div>
 
+              {/* Dynamic Feature Checklist for Edit */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={{ display: 'block', fontSize: '0.74rem', color: '#94a3b8', margin: 0, fontWeight: '600' }}>
+                    Select Allowed System Modules ({editFormData.features?.length || 0} active)
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setEditFormData({ ...editFormData, features: AVAILABLE_SYSTEM_FEATURES.map(f => f.id) })}
+                      style={{ background: 'none', border: 'none', color: 'var(--accent-gold)', fontSize: '0.70rem', cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      Select All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditFormData({ ...editFormData, features: [] })}
+                      style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.70rem', cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+                <div style={{
+                  maxHeight: '190px',
+                  overflowY: 'auto',
+                  background: '#0f172a',
+                  border: '1px solid #334155',
+                  borderRadius: '8px',
+                  padding: '8px',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+                  gap: '8px'
+                }}>
+                  {AVAILABLE_SYSTEM_FEATURES.map(feat => {
+                    const isChecked = (editFormData.features || []).includes(feat.id) || (editFormData.features || []).includes('all');
+                    return (
+                      <label
+                        key={feat.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '8px',
+                          fontSize: '0.74rem',
+                          color: isChecked ? '#f8fafc' : '#94a3b8',
+                          cursor: 'pointer',
+                          padding: '6px 8px',
+                          borderRadius: '6px',
+                          background: isChecked ? 'rgba(217, 119, 6, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                          border: isChecked ? '1px solid rgba(217, 119, 6, 0.4)' : '1px solid rgba(255, 255, 255, 0.05)',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            const current = editFormData.features || [];
+                            let updated;
+                            if (e.target.checked) {
+                              updated = [...current.filter(id => id !== feat.id && id !== 'all'), feat.id];
+                            } else {
+                              updated = current.filter(id => id !== feat.id && id !== 'all');
+                            }
+                            setEditFormData({ ...editFormData, features: updated });
+                          }}
+                          style={{ marginTop: '2px', cursor: 'pointer', accentColor: 'var(--accent-gold)' }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: isChecked ? '600' : '400', lineHeight: 1.25 }}>{feat.name}</div>
+                          <div style={{ fontSize: '0.64rem', color: '#64748b', marginTop: '2px' }}>{feat.desc}</div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 <button
                   type="button"
@@ -1028,7 +1109,9 @@ const SubscriptionPlansView = ({ currentUser }) => {
             border: '1px solid var(--border-gold)',
             borderRadius: '16px',
             width: '100%',
-            maxWidth: '540px',
+            maxWidth: '580px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
             padding: '24px',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)'
           }}>
@@ -1126,15 +1209,79 @@ const SubscriptionPlansView = ({ currentUser }) => {
                 />
               </div>
 
+              {/* Dynamic Feature Checklist for Create */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.74rem', color: '#94a3b8', marginBottom: '4px' }}>Features List (Comma Separated)</label>
-                <textarea
-                  rows="2"
-                  placeholder="e.g. Multi-Chain Outlets, WhatsApp Marketing, Custom Domain, VIP Support"
-                  value={createPlanForm.featuresText}
-                  onChange={(e) => setCreatePlanForm({ ...createPlanForm, featuresText: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: '#fff', fontSize: '0.82rem' }}
-                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={{ display: 'block', fontSize: '0.74rem', color: '#94a3b8', margin: 0, fontWeight: '600' }}>
+                    Select Allowed System Modules ({createPlanForm.features?.length || 0} active)
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setCreatePlanForm({ ...createPlanForm, features: AVAILABLE_SYSTEM_FEATURES.map(f => f.id) })}
+                      style={{ background: 'none', border: 'none', color: 'var(--accent-gold)', fontSize: '0.70rem', cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      Select All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCreatePlanForm({ ...createPlanForm, features: [] })}
+                      style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.70rem', cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+                <div style={{
+                  maxHeight: '190px',
+                  overflowY: 'auto',
+                  background: '#0f172a',
+                  border: '1px solid #334155',
+                  borderRadius: '8px',
+                  padding: '8px',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+                  gap: '8px'
+                }}>
+                  {AVAILABLE_SYSTEM_FEATURES.map(feat => {
+                    const isChecked = (createPlanForm.features || []).includes(feat.id);
+                    return (
+                      <label
+                        key={feat.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '8px',
+                          fontSize: '0.74rem',
+                          color: isChecked ? '#f8fafc' : '#94a3b8',
+                          cursor: 'pointer',
+                          padding: '6px 8px',
+                          borderRadius: '6px',
+                          background: isChecked ? 'rgba(217, 119, 6, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                          border: isChecked ? '1px solid rgba(217, 119, 6, 0.4)' : '1px solid rgba(255, 255, 255, 0.05)',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            const current = createPlanForm.features || [];
+                            const updated = e.target.checked
+                              ? [...current, feat.id]
+                              : current.filter(id => id !== feat.id);
+                            setCreatePlanForm({ ...createPlanForm, features: updated });
+                          }}
+                          style={{ marginTop: '2px', cursor: 'pointer', accentColor: 'var(--accent-gold)' }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: isChecked ? '600' : '400', lineHeight: 1.25 }}>{feat.name}</div>
+                          <div style={{ fontSize: '0.64rem', color: '#64748b', marginTop: '2px' }}>{feat.desc}</div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>

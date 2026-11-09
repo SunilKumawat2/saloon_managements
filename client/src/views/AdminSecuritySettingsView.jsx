@@ -22,6 +22,7 @@ import {
 import { useBranding, THEME_PALETTES } from '../context/BrandingContext';
 import SubscriptionPlansView from './SubscriptionPlansView';
 import TenantsManagementView from './TenantsManagementView';
+import { hasPlanFeature } from '../utils/planFeatures';
 
 const AdminSecuritySettingsView = ({ onNavigateToMatrix, currentUser, branches: propBranches = [], selectedBranchId = 'all', initialTab = 'settings' }) => {
   const { brandSettings, updateLocalBranding } = useBranding();
@@ -426,6 +427,73 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix, currentUser, branches: 
 
       {/* TAB: WHITE LABELING & CUSTOM BRANDING SUITE */}
       {activeTab === 'branding' && (
+        !hasPlanFeature(currentUser, 'whitelabel') ? (
+          <div className="glass-panel" style={{
+            padding: '50px 30px',
+            textAlign: 'center',
+            margin: '20px auto',
+            maxWidth: '620px',
+            borderRadius: '20px',
+            border: '1.5px solid rgba(217, 119, 6, 0.35)',
+            background: 'radial-gradient(ellipse at top, rgba(217, 119, 6, 0.08), transparent 70%)'
+          }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              background: 'rgba(217, 119, 6, 0.15)',
+              border: '1.5px solid rgba(217, 119, 6, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 20px',
+              color: 'var(--accent-gold)'
+            }}>
+              <Lock size={30} />
+            </div>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'rgba(217, 119, 6, 0.15)',
+              border: '1px solid rgba(217, 119, 6, 0.3)',
+              borderRadius: '20px',
+              padding: '4px 14px',
+              fontSize: '0.72rem',
+              fontWeight: '700',
+              color: 'var(--accent-gold)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              marginBottom: '12px'
+            }}>
+              <Crown size={13} />
+              Plan Upgrade Required
+            </div>
+            <h2 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#ffffff', marginBottom: '10px' }}>
+              White Label & Custom Salon Branding Suite
+            </h2>
+            <p style={{ color: 'var(--text-sub)', fontSize: '0.88rem', lineHeight: '1.7', maxWidth: '460px', margin: '0 auto 24px' }}>
+              White label branding is not included in your salon's current <strong style={{ color: '#fff' }}>{currentUser?.plan_name || 'Starter'}</strong> subscription plan. Upgrade your SaaS tier to unlock custom salon logo, brand color themes, and custom receipts.
+            </p>
+            <button
+              onClick={() => setActiveTab('plans')}
+              className="btn-primary"
+              style={{
+                padding: '11px 24px',
+                fontSize: '0.88rem',
+                fontWeight: '700',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 15px var(--accent-gold-glow)',
+                margin: '0 auto'
+              }}
+            >
+              <Sparkles size={16} />
+              View Subscription Plans & Upgrade
+            </button>
+          </div>
+        ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           {/* Header Banner */}
           <div style={{
@@ -933,10 +1001,78 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix, currentUser, branches: 
 
           </div>
         </div>
+        )
       )}
 
       {/* TAB: PAYMENT GATEWAY & SANDBOX SETUP */}
       {activeTab === 'gateway' && (
+        !hasPlanFeature(currentUser, 'gateways') ? (
+          <div className="glass-panel" style={{
+            padding: '50px 30px',
+            textAlign: 'center',
+            margin: '20px auto',
+            maxWidth: '620px',
+            borderRadius: '20px',
+            border: '1.5px solid rgba(217, 119, 6, 0.35)',
+            background: 'radial-gradient(ellipse at top, rgba(217, 119, 6, 0.08), transparent 70%)'
+          }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              background: 'rgba(217, 119, 6, 0.15)',
+              border: '1.5px solid rgba(217, 119, 6, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 20px',
+              color: 'var(--accent-gold)'
+            }}>
+              <Lock size={30} />
+            </div>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'rgba(217, 119, 6, 0.15)',
+              border: '1px solid rgba(217, 119, 6, 0.3)',
+              borderRadius: '20px',
+              padding: '4px 14px',
+              fontSize: '0.72rem',
+              fontWeight: '700',
+              color: 'var(--accent-gold)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              marginBottom: '12px'
+            }}>
+              <Crown size={13} />
+              Plan Upgrade Required
+            </div>
+            <h2 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#ffffff', marginBottom: '10px' }}>
+              Online Payment Gateway Integration
+            </h2>
+            <p style={{ color: 'var(--text-sub)', fontSize: '0.88rem', lineHeight: '1.7', maxWidth: '460px', margin: '0 auto 24px' }}>
+              Payment gateway integration is not included in your salon's current <strong style={{ color: '#fff' }}>{currentUser?.plan_name || 'Starter'}</strong> subscription plan. Upgrade your SaaS tier to accept Razorpay UPI, cards, and multi-branch merchant terminals.
+            </p>
+            <button
+              onClick={() => setActiveTab('plans')}
+              className="btn-primary"
+              style={{
+                padding: '11px 24px',
+                fontSize: '0.88rem',
+                fontWeight: '700',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 15px var(--accent-gold-glow)',
+                margin: '0 auto'
+              }}
+            >
+              <Sparkles size={16} />
+              View Subscription Plans & Upgrade
+            </button>
+          </div>
+        ) : (
         <div className="glass-panel" style={{ padding: '28px', borderRadius: '16px', background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.08)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
@@ -1252,6 +1388,7 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix, currentUser, branches: 
             </div>
           </div>
         </div>
+        )
       )}
 
       {/* TAB 2: USER & ROLE ACCESS CONTROL */}

@@ -338,9 +338,11 @@ export const impersonateTenant = async (req, res) => {
 
     // Find the Admin user of this tenant
     const userRes = await pool.query(`
-      SELECT u.*, t.name as tenant_name, t.slug as tenant_slug, r.name as role_name, r.permissions
+      SELECT u.*, t.name as tenant_name, t.slug as tenant_slug, r.name as role_name, r.permissions,
+             p.features as plan_features, p.name as plan_name
       FROM users u
       JOIN tenants t ON u.tenant_id = t.id
+      LEFT JOIN subscription_plans p ON t.plan_id = p.id
       LEFT JOIN roles r ON u.role_id = r.id
       WHERE u.tenant_id = $1 AND u.role_id = 1
       ORDER BY u.id ASC
@@ -353,6 +355,11 @@ export const impersonateTenant = async (req, res) => {
 
     const targetUser = userRes.rows[0];
 
+    let parsedPlanFeatures = targetUser.plan_features || [];
+    if (typeof parsedPlanFeatures === 'string') {
+      try { parsedPlanFeatures = JSON.parse(parsedPlanFeatures); } catch (e) { parsedPlanFeatures = []; }
+    }
+
     const payload = {
       id: targetUser.id,
       name: `${targetUser.name} [Support Mode]`,
@@ -364,6 +371,8 @@ export const impersonateTenant = async (req, res) => {
       original_super_admin_id: req.user.id,
       tenant_id: targetUser.tenant_id,
       tenant_name: targetUser.tenant_name,
+      plan_name: targetUser.plan_name || 'Starter',
+      plan_features: parsedPlanFeatures,
       branch_id: targetUser.branch_id,
       permissions: targetUser.permissions || ['all']
     };
