@@ -28,7 +28,8 @@ import {
   CreditCard,
   ClipboardCheck,
   Sparkles,
-  Crown
+  Crown,
+  Building2
 } from 'lucide-react';
 
 
@@ -55,6 +56,7 @@ import AssetsTrackingManagementView from './views/AssetsTrackingManagementView';
 import UserProfileModal from './views/UserProfileModal';
 import StaffAttendanceView from './views/StaffAttendanceView';
 import SubscriptionPlansView from './views/SubscriptionPlansView';
+import TenantsManagementView from './views/TenantsManagementView';
 
 import {
   Admin_Get_Users,
@@ -2016,6 +2018,14 @@ export default function App() {
 
                 {isSettingsOpen && (
                   <div className="nav-dropdown-menu">
+                    {isMasterAdmin(currentUser) && (
+                      <button
+                        className={`sub-nav-btn ${activeTab === 'settings' && adminSettingsSubTab === 'tenants' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('settings'); setAdminSettingsSubTab('tenants'); }}
+                      >
+                        <Building2 size={14} style={{ color: 'var(--accent-gold)' }} /> Salon Organizations (Tenants)
+                      </button>
+                    )}
                     <button
                       className={`sub-nav-btn ${activeTab === 'settings' && adminSettingsSubTab === 'plans' ? 'active' : ''}`}
                       onClick={() => { setActiveTab('settings'); setAdminSettingsSubTab('plans'); }}
@@ -2129,6 +2139,7 @@ export default function App() {
               {activeTab === 'analytics' && 'Reports & Executive Analytics'}
               {activeTab === 'tracking_records' && 'Staff & Customer Tracking Records'}
               {activeTab === 'settings' && 'Admin Panel & Security Settings'}
+              {activeTab === 'tenants' && 'Salon Organizations & Tenants (SaaS Master)'}
             </h1>
             {/* <p style={{ marginTop: '2px' }}>
               Welcome back, <strong>{currentUser.name}</strong>! | Active Branch Context: <strong style={{ color: 'var(--accent-gold)' }}>{selectedBranchId === 'all' ? '🌐 All Branches (Master)' : (branches.find(b => String(b.id) === String(selectedBranchId))?.name || `Branch #${selectedBranchId}`)}</strong>
@@ -2654,6 +2665,14 @@ export default function App() {
                 selectedBranchId={selectedBranchId}
                 initialTab={adminSettingsSubTab}
               />
+            ) : (
+              <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
+            )
+          )}
+
+          {activeTab === 'tenants' && (
+            isMasterAdmin(currentUser) ? (
+              <TenantsManagementView currentUser={currentUser} />
             ) : (
               <AccessDeniedView role={currentUser?.role} onGoHome={() => setActiveTab('dashboard')} />
             )

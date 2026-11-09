@@ -3,7 +3,7 @@ import {
   ShieldCheck, Sliders, Database, Users, Lock, Key, RefreshCw, Save,
   Plus, Edit2, Trash2, CheckCircle, CheckCircle2, AlertCircle, FileText, Download,
   Clock, Server, Globe, DollarSign, Percent, Shield, Eye, CreditCard, Building,
-  Sparkles, Palette, Upload, Image, Trash, Scissors, Receipt, Crown
+  Sparkles, Palette, Upload, Image, Trash, Scissors, Receipt, Crown, Building2
 } from 'lucide-react';
 import {
   Admin_Get_System_Settings,
@@ -21,6 +21,7 @@ import {
 } from '../services/apiService';
 import { useBranding, THEME_PALETTES } from '../context/BrandingContext';
 import SubscriptionPlansView from './SubscriptionPlansView';
+import TenantsManagementView from './TenantsManagementView';
 
 const AdminSecuritySettingsView = ({ onNavigateToMatrix, currentUser, branches: propBranches = [], selectedBranchId = 'all', initialTab = 'settings' }) => {
   const { brandSettings, updateLocalBranding } = useBranding();
@@ -294,6 +295,7 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix, currentUser, branches: 
         {[
           { id: 'settings', label: 'Centralized System & Tax Settings', icon: Sliders },
           { id: 'branding', label: 'White Label & Brand Setup', icon: Sparkles },
+          { id: 'tenants', label: 'Salon Organizations (Tenants)', icon: Building2 },
           { id: 'plans', label: 'SaaS Subscription Plans & Quota', icon: Crown },
           { id: 'gateway', label: 'Payment Gateway & Sandbox Setup', icon: CreditCard },
           { id: 'users', label: 'User & Role Access Control', icon: Users },
@@ -1411,6 +1413,11 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix, currentUser, branches: 
       {/* TAB: SAAS SUBSCRIPTION PLANS & QUOTA */}
       {activeTab === 'plans' && (
         <SubscriptionPlansView currentUser={currentUser} />
+      )}
+
+      {/* TAB: SALON ORGANIZATIONS & TENANTS MANAGEMENT */}
+      {activeTab === 'tenants' && (
+        <TenantsManagementView currentUser={currentUser} />
       )}
 
       {/* MODAL: CREATE USER */}

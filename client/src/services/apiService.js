@@ -1435,4 +1435,69 @@ export const Super_Admin_Toggle_Plan_Status = async (id) => {
   } catch (error) { throw error.response || error; }
 };
 
+// <----------------  SaaS Salon Tenants (Organizations) APIs ----------------->
+export const Get_All_Tenants = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/tenants`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Get_Tenant_Details = async (id) => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/tenants/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Create_Tenant = async (data) => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/tenants`, data, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Update_Tenant = async (id, data) => {
+  try {
+    const token = getToken();
+    return await axios.put(`${API_BASE_URL}/tenants/${id}`, data, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Toggle_Tenant_Status = async (id) => {
+  try {
+    const token = getToken();
+    return await axios.patch(`${API_BASE_URL}/tenants/${id}/status`, {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Extend_Tenant_Trial = async (id, days = 14) => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/tenants/${id}/extend-trial`, { days }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Impersonate_Tenant = async (id) => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/tenants/${id}/impersonate`, {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  } catch (error) { throw error.response || error; }
+};
+
+
 

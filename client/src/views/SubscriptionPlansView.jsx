@@ -931,3 +931,4 @@ const SubscriptionPlansView = ({ currentUser }) => {
 };
 
 export default SubscriptionPlansView;
+

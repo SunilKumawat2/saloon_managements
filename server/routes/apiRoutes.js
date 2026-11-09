@@ -81,6 +81,15 @@ import {
   updateSubscriptionPlan,
   togglePlanStatus
 } from '../controllers/subscriptionPlanController.js';
+import {
+  getTenants,
+  getTenantById,
+  createTenant,
+  updateTenant,
+  toggleTenantStatus,
+  extendTenantTrial,
+  impersonateTenant
+} from '../controllers/tenantController.js';
 
 const router = express.Router();
 
@@ -288,5 +297,14 @@ router.post('/subscription-plans/change-plan', authenticateToken, changeTenantPl
 router.post('/subscription-plans', authenticateToken, createSubscriptionPlan);
 router.put('/subscription-plans/:id', authenticateToken, updateSubscriptionPlan);
 router.patch('/subscription-plans/:id/status', authenticateToken, togglePlanStatus);
+
+// -------------------- SaaS Salon Tenants / Organizations Routes --------------------
+router.get('/tenants', authenticateToken, getTenants);
+router.get('/tenants/:id', authenticateToken, getTenantById);
+router.post('/tenants', authenticateToken, createTenant);
+router.put('/tenants/:id', authenticateToken, updateTenant);
+router.patch('/tenants/:id/status', authenticateToken, toggleTenantStatus);
+router.post('/tenants/:id/extend-trial', authenticateToken, extendTenantTrial);
+router.post('/tenants/:id/impersonate', authenticateToken, impersonateTenant);
 
 export default router;
