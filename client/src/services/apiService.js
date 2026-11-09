@@ -1417,6 +1417,15 @@ export const Change_Tenant_Plan = async (data) => {
   } catch (error) { throw error.response || error; }
 };
 
+export const Super_Admin_Create_Plan = async (data) => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/subscription-plans`, data, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  } catch (error) { throw error.response || error; }
+};
+
 export const Super_Admin_Update_Plan = async (id, data) => {
   try {
     const token = getToken();

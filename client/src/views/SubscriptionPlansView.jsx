@@ -17,12 +17,14 @@ import {
   Clock,
   HelpCircle,
   RefreshCw,
+  Plus,
   X
 } from 'lucide-react';
 import {
   Get_Subscription_Plans,
   Get_My_Plan_Usage,
   Change_Tenant_Plan,
+  Super_Admin_Create_Plan,
   Super_Admin_Update_Plan,
   Super_Admin_Toggle_Plan_Status
 } from '../services/apiService';
@@ -49,6 +51,20 @@ const SubscriptionPlansView = ({ currentUser }) => {
     description: ''
   });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  // Super Admin Create Plan Modal
+  const [showCreatePlanModal, setShowCreatePlanModal] = useState(false);
+  const [createPlanForm, setCreatePlanForm] = useState({
+    name: '',
+    code: '',
+    price_monthly: '999',
+    price_yearly: '9999',
+    max_branches: '1',
+    max_staff: '4',
+    description: '',
+    featuresText: 'Custom Salon Quota, Real-time POS Billing, SMS & WhatsApp Receipts, Multi-Branch Access'
+  });
+  const [isCreatingPlan, setIsCreatingPlan] = useState(false);
 
   const isSuperAdmin = Boolean(
     currentUser?.is_super_admin === true ||
@@ -138,6 +154,47 @@ const SubscriptionPlansView = ({ currentUser }) => {
     }
   };
 
+  const handleCreatePlanSubmit = async (e) => {
+    e.preventDefault();
+    setIsCreatingPlan(true);
+    try {
+      const featuresArray = createPlanForm.featuresText
+        .split(',')
+        .map(f => f.trim())
+        .filter(Boolean);
+
+      const payload = {
+        name: createPlanForm.name,
+        code: createPlanForm.code || createPlanForm.name.toUpperCase().replace(/[^A-Z0-9]/g, '_'),
+        price_monthly: parseFloat(createPlanForm.price_monthly) || 0,
+        price_yearly: parseFloat(createPlanForm.price_yearly) || 0,
+        max_branches: parseInt(createPlanForm.max_branches) ?? 1,
+        max_staff: parseInt(createPlanForm.max_staff) ?? 4,
+        description: createPlanForm.description,
+        features: featuresArray
+      };
+
+      const res = await Super_Admin_Create_Plan(payload);
+      showFeedback('success', res.data?.message || `Plan "${createPlanForm.name}" created successfully!`);
+      setShowCreatePlanModal(false);
+      setCreatePlanForm({
+        name: '',
+        code: '',
+        price_monthly: '999',
+        price_yearly: '9999',
+        max_branches: '1',
+        max_staff: '4',
+        description: '',
+        featuresText: 'Custom Salon Quota, Real-time POS Billing, SMS & WhatsApp Receipts, Multi-Branch Access'
+      });
+      await loadData();
+    } catch (err) {
+      showFeedback('error', err.data?.message || err.message || 'Failed to create plan');
+    } finally {
+      setIsCreatingPlan(false);
+    }
+  };
+
   const handleTogglePlanStatus = async (planId, e) => {
     e.stopPropagation();
     try {
@@ -216,64 +273,90 @@ const SubscriptionPlansView = ({ currentUser }) => {
           </p>
         </div>
 
-        {/* Billing Cycle Switcher */}
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          background: 'rgba(15, 23, 42, 0.8)',
-          borderRadius: '30px',
-          padding: '4px',
-          border: '1px solid rgba(255, 255, 255, 0.12)'
-        }}>
-          <button
-            type="button"
-            onClick={() => setBillingCycle('monthly')}
-            style={{
-              padding: '6px 16px',
-              borderRadius: '24px',
-              border: 'none',
-              background: billingCycle === 'monthly' ? 'var(--accent-gold)' : 'transparent',
-              color: billingCycle === 'monthly' ? '#ffffff' : '#94a3b8',
-              fontWeight: '700',
-              fontSize: '0.76rem',
-              cursor: 'pointer',
-              boxShadow: billingCycle === 'monthly' ? '0 2px 8px var(--accent-gold-glow)' : 'none',
-              transition: 'all 0.2s'
-            }}
-          >
-            Monthly Billing
-          </button>
-          <button
-            type="button"
-            onClick={() => setBillingCycle('yearly')}
-            style={{
-              padding: '6px 16px',
-              borderRadius: '24px',
-              border: 'none',
-              background: billingCycle === 'yearly' ? 'var(--accent-gold)' : 'transparent',
-              color: billingCycle === 'yearly' ? '#ffffff' : '#94a3b8',
-              fontWeight: '700',
-              fontSize: '0.76rem',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              boxShadow: billingCycle === 'yearly' ? '0 2px 8px var(--accent-gold-glow)' : 'none',
-              transition: 'all 0.2s'
-            }}
-          >
-            Yearly Billing
-            <span style={{
-              background: '#22c55e',
-              color: '#064e3b',
-              fontSize: '0.62rem',
-              fontWeight: '900',
-              padding: '1px 6px',
-              borderRadius: '12px'
-            }}>
-              SAVE 17%
-            </span>
-          </button>
+        {/* Right Header Actions: Create Plan (Super Admin) & Billing Cycle Switcher */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={() => setShowCreatePlanModal(true)}
+              style={{
+                background: 'var(--accent-gold)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '8px 16px',
+                fontWeight: '700',
+                fontSize: '0.78rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 2px 8px var(--accent-gold-glow)',
+                cursor: 'pointer'
+              }}
+            >
+              <Plus size={15} /> + Create New Plan
+            </button>
+          )}
+
+          {/* Billing Cycle Switcher */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            background: 'rgba(15, 23, 42, 0.8)',
+            borderRadius: '30px',
+            padding: '4px',
+            border: '1px solid rgba(255, 255, 255, 0.12)'
+          }}>
+            <button
+              type="button"
+              onClick={() => setBillingCycle('monthly')}
+              style={{
+                padding: '6px 16px',
+                borderRadius: '24px',
+                border: 'none',
+                background: billingCycle === 'monthly' ? 'var(--accent-gold)' : 'transparent',
+                color: billingCycle === 'monthly' ? '#ffffff' : '#94a3b8',
+                fontWeight: '700',
+                fontSize: '0.76rem',
+                cursor: 'pointer',
+                boxShadow: billingCycle === 'monthly' ? '0 2px 8px var(--accent-gold-glow)' : 'none',
+                transition: 'all 0.2s'
+              }}
+            >
+              Monthly Billing
+            </button>
+            <button
+              type="button"
+              onClick={() => setBillingCycle('yearly')}
+              style={{
+                padding: '6px 16px',
+                borderRadius: '24px',
+                border: 'none',
+                background: billingCycle === 'yearly' ? 'var(--accent-gold)' : 'transparent',
+                color: billingCycle === 'yearly' ? '#ffffff' : '#94a3b8',
+                fontWeight: '700',
+                fontSize: '0.76rem',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: billingCycle === 'yearly' ? '0 2px 8px var(--accent-gold-glow)' : 'none',
+                transition: 'all 0.2s'
+              }}
+            >
+              Yearly Billing
+              <span style={{
+                background: '#22c55e',
+                color: '#064e3b',
+                fontSize: '0.62rem',
+                fontWeight: '900',
+                padding: '1px 6px',
+                borderRadius: '12px'
+              }}>
+                SAVE 17%
+              </span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -920,6 +1003,175 @@ const SubscriptionPlansView = ({ currentUser }) => {
                   }}
                 >
                   {isSavingEdit ? 'Saving...' : 'Save Plan Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Super Admin Modal: Create Brand New Plan */}
+      {showCreatePlanModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000,
+          padding: '16px'
+        }}>
+          <div style={{
+            background: '#1e293b',
+            border: '1px solid var(--border-gold)',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '540px',
+            padding: '24px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#ffffff', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Crown size={18} style={{ color: 'var(--accent-gold)' }} />
+                Super Admin: Create New SaaS Subscription Plan
+              </h3>
+              <button onClick={() => setShowCreatePlanModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreatePlanSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.74rem', color: '#94a3b8', marginBottom: '4px' }}>Plan Display Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. VIP Luxe Chain Plan"
+                    value={createPlanForm.name}
+                    onChange={(e) => setCreatePlanForm({ ...createPlanForm, name: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: '#fff', fontSize: '0.82rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.74rem', color: '#94a3b8', marginBottom: '4px' }}>Plan Code</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. VIP_LUXE"
+                    value={createPlanForm.code}
+                    onChange={(e) => setCreatePlanForm({ ...createPlanForm, code: e.target.value.toUpperCase() })}
+                    style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: '#fff', fontSize: '0.82rem' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.74rem', color: '#94a3b8', marginBottom: '4px' }}>Monthly Price (₹) *</label>
+                  <input
+                    type="number"
+                    step="1"
+                    required
+                    value={createPlanForm.price_monthly}
+                    onChange={(e) => setCreatePlanForm({ ...createPlanForm, price_monthly: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: '#fff', fontSize: '0.82rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.74rem', color: '#94a3b8', marginBottom: '4px' }}>Yearly Price (₹)</label>
+                  <input
+                    type="number"
+                    step="1"
+                    required
+                    value={createPlanForm.price_yearly}
+                    onChange={(e) => setCreatePlanForm({ ...createPlanForm, price_yearly: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: '#fff', fontSize: '0.82rem' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.74rem', color: '#94a3b8', marginBottom: '4px' }}>Max Branches (-1 for Unlimited)</label>
+                  <input
+                    type="number"
+                    required
+                    value={createPlanForm.max_branches}
+                    onChange={(e) => setCreatePlanForm({ ...createPlanForm, max_branches: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: '#fff', fontSize: '0.82rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.74rem', color: '#94a3b8', marginBottom: '4px' }}>Max Staff (-1 for Unlimited)</label>
+                  <input
+                    type="number"
+                    required
+                    value={createPlanForm.max_staff}
+                    onChange={(e) => setCreatePlanForm({ ...createPlanForm, max_staff: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: '#fff', fontSize: '0.82rem' }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.74rem', color: '#94a3b8', marginBottom: '4px' }}>Short Description</label>
+                <textarea
+                  rows="2"
+                  placeholder="e.g. Tailored for enterprise salon chains and luxury spas."
+                  value={createPlanForm.description}
+                  onChange={(e) => setCreatePlanForm({ ...createPlanForm, description: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: '#fff', fontSize: '0.82rem' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.74rem', color: '#94a3b8', marginBottom: '4px' }}>Features List (Comma Separated)</label>
+                <textarea
+                  rows="2"
+                  placeholder="e.g. Multi-Chain Outlets, WhatsApp Marketing, Custom Domain, VIP Support"
+                  value={createPlanForm.featuresText}
+                  onChange={(e) => setCreatePlanForm({ ...createPlanForm, featuresText: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: '#fff', fontSize: '0.82rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCreatePlanModal(false)}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 255, 255, 0.08)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    color: '#cbd5e1',
+                    fontWeight: '600',
+                    fontSize: '0.80rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingPlan}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: '8px',
+                    background: 'var(--accent-gold)',
+                    border: 'none',
+                    color: '#ffffff',
+                    fontWeight: '700',
+                    fontSize: '0.80rem',
+                    cursor: isCreatingPlan ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 2px 10px var(--accent-gold-glow)'
+                  }}
+                >
+                  {isCreatingPlan ? 'Creating...' : '+ Create Plan'}
                 </button>
               </div>
             </form>
