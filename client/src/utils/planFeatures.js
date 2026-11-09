@@ -33,3 +33,4 @@ export const hasPlanFeature = (user, featKey) => {
   if (!Array.isArray(feats)) return true;
   return feats.includes('all') || feats.includes(featKey);
 };
+

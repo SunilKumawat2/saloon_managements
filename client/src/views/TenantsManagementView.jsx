@@ -210,7 +210,11 @@ const TenantsManagementView = ({ currentUser }) => {
   const totalSalons = tenants.length;
   const activeSalons = tenants.filter(t => t.status === 'Active').length;
   const trialSalons = tenants.filter(t => t.status === 'Trial').length;
-  const totalBranches = tenants.reduce((acc, t) => acc + (t.branch_count || 0), 0);
+  const suspendedSalons = tenants.filter(t => t.status === 'Suspended').length;
+  const totalBranches = tenants.reduce((acc, t) => acc + (parseInt(t.branch_count) || 0), 0);
+  const totalMRR = tenants
+    .filter(t => t.status === 'Active')
+    .reduce((acc, t) => acc + (parseFloat(t.price_monthly) || 0), 0);
 
   return (
     <div style={{ padding: '16px 20px', color: '#e2e8f0', minHeight: '100vh', maxWidth: '1440px', margin: '0 auto' }}>
@@ -279,35 +283,45 @@ const TenantsManagementView = ({ currentUser }) => {
         </div>
       )}
 
-      {/* Top 4 KPI Metrics Cards */}
+      {/* Top 5 KPI Metrics Cards */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
         gap: '14px',
         marginBottom: '20px'
       }}>
         <div style={{ background: 'rgba(30, 41, 59, 0.7)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px', padding: '14px 18px' }}>
-          <div style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>TOTAL SALONS</div>
+          <div style={{ fontSize: '0.70rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>TOTAL SALONS</div>
           <div style={{ fontSize: '1.6rem', fontWeight: '900', color: '#ffffff', marginTop: '4px' }}>{totalSalons}</div>
-          <div style={{ fontSize: '0.70rem', color: '#64748b', marginTop: '2px' }}>Registered SaaS Organizations</div>
+          <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '2px' }}>Registered SaaS Organizations</div>
         </div>
 
         <div style={{ background: 'rgba(30, 41, 59, 0.7)', border: '1px solid rgba(34, 197, 94, 0.25)', borderRadius: '12px', padding: '14px 18px' }}>
-          <div style={{ fontSize: '0.72rem', color: '#4ade80', textTransform: 'uppercase', letterSpacing: '0.04em' }}>ACTIVE SUBSCRIBERS</div>
-          <div style={{ fontSize: '1.6rem', fontWeight: '900', color: '#4ade80', marginTop: '4px' }}>{activeSalons}</div>
-          <div style={{ fontSize: '0.70rem', color: '#64748b', marginTop: '2px' }}>Paid recurring subscriptions</div>
+          <div style={{ fontSize: '0.70rem', color: '#4ade80', textTransform: 'uppercase', letterSpacing: '0.04em' }}>ACTIVE VS SUSPENDED</div>
+          <div style={{ fontSize: '1.6rem', fontWeight: '900', color: '#4ade80', marginTop: '4px' }}>
+            {activeSalons} <span style={{ fontSize: '0.88rem', color: suspendedSalons > 0 ? '#f87171' : '#64748b', fontWeight: '600' }}>/ {suspendedSalons} Suspended</span>
+          </div>
+          <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '2px' }}>Active paying vs inactive</div>
         </div>
 
         <div style={{ background: 'rgba(30, 41, 59, 0.7)', border: '1px solid rgba(234, 179, 8, 0.25)', borderRadius: '12px', padding: '14px 18px' }}>
-          <div style={{ fontSize: '0.72rem', color: '#facc15', textTransform: 'uppercase', letterSpacing: '0.04em' }}>IN FREE TRIAL</div>
+          <div style={{ fontSize: '0.70rem', color: '#facc15', textTransform: 'uppercase', letterSpacing: '0.04em' }}>IN FREE TRIAL</div>
           <div style={{ fontSize: '1.6rem', fontWeight: '900', color: '#facc15', marginTop: '4px' }}>{trialSalons}</div>
-          <div style={{ fontSize: '0.70rem', color: '#64748b', marginTop: '2px' }}>14-day evaluation accounts</div>
+          <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '2px' }}>14-day evaluation accounts</div>
         </div>
 
         <div style={{ background: 'rgba(30, 41, 59, 0.7)', border: '1px solid var(--border-gold)', borderRadius: '12px', padding: '14px 18px' }}>
-          <div style={{ fontSize: '0.72rem', color: 'var(--accent-gold)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>OUTLETS MANAGED</div>
-          <div style={{ fontSize: '1.6rem', fontWeight: '900', color: '#ffffff', marginTop: '4px' }}>{totalBranches}</div>
-          <div style={{ fontSize: '0.70rem', color: '#64748b', marginTop: '2px' }}>Total branches across tenants</div>
+          <div style={{ fontSize: '0.70rem', color: 'var(--accent-gold)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>MONTHLY REVENUE (MRR)</div>
+          <div style={{ fontSize: '1.6rem', fontWeight: '900', color: 'var(--accent-gold)', marginTop: '4px' }}>
+            ₹{totalMRR.toLocaleString('en-IN')}
+          </div>
+          <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '2px' }}>Active recurring subscription run-rate</div>
+        </div>
+
+        <div style={{ background: 'rgba(30, 41, 59, 0.7)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '12px', padding: '14px 18px' }}>
+          <div style={{ fontSize: '0.70rem', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>OUTLETS MANAGED</div>
+          <div style={{ fontSize: '1.6rem', fontWeight: '900', color: '#38bdf8', marginTop: '4px' }}>{totalBranches}</div>
+          <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '2px' }}>Total branches across tenants</div>
         </div>
       </div>
 
