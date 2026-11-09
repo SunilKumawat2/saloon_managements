@@ -88,7 +88,9 @@ import {
   updateTenant,
   toggleTenantStatus,
   extendTenantTrial,
-  impersonateTenant
+  impersonateTenant,
+  getPublicAuthSettings,
+  registerPublicSalon
 } from '../controllers/tenantController.js';
 
 const router = express.Router();
@@ -97,6 +99,8 @@ const router = express.Router();
 router.get('/health', getHealth);
 router.get('/db-check', checkDatabaseStatus);
 router.post('/auth/login', loginUser);
+router.get('/auth/public-settings', getPublicAuthSettings);
+router.post('/auth/register-salon', registerPublicSalon);
 
 // ==================== 🔒 PROTECTED ROUTES (Requires JWT Token) ====================
 router.get('/auth/me', authenticateToken, getMe);

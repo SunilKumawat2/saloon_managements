@@ -411,6 +411,43 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix, currentUser, branches: 
             />
           </div>
 
+          {/* Super Admin Control: Public Self-Serve Salon Registration Toggle */}
+          {(currentUser?.is_super_admin || currentUser?.email === 'admin@saloon.com') && (
+            <div style={{
+              marginBottom: '24px',
+              padding: '16px',
+              background: 'rgba(217, 119, 6, 0.08)',
+              border: '1px solid rgba(217, 119, 6, 0.3)',
+              borderRadius: '12px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '12px'
+            }}>
+              <div>
+                <div style={{ fontSize: '0.86rem', fontWeight: '700', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Crown size={16} style={{ color: 'var(--accent-gold)' }} />
+                  Public Salon Self-Registration (14-Day Free Trial)
+                </div>
+                <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '2px' }}>
+                  When enabled, new salon owners can sign up directly from the login page. When disabled, registration is by invitation only.
+                </div>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '8px' }}>
+                <input
+                  type="checkbox"
+                  checked={settings.allow_public_signup === 'true' || settings.allow_public_signup === true}
+                  onChange={e => setSettings({ ...settings, allow_public_signup: e.target.checked ? 'true' : 'false' })}
+                  style={{ width: '18px', height: '18px', accentColor: 'var(--accent-gold)', cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '0.80rem', fontWeight: '700', color: (settings.allow_public_signup === 'true' || settings.allow_public_signup === true) ? '#4ade80' : '#f87171' }}>
+                  {(settings.allow_public_signup === 'true' || settings.allow_public_signup === true) ? 'Enabled (Public Can Register)' : 'Disabled (Invite-Only)'}
+                </span>
+              </label>
+            </div>
+          )}
+
           <button
             type="submit"
             style={{

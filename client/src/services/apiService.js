@@ -14,6 +14,25 @@ export const Admin_Login = async (loginData) => {
   }
 };
 
+// <----------------  Public Auth & Salon Self-Registration ----------------->
+export const Get_Public_Auth_Settings = async () => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/auth/public-settings`);
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
+export const Register_Public_Salon = async (registrationData) => {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/auth/register-salon`, registrationData);
+    return response;
+  } catch (error) {
+    throw error.response || error;
+  }
+};
+
 // <----------------  Get Admin Profile ----------------->
 export const Get_Admin_Profile = async () => {
   try {
