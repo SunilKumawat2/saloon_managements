@@ -98,6 +98,15 @@ const router = express.Router();
 // ==================== 🔓 PUBLIC ROUTES (No Token Needed) ====================
 router.get('/health', getHealth);
 router.get('/db-check', checkDatabaseStatus);
+router.all('/admin/run-saas-migration', async (req, res) => {
+  try {
+    const { runSaasMigrationSafely } = await import('../utils/runSaasMigration.js');
+    await runSaasMigrationSafely();
+    res.json({ success: true, message: 'SaaS multi-tenant migration verified and applied successfully.' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 router.post('/auth/login', loginUser);
 router.get('/auth/public-settings', getPublicAuthSettings);
 router.post('/auth/register-salon', registerPublicSalon);

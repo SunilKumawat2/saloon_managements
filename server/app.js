@@ -3,11 +3,15 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import apiRoutes from './routes/apiRoutes.js';
+import { runSaasMigrationSafely } from './utils/runSaasMigration.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// Auto-verify multi-tenant DB schema on startup
+runSaasMigrationSafely().catch(err => console.error('Migration hook error:', err));
 
 app.use(cors());
 app.use(express.json());
