@@ -27,7 +27,8 @@ import {
   Package,
   CreditCard,
   ClipboardCheck,
-  Sparkles
+  Sparkles,
+  Crown
 } from 'lucide-react';
 
 
@@ -53,6 +54,7 @@ import TimeSlotsManagementView from './views/TimeSlotsManagementView';
 import AssetsTrackingManagementView from './views/AssetsTrackingManagementView';
 import UserProfileModal from './views/UserProfileModal';
 import StaffAttendanceView from './views/StaffAttendanceView';
+import SubscriptionPlansView from './views/SubscriptionPlansView';
 
 import {
   Admin_Get_Users,
@@ -2014,6 +2016,12 @@ export default function App() {
 
                 {isSettingsOpen && (
                   <div className="nav-dropdown-menu">
+                    <button
+                      className={`sub-nav-btn ${activeTab === 'settings' && adminSettingsSubTab === 'plans' ? 'active' : ''}`}
+                      onClick={() => { setActiveTab('settings'); setAdminSettingsSubTab('plans'); }}
+                    >
+                      <Crown size={14} style={{ color: 'var(--accent-gold)' }} /> SaaS Subscription Plans
+                    </button>
                     <button
                       className={`sub-nav-btn ${activeTab === 'settings' && adminSettingsSubTab === 'branding' ? 'active' : ''}`}
                       onClick={() => { setActiveTab('settings'); setAdminSettingsSubTab('branding'); }}

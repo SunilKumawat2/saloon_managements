@@ -3,7 +3,7 @@ import {
   ShieldCheck, Sliders, Database, Users, Lock, Key, RefreshCw, Save,
   Plus, Edit2, Trash2, CheckCircle, CheckCircle2, AlertCircle, FileText, Download,
   Clock, Server, Globe, DollarSign, Percent, Shield, Eye, CreditCard, Building,
-  Sparkles, Palette, Upload, Image, Trash, Scissors, Receipt
+  Sparkles, Palette, Upload, Image, Trash, Scissors, Receipt, Crown
 } from 'lucide-react';
 import {
   Admin_Get_System_Settings,
@@ -20,6 +20,7 @@ import {
   Admin_Update_Gateway_Config
 } from '../services/apiService';
 import { useBranding, THEME_PALETTES } from '../context/BrandingContext';
+import SubscriptionPlansView from './SubscriptionPlansView';
 
 const AdminSecuritySettingsView = ({ onNavigateToMatrix, currentUser, branches: propBranches = [], selectedBranchId = 'all', initialTab = 'settings' }) => {
   const { brandSettings, updateLocalBranding } = useBranding();
@@ -293,6 +294,7 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix, currentUser, branches: 
         {[
           { id: 'settings', label: 'Centralized System & Tax Settings', icon: Sliders },
           { id: 'branding', label: 'White Label & Brand Setup', icon: Sparkles },
+          { id: 'plans', label: 'SaaS Subscription Plans & Quota', icon: Crown },
           { id: 'gateway', label: 'Payment Gateway & Sandbox Setup', icon: CreditCard },
           { id: 'users', label: 'User & Role Access Control', icon: Users },
           { id: 'audit', label: 'Security Audit Log', icon: Shield },
@@ -1404,6 +1406,11 @@ const AdminSecuritySettingsView = ({ onNavigateToMatrix, currentUser, branches: 
             </table>
           </div>
         </div>
+      )}
+
+      {/* TAB: SAAS SUBSCRIPTION PLANS & QUOTA */}
+      {activeTab === 'plans' && (
+        <SubscriptionPlansView currentUser={currentUser} />
       )}
 
       {/* MODAL: CREATE USER */}

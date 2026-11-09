@@ -1389,3 +1389,50 @@ export const Admin_Delete_Staff_Attendance = async (id) => {
   } catch (error) { throw error.response || error; }
 };
 
+// <----------------  SaaS Subscription Plans APIs ----------------->
+export const Get_Subscription_Plans = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/subscription-plans`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Get_My_Plan_Usage = async () => {
+  try {
+    const token = getToken();
+    return await axios.get(`${API_BASE_URL}/subscription-plans/my-usage`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Change_Tenant_Plan = async (data) => {
+  try {
+    const token = getToken();
+    return await axios.post(`${API_BASE_URL}/subscription-plans/change-plan`, data, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Super_Admin_Update_Plan = async (id, data) => {
+  try {
+    const token = getToken();
+    return await axios.put(`${API_BASE_URL}/subscription-plans/${id}`, data, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  } catch (error) { throw error.response || error; }
+};
+
+export const Super_Admin_Toggle_Plan_Status = async (id) => {
+  try {
+    const token = getToken();
+    return await axios.patch(`${API_BASE_URL}/subscription-plans/${id}/status`, {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  } catch (error) { throw error.response || error; }
+};
+
+

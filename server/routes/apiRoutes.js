@@ -72,6 +72,15 @@ import {
   getMonthlyReport,
   deleteAttendanceRecord
 } from '../controllers/staffAttendanceController.js';
+import {
+  getSubscriptionPlans,
+  getPlanById,
+  getCurrentTenantPlanUsage,
+  changeTenantPlan,
+  createSubscriptionPlan,
+  updateSubscriptionPlan,
+  togglePlanStatus
+} from '../controllers/subscriptionPlanController.js';
 
 const router = express.Router();
 
@@ -270,5 +279,14 @@ router.post('/staff-attendance/record', authenticateToken, recordAttendance);
 router.post('/staff-attendance/bulk', authenticateToken, recordBulkAttendance);
 router.get('/staff-attendance/monthly', authenticateToken, getMonthlyReport);
 router.delete('/staff-attendance/:id', authenticateToken, deleteAttendanceRecord);
+
+// -------------------- SaaS Subscription Plans Routes --------------------
+router.get('/subscription-plans', getSubscriptionPlans);
+router.get('/subscription-plans/my-usage', authenticateToken, getCurrentTenantPlanUsage);
+router.get('/subscription-plans/:id', getPlanById);
+router.post('/subscription-plans/change-plan', authenticateToken, changeTenantPlan);
+router.post('/subscription-plans', authenticateToken, createSubscriptionPlan);
+router.put('/subscription-plans/:id', authenticateToken, updateSubscriptionPlan);
+router.patch('/subscription-plans/:id/status', authenticateToken, togglePlanStatus);
 
 export default router;
